@@ -1,0 +1,109 @@
+package com.example.data.db
+
+import androidx.room.*
+import kotlinx.coroutines.flow.Flow
+
+@Dao
+interface UserDao {
+    @Query("SELECT * FROM users WHERE mobileNumber = :mobile LIMIT 1")
+    suspend fun getUserByMobile(mobile: String): UserEntity?
+
+    @Query("SELECT * FROM users WHERE id = :id LIMIT 1")
+    suspend fun getUserById(id: Int): UserEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertUser(user: UserEntity): Long
+
+    @Update
+    suspend fun updateUser(user: UserEntity)
+
+    @Query("SELECT COUNT(*) FROM users")
+    suspend fun getUserCount(): Int
+}
+
+@Dao
+interface CategoryDao {
+    @Query("SELECT * FROM categories ORDER BY name ASC")
+    fun getAllCategories(): Flow<List<CategoryEntity>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertCategory(category: CategoryEntity): Long
+
+    @Update
+    suspend fun updateCategory(category: CategoryEntity)
+
+    @Delete
+    suspend fun deleteCategory(category: CategoryEntity)
+
+    @Query("SELECT COUNT(*) FROM categories")
+    suspend fun getCategoryCount(): Int
+}
+
+@Dao
+interface InvoiceDao {
+    @Query("SELECT * FROM invoices ORDER BY timestamp DESC")
+    fun getAllInvoices(): Flow<List<InvoiceEntity>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertInvoice(invoice: InvoiceEntity): Long
+
+    @Query("SELECT SUM(amount) FROM invoices WHERE status = 'Paid'")
+    fun getTotalSales(): Flow<Double?>
+
+    @Query("SELECT COUNT(*) FROM invoices")
+    fun getInvoicesCount(): Flow<Int>
+}
+
+@Dao
+interface ProductDao {
+    @Query("SELECT * FROM products ORDER BY name ASC")
+    fun getAllProducts(): Flow<List<ProductEntity>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertProduct(product: ProductEntity): Long
+
+    @Update
+    suspend fun updateProduct(product: ProductEntity)
+
+    @Delete
+    suspend fun deleteProduct(product: ProductEntity)
+
+    @Query("DELETE FROM products WHERE id = :id")
+    suspend fun deleteProductById(id: Int)
+
+    @Query("SELECT COUNT(*) FROM products")
+    suspend fun getProductCount(): Int
+}
+
+@Dao
+interface CustomerDao {
+    @Query("SELECT * FROM customers ORDER BY lastTransactionTimestamp DESC")
+    fun getAllCustomers(): Flow<List<CustomerEntity>>
+
+    @Query("SELECT * FROM customers WHERE mobileNumber = :mobile LIMIT 1")
+    suspend fun getCustomerByMobile(mobile: String): CustomerEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertCustomer(customer: CustomerEntity): Long
+
+    @Update
+    suspend fun updateCustomer(customer: CustomerEntity)
+
+    @Delete
+    suspend fun deleteCustomer(customer: CustomerEntity)
+
+    @Query("SELECT COUNT(*) FROM customers")
+    suspend fun getCustomerCount(): Int
+}
+
+@Dao
+interface CustomerTransactionDao {
+    @Query("SELECT * FROM customer_transactions WHERE customerMobile = :mobile ORDER BY timestamp DESC")
+    fun getTransactionsForCustomer(mobile: String): Flow<List<CustomerTransactionEntity>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertTransaction(transaction: CustomerTransactionEntity): Long
+
+    @Query("SELECT COUNT(*) FROM customer_transactions")
+    suspend fun getTransactionCount(): Int
+}

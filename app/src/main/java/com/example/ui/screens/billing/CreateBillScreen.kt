@@ -82,7 +82,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.db.InvoiceEntity
 import com.example.data.db.ProductEntity
+import com.example.ui.components.BarcodeScannerDialog
 import com.example.ui.components.LooseQuantityDialog
+import com.example.ui.components.MerchantUpiSettingsDialog
+import com.example.ui.components.UpiPaymentDialog
+import androidx.compose.material.icons.filled.QrCodeScanner
+import android.widget.Toast
+import androidx.compose.ui.platform.LocalContext
 import com.example.ui.theme.AccentPink
 import com.example.ui.theme.DarkGray
 import com.example.ui.theme.ElectricViolet
@@ -106,6 +112,7 @@ fun CreateBillScreen(
     val products by viewModel.products.collectAsState()
     val currentUser by viewModel.currentUser.collectAsState()
 
+    val context = LocalContext.current
     var searchQuery by remember { mutableStateOf("") }
     var selectedCategoryFilter by remember { mutableStateOf("All") }
     var showSuccessReceiptDialog by remember { mutableStateOf(false) }
@@ -113,6 +120,10 @@ fun CreateBillScreen(
 
     var selectedProductForLooseQty by remember { mutableStateOf<ProductEntity?>(null) }
     var editingCartItemQuantity by remember { mutableStateOf<POSCartItem?>(null) }
+
+    var showBarcodeScanner by remember { mutableStateOf(false) }
+    var showUpiQrPaymentDialog by remember { mutableStateOf(false) }
+    var showMerchantUpiSettingsDialog by remember { mutableStateOf(false) }
 
     val categoriesList = remember(products) {
         val set = products.map { it.category }.filter { it.isNotBlank() }.toSet()
@@ -124,7 +135,8 @@ fun CreateBillScreen(
             val matchesCategory = selectedCategoryFilter == "All" || prod.category.equals(selectedCategoryFilter, ignoreCase = true)
             val matchesQuery = searchQuery.isBlank() ||
                     prod.name.contains(searchQuery, ignoreCase = true) ||
-                    prod.category.contains(searchQuery, ignoreCase = true)
+                    prod.category.contains(searchQuery, ignoreCase = true) ||
+                    (prod.barcode.isNotBlank() && prod.barcode.contains(searchQuery, ignoreCase = true))
             matchesCategory && matchesQuery
         }
     }
@@ -317,30 +329,64 @@ fun CreateBillScreen(
                                 )
                             }
 
-                            // Search Field
-                            OutlinedTextField(
-                                value = searchQuery,
-                                onValueChange = { searchQuery = it },
-                                placeholder = { Text("Search product name or category...", color = Color(0xFF64748B), fontSize = 13.sp) },
-                                leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search", tint = GoldYellow, modifier = Modifier.size(20.dp)) },
-                                trailingIcon = {
-                                    if (searchQuery.isNotEmpty()) {
-                                        IconButton(onClick = { searchQuery = "" }) {
-                                            Icon(Icons.Default.Clear, contentDescription = "Clear", tint = Color.White)
+                            // Search Field with Barcode Scanner Icon Button
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                OutlinedTextField(
+                                    value = searchQuery,
+                                    onValueChange = { searchQuery = it },
+                                    placeholder = { Text("Search product name, category or barcode...", color = Color(0xFF64748B), fontSize = 13.sp) },
+                                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search", tint = GoldYellow, modifier = Modifier.size(20.dp)) },
+                                    trailingIcon = {
+                                        if (searchQuery.isNotEmpty()) {
+                                            IconButton(onClick = { searchQuery = "" }) {
+                                                Icon(Icons.Default.Clear, contentDescription = "Clear", tint = Color.White)
+                                            }
                                         }
+                                    },
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedBorderColor = GoldYellow,
+                                        unfocusedBorderColor = Color(0x22FFFFFF),
+                                        focusedTextColor = Color.White,
+                                        unfocusedTextColor = Color.White
+                                    ),
+                                    singleLine = true,
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .testTag("pos_product_search_input")
+                                )
+
+                                Surface(
+                                    onClick = { showBarcodeScanner = true },
+                                    shape = RoundedCornerShape(12.dp),
+                                    color = EmeraldGreen,
+                                    modifier = Modifier
+                                        .height(54.dp)
+                                        .testTag("pos_scan_barcode_button")
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 12.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.QrCodeScanner,
+                                            contentDescription = "Scan Barcode",
+                                            tint = Color.White,
+                                            modifier = Modifier.size(22.dp)
+                                        )
+                                        Text(
+                                            text = "Scan",
+                                            color = Color.White,
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 13.sp
+                                        )
                                     }
-                                },
-                                colors = OutlinedTextFieldDefaults.colors(
-                                    focusedBorderColor = GoldYellow,
-                                    unfocusedBorderColor = Color(0x22FFFFFF),
-                                    focusedTextColor = Color.White,
-                                    unfocusedTextColor = Color.White
-                                ),
-                                singleLine = true,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .testTag("pos_product_search_input")
-                            )
+                                }
+                            }
 
                             // Category Filter Chips
                             if (categoriesList.size > 1) {
@@ -645,6 +691,42 @@ fun CreateBillScreen(
                                         }
                                     }
                                 }
+
+                                if (viewModel.posPaymentMode == "UPI / QR") {
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Surface(
+                                        onClick = { showUpiQrPaymentDialog = true },
+                                        shape = RoundedCornerShape(10.dp),
+                                        color = Color(0x3310B981),
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .testTag("pos_show_upi_qr_banner")
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.padding(10.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.SpaceBetween
+                                        ) {
+                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                                Icon(Icons.Default.QrCode, contentDescription = null, tint = EmeraldGreen, modifier = Modifier.size(20.dp))
+                                                Spacer(modifier = Modifier.width(8.dp))
+                                                Column {
+                                                    Text("Dynamic UPI QR Ready", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                                    Text("Pay to: ${currentUser?.upiId?.ifBlank { "store@upi" } ?: "store@upi"}", color = EmeraldLight, fontSize = 10.sp)
+                                                }
+                                            }
+                                            Button(
+                                                onClick = { showUpiQrPaymentDialog = true },
+                                                colors = ButtonDefaults.buttonColors(containerColor = EmeraldGreen),
+                                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
+                                                shape = RoundedCornerShape(6.dp),
+                                                modifier = Modifier.height(30.dp)
+                                            ) {
+                                                Text("Show QR", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                            }
+                                        }
+                                    }
+                                }
                             }
 
                             // Divider
@@ -941,6 +1023,62 @@ fun CreateBillScreen(
                 viewModel.updatePOSCartQuantity(cartItem.product, qty)
                 editingCartItemQuantity = null
             }
+        )
+    }
+
+    // Modal Barcode Scanner Dialog for fast barcode lookup
+    if (showBarcodeScanner) {
+        BarcodeScannerDialog(
+            onBarcodeScanned = { scannedCode ->
+                showBarcodeScanner = false
+                val matched = viewModel.findProductByBarcode(scannedCode)
+                if (matched != null) {
+                    if (KiranaUnitUtils.isLooseUnit(matched.unit)) {
+                        selectedProductForLooseQty = matched
+                    } else {
+                        viewModel.addToPOSCart(matched, 1.0)
+                        Toast.makeText(context, "Added '${matched.name}' to cart!", Toast.LENGTH_SHORT).show()
+                    }
+                } else {
+                    searchQuery = scannedCode
+                    Toast.makeText(context, "Product not found. Filtered search for barcode: $scannedCode", Toast.LENGTH_LONG).show()
+                }
+            },
+            onDismiss = { showBarcodeScanner = false }
+        )
+    }
+
+    // Modal Dynamic UPI QR Code Payment Dialog
+    if (showUpiQrPaymentDialog) {
+        UpiPaymentDialog(
+            amount = viewModel.posFinalTotal,
+            merchantUpiId = currentUser?.upiId?.ifBlank { "store@upi" } ?: "store@upi",
+            merchantName = currentUser?.merchantName?.ifBlank { currentUser?.businessName } ?: "Kirana Store",
+            onPaymentConfirmed = {
+                showUpiQrPaymentDialog = false
+                viewModel.generatePOSInvoice { generatedInvoice ->
+                    generatedInvoiceForReceipt = generatedInvoice
+                    showSuccessReceiptDialog = true
+                }
+            },
+            onConfigureUpiClicked = {
+                showUpiQrPaymentDialog = false
+                showMerchantUpiSettingsDialog = true
+            },
+            onDismiss = { showUpiQrPaymentDialog = false }
+        )
+    }
+
+    // Modal Merchant UPI Settings Dialog
+    if (showMerchantUpiSettingsDialog) {
+        MerchantUpiSettingsDialog(
+            initialUpiId = currentUser?.upiId ?: "",
+            initialMerchantName = currentUser?.merchantName ?: currentUser?.businessName ?: "",
+            onSave = { upiId, merchantName ->
+                viewModel.updateMerchantUpiSettings(upiId, merchantName)
+                showMerchantUpiSettingsDialog = false
+            },
+            onDismiss = { showMerchantUpiSettingsDialog = false }
         )
     }
 }

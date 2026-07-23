@@ -11,6 +11,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountBalanceWallet
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Business
 import androidx.compose.material.icons.filled.Category
@@ -241,6 +242,38 @@ fun ProfileSetupScreen(
                             }
                         }
                     }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Merchant UPI ID Field
+                    OutlinedTextField(
+                        value = viewModel.profileUpiId,
+                        onValueChange = { viewModel.profileUpiId = it },
+                        label = { Text("Merchant UPI ID / VPA", color = Color(0xFF94A3B8)) },
+                        placeholder = { Text("e.g. 9876543210@paytm") },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = androidx.compose.material.icons.Icons.Default.AccountBalanceWallet,
+                                contentDescription = "UPI Icon",
+                                tint = EmeraldGreen
+                            )
+                        },
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = EmeraldGreen,
+                            unfocusedBorderColor = Color(0x33FFFFFF),
+                            focusedLabelColor = EmeraldGreen,
+                            unfocusedLabelColor = Color(0xFF94A3B8),
+                            focusedTextColor = Color.White,
+                            unfocusedTextColor = Color.White,
+                            focusedContainerColor = Color(0x0AFFFFFF),
+                            unfocusedContainerColor = Color(0x05FFFFFF)
+                        ),
+                        singleLine = true,
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("profile_upi_id_input")
+                    )
 
                     Spacer(modifier = Modifier.height(32.dp))
 

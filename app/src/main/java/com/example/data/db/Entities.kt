@@ -10,7 +10,9 @@ data class UserEntity(
     val businessName: String,
     val mobileNumber: String,
     val passwordHash: String,
-    val category: String
+    val category: String,
+    val upiId: String = "merchant@upi",
+    val merchantName: String = ""
 )
 
 @Entity(tableName = "categories")
@@ -49,6 +51,7 @@ data class ProductEntity(
     val stockQuantity: Double,
     val unit: String = "Pcs", // Pcs, Kg, Ltr, Box, Meter
     val category: String = "General",
+    val barcode: String = "",
     val updatedAt: Long = System.currentTimeMillis()
 )
 

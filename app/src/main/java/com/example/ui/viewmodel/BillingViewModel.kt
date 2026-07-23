@@ -60,6 +60,8 @@ class BillingViewModel(private val repository: BillingRepository) : ViewModel() 
     var profileFullName by mutableStateOf("")
     var profileBusinessName by mutableStateOf("")
     var profileCategory by mutableStateOf("")
+    var profileUpiId by mutableStateOf("merchant@upi")
+    var profileMerchantName by mutableStateOf("")
     var profileError by mutableStateOf<String?>(null)
     var isSavingProfile by mutableStateOf(false)
 
@@ -135,7 +137,8 @@ class BillingViewModel(private val repository: BillingRepository) : ViewModel() 
         } else {
             productList.filter {
                 it.name.contains(query, ignoreCase = true) ||
-                it.category.contains(query, ignoreCase = true)
+                it.category.contains(query, ignoreCase = true) ||
+                (it.barcode.isNotBlank() && it.barcode.contains(query, ignoreCase = true))
             }
         }
     }.stateIn(
@@ -143,6 +146,16 @@ class BillingViewModel(private val repository: BillingRepository) : ViewModel() 
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = emptyList()
     )
+
+    fun findProductByBarcode(scannedCode: String): ProductEntity? {
+        val cleanCode = scannedCode.trim()
+        if (cleanCode.isBlank()) return null
+        return products.value.firstOrNull {
+            (it.barcode.isNotBlank() && it.barcode.equals(cleanCode, ignoreCase = true)) ||
+            it.name.equals(cleanCode, ignoreCase = true) ||
+            (it.id != 0 && it.id.toString() == cleanCode)
+        }
+    }
 
     var isSavingProduct by mutableStateOf(false)
     var productFormError by mutableStateOf<String?>(null)
@@ -499,7 +512,7 @@ class BillingViewModel(private val repository: BillingRepository) : ViewModel() 
 
     fun completeProfileSetup(onNavigateToDashboard: () -> Unit) {
         if (profileFullName.isBlank() || profileBusinessName.isBlank() || profileCategory.isBlank()) {
-            profileError = "Please fill all fields and select a business category"
+            profileError = "Please fill all required fields and select a business category"
             return
         }
         profileError = null
@@ -522,8 +535,11 @@ class BillingViewModel(private val repository: BillingRepository) : ViewModel() 
                     businessName = profileBusinessName,
                     mobileNumber = tempMobileOrEmail,
                     passwordHash = "",
-                    category = profileCategory
+                    category = profileCategory,
+                    upiId = profileUpiId.ifBlank { "store@upi" },
+                    merchantName = profileMerchantName.ifBlank { profileBusinessName }
                 )
+                repository.insertUser(loggedUser)
                 _currentUser.value = loggedUser
                 isSavingProfile = false
                 _toastMessage.emit("Profile setup complete! Welcome to premium billing.")
@@ -539,7 +555,9 @@ class BillingViewModel(private val repository: BillingRepository) : ViewModel() 
                     businessName = profileBusinessName,
                     mobileNumber = tempMobileOrEmail,
                     passwordHash = "",
-                    category = profileCategory
+                    category = profileCategory,
+                    upiId = profileUpiId.ifBlank { "store@upi" },
+                    merchantName = profileMerchantName.ifBlank { profileBusinessName }
                 )
                 _currentUser.value = loggedUser
                 _toastMessage.emit("Profile setup saved! Welcome.")
@@ -862,6 +880,7 @@ class BillingViewModel(private val repository: BillingRepository) : ViewModel() 
         stockQuantity: Double,
         unit: String,
         category: String,
+        barcode: String = "",
         onSuccess: () -> Unit
     ) {
         if (name.isBlank()) {
@@ -893,7 +912,8 @@ class BillingViewModel(private val repository: BillingRepository) : ViewModel() 
                     purchasePrice = purchasePrice,
                     stockQuantity = stockQuantity,
                     unit = unit.ifBlank { "Pcs" },
-                    category = category.ifBlank { "General" }
+                    category = category.ifBlank { "General" },
+                    barcode = barcode.trim()
                 )
 
                 repository.saveProduct(userUid, product)
@@ -904,6 +924,43 @@ class BillingViewModel(private val repository: BillingRepository) : ViewModel() 
                 isSavingProduct = false
                 Log.e("ProductVM", "Save product error: ${e.localizedMessage}")
                 productFormError = "Failed to save product: ${e.localizedMessage}"
+            }
+        }
+    }
+
+    fun updateMerchantUpiSettings(newUpiId: String, newMerchantName: String, onSuccess: (() -> Unit)? = null) {
+        if (newUpiId.isBlank()) {
+            viewModelScope.launch {
+                _toastMessage.emit("Please enter a valid Merchant UPI ID")
+            }
+            return
+        }
+
+        val user = _currentUser.value
+        val updatedUser = user?.copy(
+            upiId = newUpiId.trim(),
+            merchantName = newMerchantName.trim()
+        ) ?: UserEntity(
+            fullName = "Store Owner",
+            businessName = newMerchantName.trim().ifBlank { "Kirana Store" },
+            mobileNumber = "9999999999",
+            passwordHash = "",
+            category = "Kirana / Grocery",
+            upiId = newUpiId.trim(),
+            merchantName = newMerchantName.trim()
+        )
+
+        viewModelScope.launch {
+            try {
+                repository.insertUser(updatedUser)
+                _currentUser.value = updatedUser
+                _toastMessage.emit("Merchant UPI Settings saved successfully!")
+                onSuccess?.invoke()
+            } catch (e: Exception) {
+                Log.e("BillingVM", "Update merchant settings error: ${e.localizedMessage}")
+                _toastMessage.emit("Saved settings locally")
+                _currentUser.value = updatedUser
+                onSuccess?.invoke()
             }
         }
     }

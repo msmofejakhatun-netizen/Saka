@@ -30,9 +30,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.data.db.ProductEntity
+import com.example.ui.components.BarcodeScannerDialog
 import com.example.ui.components.GlassmorphicCard
 import com.example.ui.components.PremiumGradientBackground
 import com.example.ui.components.PremiumLoadingState
+import androidx.compose.material.icons.filled.QrCodeScanner
 import com.example.ui.theme.*
 import com.example.ui.viewmodel.BillingViewModel
 import java.util.Locale
@@ -56,8 +58,11 @@ fun ProductsScreen(
     var salePriceInput by remember { mutableStateOf("") }
     var purchasePriceInput by remember { mutableStateOf("") }
     var stockInput by remember { mutableStateOf("") }
+    var barcodeInput by remember { mutableStateOf("") }
     var selectedUnit by remember { mutableStateOf("Pcs") }
     var selectedCategory by remember { mutableStateOf("General") }
+
+    var showScannerInDialog by remember { mutableStateOf(false) }
 
     var unitDropdownExpanded by remember { mutableStateOf(false) }
     var categoryDropdownExpanded by remember { mutableStateOf(false) }
@@ -70,6 +75,7 @@ fun ProductsScreen(
         salePriceInput = ""
         purchasePriceInput = ""
         stockInput = "10"
+        barcodeInput = ""
         selectedUnit = "Pcs"
         selectedCategory = activeCategories.firstOrNull()?.name ?: "General"
         viewModel.productFormError = null
@@ -82,6 +88,7 @@ fun ProductsScreen(
         salePriceInput = product.salePrice.toString()
         purchasePriceInput = if (product.purchasePrice > 0) product.purchasePrice.toString() else ""
         stockInput = product.stockQuantity.toString()
+        barcodeInput = product.barcode
         selectedUnit = product.unit
         selectedCategory = product.category
         viewModel.productFormError = null
@@ -487,6 +494,33 @@ fun ProductsScreen(
                                 }
                             }
                         }
+
+                        // Barcode Field with Scan Button
+                        OutlinedTextField(
+                            value = barcodeInput,
+                            onValueChange = { barcodeInput = it },
+                            label = { Text("Barcode / SKU (Optional)", color = Color(0xFF94A3B8)) },
+                            placeholder = { Text("e.g. 8901234567890") },
+                            leadingIcon = {
+                                Icon(Icons.Default.QrCode, contentDescription = null, tint = GoldYellow, modifier = Modifier.size(20.dp))
+                            },
+                            trailingIcon = {
+                                IconButton(onClick = { showScannerInDialog = true }) {
+                                    Icon(Icons.Default.QrCodeScanner, contentDescription = "Scan Barcode", tint = EmeraldGreen)
+                                }
+                            },
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = EmeraldGreen,
+                                unfocusedBorderColor = Color(0x22FFFFFF),
+                                focusedTextColor = Color.White,
+                                unfocusedTextColor = Color.White
+                            ),
+                            singleLine = true,
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .testTag("product_barcode_input")
+                        )
                     }
                 },
                 confirmButton = {
@@ -505,6 +539,7 @@ fun ProductsScreen(
                                 stockQuantity = stk,
                                 unit = selectedUnit,
                                 category = selectedCategory,
+                                barcode = barcodeInput,
                                 onSuccess = {
                                     showAddEditDialog = false
                                 }
@@ -572,6 +607,17 @@ fun ProductsScreen(
                 containerColor = Color(0xFF131B3E),
                 shape = RoundedCornerShape(20.dp),
                 modifier = Modifier.border(1.dp, Color(0x22FFFFFF), RoundedCornerShape(20.dp))
+            )
+        }
+
+        // --- Barcode Scanner Dialog inside Add/Edit Product form ---
+        if (showScannerInDialog) {
+            BarcodeScannerDialog(
+                onBarcodeScanned = { scannedCode ->
+                    barcodeInput = scannedCode
+                    showScannerInDialog = false
+                },
+                onDismiss = { showScannerInDialog = false }
             )
         }
     }

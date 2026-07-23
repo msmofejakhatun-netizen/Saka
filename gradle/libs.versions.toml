@@ -43,7 +43,12 @@ credentials = "1.5.0"
 googleid = "1.1.1"
 
 
+zxingCore = "3.5.3"
+mlkitBarcodeScanning = "17.3.0"
+
 [libraries]
+zxing-core = { group = "com.google.zxing", name = "core", version.ref = "zxingCore" }
+mlkit-barcode-scanning = { group = "com.google.mlkit", name = "barcode-scanning", version.ref = "mlkitBarcodeScanning" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }

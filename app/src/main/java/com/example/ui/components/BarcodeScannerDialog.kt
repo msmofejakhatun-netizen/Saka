@@ -70,6 +70,13 @@ fun BarcodeScannerDialog(
         contract = ActivityResultContracts.RequestPermission()
     ) { isGranted ->
         hasCameraPermission = isGranted
+        if (!isGranted) {
+            android.widget.Toast.makeText(
+                context,
+                "Camera permission is required to scan barcodes. Please grant permission or enter barcode manually.",
+                android.widget.Toast.LENGTH_LONG
+            ).show()
+        }
     }
 
     LaunchedEffect(Unit) {
@@ -276,17 +283,41 @@ fun BarcodeScannerDialog(
                             )
                             Spacer(modifier = Modifier.height(12.dp))
                             Text(
-                                text = "Camera access is needed to scan barcodes",
+                                text = "Camera access is required to scan barcodes",
                                 color = Color.White,
                                 fontSize = 14.sp,
+                                fontWeight = FontWeight.SemiBold,
                                 textAlign = TextAlign.Center
                             )
-                            Spacer(modifier = Modifier.height(12.dp))
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                text = "Grant camera access to use your device camera or enter barcode manually below.",
+                                color = Color(0xFF94A3B8),
+                                fontSize = 11.sp,
+                                textAlign = TextAlign.Center
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
                             Button(
                                 onClick = { permissionLauncher.launch(Manifest.permission.CAMERA) },
-                                colors = ButtonDefaults.buttonColors(containerColor = EmeraldGreen)
+                                colors = ButtonDefaults.buttonColors(containerColor = EmeraldGreen),
+                                shape = RoundedCornerShape(10.dp),
+                                modifier = Modifier.testTag("grant_camera_permission_button")
                             ) {
-                                Text("Grant Camera Permission")
+                                Icon(Icons.Default.Camera, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("Grant Camera Permission", fontWeight = FontWeight.Bold)
+                            }
+                            Spacer(modifier = Modifier.height(8.dp))
+                            TextButton(
+                                onClick = {
+                                    val intent = android.content.Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                                        data = android.net.Uri.fromParts("package", context.packageName, null)
+                                    }
+                                    context.startActivity(intent)
+                                },
+                                modifier = Modifier.testTag("open_app_settings_button")
+                            ) {
+                                Text("Open App Settings", color = EmeraldLight, fontSize = 12.sp, fontWeight = FontWeight.Medium)
                             }
                         }
                     }

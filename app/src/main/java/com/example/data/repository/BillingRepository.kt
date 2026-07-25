@@ -711,6 +711,36 @@ class BillingRepository(
 
     // --- Udhar Khata (Customer Credit Ledger) ---
 
+    suspend fun saveCustomer(userUid: String, customer: com.example.data.db.CustomerEntity) = withContext(Dispatchers.IO) {
+        if (customer.mobileNumber.isBlank()) return@withContext
+        val docId = customer.mobileNumber.replace("+", "").replace(" ", "")
+        customerDao.insertCustomer(customer)
+
+        if (FirebaseManager.isFirebaseAvailable) {
+            val firestore = FirebaseManager.firestore
+            if (firestore != null) {
+                try {
+                    val docRef = if (userUid.isNotBlank()) {
+                        firestore.collection("users").document(userUid).collection("customers").document(docId)
+                    } else {
+                        firestore.collection("customers").document(docId)
+                    }
+                    docRef.set(
+                        mapOf(
+                            "name" to customer.name,
+                            "mobileNumber" to customer.mobileNumber,
+                            "totalPendingBalance" to customer.totalPendingBalance,
+                            "lastTransactionTimestamp" to customer.lastTransactionTimestamp
+                        ),
+                        com.google.firebase.firestore.SetOptions.merge()
+                    ).await()
+                } catch (e: Exception) {
+                    Log.e(TAG, "Firestore saveCustomer error: ${e.localizedMessage}")
+                }
+            }
+        }
+    }
+
     fun getCustomersStream(userUid: String): Flow<List<com.example.data.db.CustomerEntity>> = callbackFlow {
         if (FirebaseManager.isFirebaseAvailable) {
             val firestore = FirebaseManager.firestore
@@ -800,6 +830,7 @@ class BillingRepository(
                                     paymentMode = doc.getString("paymentMode") ?: "Cash",
                                     note = doc.getString("note") ?: "",
                                     invoiceId = doc.getString("invoiceId") ?: "",
+                                    itemsJson = doc.getString("itemsJson") ?: "",
                                     timestamp = doc.getLong("timestamp") ?: System.currentTimeMillis()
                                 )
                             }
@@ -826,7 +857,8 @@ class BillingRepository(
         amount: Double,
         paymentMode: String = "Cash",
         note: String = "",
-        invoiceId: String = ""
+        invoiceId: String = "",
+        itemsJson: String = ""
     ) = withContext(Dispatchers.IO) {
         if (customerMobile.isBlank() || amount <= 0.0) return@withContext
 
@@ -859,6 +891,7 @@ class BillingRepository(
             paymentMode = paymentMode,
             note = note,
             invoiceId = invoiceId,
+            itemsJson = itemsJson,
             timestamp = now
         )
 
@@ -881,6 +914,7 @@ class BillingRepository(
                         "paymentMode" to paymentMode,
                         "note" to note,
                         "invoiceId" to invoiceId,
+                        "itemsJson" to itemsJson,
                         "timestamp" to now
                     )
 

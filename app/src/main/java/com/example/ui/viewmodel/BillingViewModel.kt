@@ -245,6 +245,42 @@ class BillingViewModel(private val repository: BillingRepository) : ViewModel() 
         }
     }
 
+    fun addQuickCustomer(
+        name: String,
+        mobile: String,
+        onSuccess: (com.example.data.db.CustomerEntity) -> Unit
+    ) {
+        val cleanName = name.trim()
+        val cleanMobile = mobile.trim()
+        if (cleanName.isBlank() || cleanMobile.isBlank()) {
+            viewModelScope.launch {
+                _toastMessage.emit("Please enter both customer name and mobile number")
+            }
+            return
+        }
+
+        viewModelScope.launch {
+            try {
+                val userUid = com.example.data.firebase.FirebaseManager.auth?.currentUser?.uid
+                    ?: currentUser.value?.id?.toString() ?: ""
+
+                val newCustomer = com.example.data.db.CustomerEntity(
+                    name = cleanName,
+                    mobileNumber = cleanMobile,
+                    totalPendingBalance = 0.0,
+                    lastTransactionTimestamp = System.currentTimeMillis()
+                )
+
+                repository.saveCustomer(userUid, newCustomer)
+                _toastMessage.emit("Customer '$cleanName' registered successfully!")
+                onSuccess(newCustomer)
+            } catch (e: Exception) {
+                Log.e("BillingVM", "addQuickCustomer error: ${e.localizedMessage}")
+                _toastMessage.emit("Failed to add customer: ${e.localizedMessage}")
+            }
+        }
+    }
+
     fun recordUdharEntry(
         customerName: String,
         customerMobile: String,
@@ -819,6 +855,20 @@ class BillingViewModel(private val repository: BillingRepository) : ViewModel() 
 
                 val purchasedList = posCartItems.map { Pair(it.product, it.quantity) }
 
+                // Build JSON array for itemized Udhar breakdown
+                val itemsJsonArray = org.json.JSONArray()
+                posCartItems.forEach { cartItem ->
+                    val obj = org.json.JSONObject().apply {
+                        put("name", cartItem.product.name)
+                        put("quantity", cartItem.quantity)
+                        put("unit", cartItem.product.unit)
+                        put("unitPrice", cartItem.product.salePrice)
+                        put("lineTotal", cartItem.totalAmount)
+                    }
+                    itemsJsonArray.put(obj)
+                }
+                val itemsJsonStr = itemsJsonArray.toString()
+
                 repository.saveInvoiceAndDeductStock(userUid, invoice, purchasedList)
 
                 if (posPaymentMode == "Credit / Udhar" || posPaymentMode.contains("Credit") || posPaymentMode.contains("Udhar")) {
@@ -830,7 +880,8 @@ class BillingViewModel(private val repository: BillingRepository) : ViewModel() 
                         amount = finalAmount,
                         paymentMode = "Credit / Udhar",
                         note = "POS Bill Udhari ($totalItemsCount items)",
-                        invoiceId = invoice.firestoreId
+                        invoiceId = invoice.firestoreId,
+                        itemsJson = itemsJsonStr
                     )
                 }
 

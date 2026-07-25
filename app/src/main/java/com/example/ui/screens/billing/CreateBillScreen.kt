@@ -12,7 +12,9 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material.icons.filled.ShoppingBag
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -41,7 +43,11 @@ import androidx.compose.material.icons.filled.ReceiptLong
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Share
-import androidx.compose.material.icons.filled.ShoppingBag
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.HorizontalRule
+import androidx.compose.material.icons.filled.PersonAdd
+import androidx.compose.material.icons.filled.PersonOff
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -110,6 +116,7 @@ fun CreateBillScreen(
     onNavigateBack: () -> Unit
 ) {
     val products by viewModel.products.collectAsState()
+    val customers by viewModel.customers.collectAsState()
     val currentUser by viewModel.currentUser.collectAsState()
 
     val context = LocalContext.current
@@ -124,6 +131,8 @@ fun CreateBillScreen(
     var showBarcodeScanner by remember { mutableStateOf(false) }
     var showUpiQrPaymentDialog by remember { mutableStateOf(false) }
     var showMerchantUpiSettingsDialog by remember { mutableStateOf(false) }
+    var showCustomerPickerModal by remember { mutableStateOf(false) }
+    var showAddNewCustomerModal by remember { mutableStateOf(false) }
 
     val categoriesList = remember(products) {
         val set = products.map { it.category }.filter { it.isNotBlank() }.toSet()
@@ -243,14 +252,36 @@ fun CreateBillScreen(
                                     fontSize = 14.sp
                                 )
                                 Spacer(modifier = Modifier.weight(1f))
+
+                                Surface(
+                                    onClick = { showCustomerPickerModal = true },
+                                    color = Color(0x3310B981),
+                                    shape = RoundedCornerShape(6.dp),
+                                    modifier = Modifier.testTag("pos_open_customer_search_btn")
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                    ) {
+                                        Icon(Icons.Default.Search, contentDescription = "Search", tint = EmeraldLight, modifier = Modifier.size(12.dp))
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text("Search / Select", color = EmeraldLight, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                    }
+                                }
+
+                                Spacer(modifier = Modifier.width(6.dp))
+
                                 Box(
                                     modifier = Modifier
                                         .clip(RoundedCornerShape(6.dp))
-                                        .background(Color(0x2210B981))
-                                        .clickable { viewModel.posCustomerName = "Walk-in Customer" }
+                                        .background(Color(0x22FFFFFF))
+                                        .clickable {
+                                            viewModel.posCustomerName = "Walk-in Customer"
+                                            viewModel.posCustomerMobile = ""
+                                        }
                                         .padding(horizontal = 8.dp, vertical = 4.dp)
                                 ) {
-                                    Text("Cash Sale", color = EmeraldLight, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                    Text("Cash Sale", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold)
                                 }
                             }
 
@@ -259,7 +290,12 @@ fun CreateBillScreen(
                                     value = viewModel.posCustomerName,
                                     onValueChange = { viewModel.posCustomerName = it },
                                     label = { Text("Customer Name", color = Color(0xFF94A3B8), fontSize = 12.sp) },
-                                    leadingIcon = { Icon(Icons.Default.Person, contentDescription = null, tint = Color(0xFF64748B), modifier = Modifier.size(18.dp)) },
+                                    leadingIcon = { Icon(Icons.Default.Person, contentDescription = null, tint = EmeraldGreen, modifier = Modifier.size(18.dp)) },
+                                    trailingIcon = {
+                                        IconButton(onClick = { showCustomerPickerModal = true }) {
+                                            Icon(Icons.Default.Search, contentDescription = "Search Customer", tint = EmeraldGreen, modifier = Modifier.size(20.dp))
+                                        }
+                                    },
                                     colors = OutlinedTextFieldDefaults.colors(
                                         focusedBorderColor = EmeraldGreen,
                                         unfocusedBorderColor = Color(0x22FFFFFF),
@@ -276,7 +312,7 @@ fun CreateBillScreen(
                                     value = viewModel.posCustomerMobile,
                                     onValueChange = { viewModel.posCustomerMobile = it },
                                     label = { Text("Mobile (Opt)", color = Color(0xFF94A3B8), fontSize = 12.sp) },
-                                    leadingIcon = { Icon(Icons.Default.Phone, contentDescription = null, tint = Color(0xFF64748B), modifier = Modifier.size(18.dp)) },
+                                    leadingIcon = { Icon(Icons.Default.Phone, contentDescription = null, tint = EmeraldGreen, modifier = Modifier.size(18.dp)) },
                                     colors = OutlinedTextFieldDefaults.colors(
                                         focusedBorderColor = EmeraldGreen,
                                         unfocusedBorderColor = Color(0x22FFFFFF),
@@ -289,6 +325,29 @@ fun CreateBillScreen(
                                         .weight(1f)
                                         .testTag("pos_customer_mobile_input")
                                 )
+                            }
+
+                            // Banner button to trigger search/select customer dialog
+                            Surface(
+                                onClick = { showCustomerPickerModal = true },
+                                color = Color(0x11FFFFFF),
+                                shape = RoundedCornerShape(8.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .testTag("pos_customer_picker_banner")
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(Icons.Default.PersonAdd, contentDescription = null, tint = EmeraldLight, modifier = Modifier.size(14.dp))
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text("Search Saved Customers or Register New (+)", color = EmeraldLight, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                                    }
+                                    Icon(Icons.Default.Search, contentDescription = null, tint = Color(0xFF94A3B8), modifier = Modifier.size(14.dp))
+                                }
                             }
                         }
                     }
@@ -1081,6 +1140,44 @@ fun CreateBillScreen(
             onDismiss = { showMerchantUpiSettingsDialog = false }
         )
     }
+
+    // Modal Customer Picker Dialog
+    if (showCustomerPickerModal) {
+        POSCustomerPickerModalDialog(
+            customers = customers,
+            onSelectCustomer = { cust ->
+                viewModel.posCustomerName = cust.name
+                viewModel.posCustomerMobile = cust.mobileNumber
+                showCustomerPickerModal = false
+                Toast.makeText(context, "Selected customer: ${cust.name}", Toast.LENGTH_SHORT).show()
+            },
+            onSelectWalkIn = {
+                viewModel.posCustomerName = "Walk-in Customer"
+                viewModel.posCustomerMobile = ""
+                showCustomerPickerModal = false
+                Toast.makeText(context, "Selected Walk-in Customer", Toast.LENGTH_SHORT).show()
+            },
+            onAddNewCustomerClick = {
+                showCustomerPickerModal = false
+                showAddNewCustomerModal = true
+            },
+            onDismiss = { showCustomerPickerModal = false }
+        )
+    }
+
+    // Modal Add New Customer Dialog
+    if (showAddNewCustomerModal) {
+        AddNewCustomerModalDialog(
+            onSaveCustomer = { name, mobile ->
+                viewModel.addQuickCustomer(name, mobile) { savedCust ->
+                    viewModel.posCustomerName = savedCust.name
+                    viewModel.posCustomerMobile = savedCust.mobileNumber
+                    showAddNewCustomerModal = false
+                }
+            },
+            onDismiss = { showAddNewCustomerModal = false }
+        )
+    }
 }
 
 @Composable
@@ -1282,4 +1379,358 @@ private fun SummaryLineItem(label: String, value: String, isNegative: Boolean = 
             fontSize = 12.sp
         )
     }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun POSCustomerPickerModalDialog(
+    customers: List<com.example.data.db.CustomerEntity>,
+    onSelectCustomer: (com.example.data.db.CustomerEntity) -> Unit,
+    onSelectWalkIn: () -> Unit,
+    onAddNewCustomerClick: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    var query by remember { mutableStateOf("") }
+    val filteredList = remember(customers, query) {
+        if (query.isBlank()) {
+            customers
+        } else {
+            customers.filter {
+                it.name.contains(query, ignoreCase = true) ||
+                        it.mobileNumber.contains(query)
+            }
+        }
+    }
+
+    androidx.compose.ui.window.Dialog(
+        onDismissRequest = onDismiss,
+        properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth(0.95f)
+                .fillMaxHeight(0.85f),
+            color = Color(0xFF0F172A),
+            shape = RoundedCornerShape(20.dp),
+            tonalElevation = 8.dp
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp)
+            ) {
+                // Header
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .background(Color(0x2210B981), CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(Icons.Default.Person, contentDescription = null, tint = EmeraldGreen, modifier = Modifier.size(20.dp))
+                        }
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Column {
+                            Text("Select Customer", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                            Text("Search existing or register new customer", color = Color(0xFF94A3B8), fontSize = 11.sp)
+                        }
+                    }
+
+                    IconButton(onClick = onDismiss, modifier = Modifier.testTag("customer_picker_close_btn")) {
+                        Icon(Icons.Default.Close, contentDescription = "Close", tint = Color.White)
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                // Search Input Box
+                OutlinedTextField(
+                    value = query,
+                    onValueChange = { query = it },
+                    placeholder = { Text("Search by Name or Mobile No...", color = Color(0xFF64748B), fontSize = 13.sp) },
+                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search", tint = EmeraldGreen) },
+                    trailingIcon = {
+                        if (query.isNotEmpty()) {
+                            IconButton(onClick = { query = "" }) {
+                                Icon(Icons.Default.Clear, contentDescription = "Clear", tint = Color.White)
+                            }
+                        }
+                    },
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = EmeraldGreen,
+                        unfocusedBorderColor = Color(0x33FFFFFF),
+                        focusedTextColor = Color.White,
+                        unfocusedTextColor = Color.White,
+                        focusedContainerColor = Color(0x22000000),
+                        unfocusedContainerColor = Color(0x22000000)
+                    ),
+                    singleLine = true,
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("customer_picker_search_input")
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Quick Action Buttons Row
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Button(
+                        onClick = onSelectWalkIn,
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0x2210B981)),
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier
+                            .weight(1f)
+                            .border(1.dp, Color(0x4410B981), RoundedCornerShape(10.dp))
+                            .testTag("select_walk_in_customer_btn")
+                    ) {
+                        Icon(Icons.Default.Person, contentDescription = null, tint = EmeraldLight, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Walk-in Customer", color = EmeraldLight, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    }
+
+                    Button(
+                        onClick = onAddNewCustomerClick,
+                        colors = ButtonDefaults.buttonColors(containerColor = EmeraldGreen),
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier
+                            .weight(1.1f)
+                            .testTag("add_new_customer_modal_btn")
+                    ) {
+                        Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("+ Add New Customer", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                Text(
+                    text = "SAVED CUSTOMERS (${filteredList.size})",
+                    color = Color(0xFF94A3B8),
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 0.5.sp
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                if (filteredList.isEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f)
+                            .background(Color(0x11FFFFFF), RoundedCornerShape(12.dp)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(20.dp)) {
+                            Icon(Icons.Default.PersonOff, contentDescription = null, tint = Color(0xFF64748B), modifier = Modifier.size(40.dp))
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text("No matching customers found", color = Color.White, fontWeight = FontWeight.SemiBold)
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text("Tap '+ Add New Customer' above to save details.", color = Color(0xFF94A3B8), fontSize = 12.sp, textAlign = TextAlign.Center)
+                        }
+                    }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        contentPadding = PaddingValues(bottom = 12.dp)
+                    ) {
+                        items(filteredList) { cust ->
+                            Card(
+                                colors = CardDefaults.cardColors(containerColor = Color(0x1F1E295D)),
+                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .border(1.dp, Color(0x11FFFFFF), RoundedCornerShape(12.dp))
+                                    .clickable { onSelectCustomer(cust) }
+                                    .testTag("customer_item_${cust.id}")
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(12.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(40.dp)
+                                                .background(Color(0x2210B981), CircleShape),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Text(
+                                                text = cust.name.take(1).uppercase(Locale.getDefault()),
+                                                color = EmeraldLight,
+                                                fontWeight = FontWeight.Bold,
+                                                fontSize = 16.sp
+                                            )
+                                        }
+
+                                        Spacer(modifier = Modifier.width(12.dp))
+
+                                        Column {
+                                            Text(
+                                                text = cust.name,
+                                                color = Color.White,
+                                                fontWeight = FontWeight.Bold,
+                                                fontSize = 14.sp
+                                            )
+                                            Spacer(modifier = Modifier.height(2.dp))
+                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                                Icon(Icons.Default.Phone, contentDescription = null, tint = EmeraldLight, modifier = Modifier.size(12.dp))
+                                                Spacer(modifier = Modifier.width(4.dp))
+                                                Text(cust.mobileNumber, color = EmeraldLight, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                                            }
+                                        }
+                                    }
+
+                                    Column(horizontalAlignment = Alignment.End) {
+                                        if (cust.totalPendingBalance > 0) {
+                                            Text(
+                                                text = "Udhar: ₹${String.format(Locale.US, "%.2f", cust.totalPendingBalance)}",
+                                                color = Color(0xFFF87171),
+                                                fontWeight = FontWeight.Bold,
+                                                fontSize = 12.sp
+                                            )
+                                        } else {
+                                            Surface(
+                                                color = Color(0x2210B981),
+                                                shape = RoundedCornerShape(4.dp)
+                                            ) {
+                                                Text(
+                                                    text = "No Pending",
+                                                    color = EmeraldLight,
+                                                    fontSize = 10.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                                )
+                                            }
+                                        }
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Button(
+                                            onClick = { onSelectCustomer(cust) },
+                                            colors = ButtonDefaults.buttonColors(containerColor = EmeraldGreen),
+                                            shape = RoundedCornerShape(6.dp),
+                                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                                            modifier = Modifier.height(28.dp)
+                                        ) {
+                                            Text("Select", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AddNewCustomerModalDialog(
+    onSaveCustomer: (String, String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var name by remember { mutableStateOf("") }
+    var mobile by remember { mutableStateOf("") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .background(Color(0x2210B981), CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.Default.PersonAdd, contentDescription = null, tint = EmeraldGreen, modifier = Modifier.size(20.dp))
+                }
+                Spacer(modifier = Modifier.width(10.dp))
+                Text("Register New Customer", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+            }
+        },
+        text = {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Text(
+                    text = "Enter details to save this customer to your database and auto-select them for billing.",
+                    color = Color(0xFF94A3B8),
+                    fontSize = 12.sp
+                )
+
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text("Customer Name *", color = Color(0xFF94A3B8), fontSize = 12.sp) },
+                    leadingIcon = { Icon(Icons.Default.Person, contentDescription = null, tint = EmeraldGreen) },
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = EmeraldGreen,
+                        unfocusedBorderColor = Color(0x33FFFFFF),
+                        focusedTextColor = Color.White,
+                        unfocusedTextColor = Color.White
+                    ),
+                    singleLine = true,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("add_customer_name_input")
+                )
+
+                OutlinedTextField(
+                    value = mobile,
+                    onValueChange = { mobile = it },
+                    label = { Text("Mobile Number *", color = Color(0xFF94A3B8), fontSize = 12.sp) },
+                    leadingIcon = { Icon(Icons.Default.Phone, contentDescription = null, tint = EmeraldGreen) },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = EmeraldGreen,
+                        unfocusedBorderColor = Color(0x33FFFFFF),
+                        focusedTextColor = Color.White,
+                        unfocusedTextColor = Color.White
+                    ),
+                    singleLine = true,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("add_customer_mobile_input")
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    if (name.isNotBlank() && mobile.isNotBlank()) {
+                        onSaveCustomer(name, mobile)
+                    }
+                },
+                enabled = name.isNotBlank() && mobile.isNotBlank(),
+                colors = ButtonDefaults.buttonColors(containerColor = EmeraldGreen),
+                shape = RoundedCornerShape(8.dp),
+                modifier = Modifier.testTag("save_new_customer_btn")
+            ) {
+                Text("Save & Select", fontWeight = FontWeight.Bold)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel", color = Color(0xFF94A3B8))
+            }
+        },
+        containerColor = Color(0xFF0F172A),
+        shape = RoundedCornerShape(20.dp),
+        modifier = Modifier.border(1.dp, Color(0x3310B981), RoundedCornerShape(20.dp))
+    )
 }

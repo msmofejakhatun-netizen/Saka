@@ -76,5 +76,6 @@ data class CustomerTransactionEntity(
     val paymentMode: String = "Cash", // Cash, UPI, Online
     val note: String = "",
     val invoiceId: String = "",
+    val itemsJson: String = "",
     val timestamp: Long = System.currentTimeMillis()
 )

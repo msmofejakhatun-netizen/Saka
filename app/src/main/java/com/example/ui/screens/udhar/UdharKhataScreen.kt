@@ -5,6 +5,8 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -479,6 +481,60 @@ private fun CustomerBalanceCard(
     }
 }
 
+private data class UdharItemRow(
+    val name: String,
+    val quantity: Double,
+    val unit: String,
+    val unitPrice: Double,
+    val lineTotal: Double
+)
+
+private fun parseTransactionItems(tx: CustomerTransactionEntity): List<UdharItemRow> {
+    if (tx.itemsJson.isNotBlank()) {
+        try {
+            val list = mutableListOf<UdharItemRow>()
+            val jsonArray = org.json.JSONArray(tx.itemsJson)
+            for (i in 0 until jsonArray.length()) {
+                val obj = jsonArray.getJSONObject(i)
+                val name = obj.optString("name", "Item")
+                val quantity = obj.optDouble("quantity", 1.0)
+                val unit = obj.optString("unit", "Pcs")
+                val unitPrice = obj.optDouble("unitPrice", 0.0)
+                val lineTotal = obj.optDouble("lineTotal", quantity * unitPrice)
+                list.add(UdharItemRow(name, quantity, unit, unitPrice, lineTotal))
+            }
+            if (list.isNotEmpty()) return list
+        } catch (e: Exception) {
+            // Fallback to note parsing below
+        }
+    }
+
+    val noteClean = tx.note.removePrefix("POS Bill ").removePrefix("POS Bill Udhari ").trim()
+    if (noteClean.isNotBlank()) {
+        val parts = noteClean.split(",")
+        val list = mutableListOf<UdharItemRow>()
+        for (part in parts) {
+            val trimmed = part.trim()
+            if (trimmed.isNotBlank()) {
+                val match = Regex("""^(.+?)\s*x\s*(.+)$""", RegexOption.IGNORE_CASE).find(trimmed)
+                if (match != null) {
+                    val qtyUnitStr = match.groupValues[1].trim()
+                    val itemName = match.groupValues[2].trim()
+                    val qtyParts = qtyUnitStr.split(" ")
+                    val qtyVal = qtyParts.firstOrNull()?.toDoubleOrNull() ?: 1.0
+                    val unitStr = if (qtyParts.size > 1) qtyParts.subList(1, qtyParts.size).joinToString(" ") else "Pcs"
+                    list.add(UdharItemRow(itemName, qtyVal, unitStr, 0.0, 0.0))
+                } else {
+                    list.add(UdharItemRow(trimmed, 1.0, "Pcs", tx.amount, tx.amount))
+                }
+            }
+        }
+        if (list.isNotEmpty()) return list
+    }
+
+    return listOf(UdharItemRow("Udhar Sale Item", 1.0, "Pcs", tx.amount, tx.amount))
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun CustomerLedgerDetailView(
@@ -490,6 +546,8 @@ private fun CustomerLedgerDetailView(
     onOpenWhatsAppReminder: (CustomerEntity, ReminderType) -> Unit
 ) {
     val transactions by viewModel.selectedCustomerTransactions.collectAsState()
+    val currentUser by viewModel.currentUser.collectAsState()
+    var selectedTxForReceipt by remember { mutableStateOf<CustomerTransactionEntity?>(null) }
 
     Column(
         modifier = Modifier
@@ -663,16 +721,36 @@ private fun CustomerLedgerDetailView(
                 contentPadding = PaddingValues(bottom = 20.dp)
             ) {
                 items(transactions) { tx ->
-                    LedgerTransactionRow(tx = tx)
+                    LedgerTransactionRow(
+                        tx = tx,
+                        currentUser = currentUser,
+                        onViewReceipt = { selectedTxForReceipt = it }
+                    )
                 }
             }
         }
     }
+
+    selectedTxForReceipt?.let { tx ->
+        UdharBillReceiptModalDialog(
+            transaction = tx,
+            customer = customer,
+            currentUser = currentUser,
+            onDismiss = { selectedTxForReceipt = null }
+        )
+    }
 }
 
 @Composable
-private fun LedgerTransactionRow(tx: CustomerTransactionEntity) {
+private fun LedgerTransactionRow(
+    tx: CustomerTransactionEntity,
+    currentUser: com.example.data.db.UserEntity?,
+    onViewReceipt: (CustomerTransactionEntity) -> Unit
+) {
     val isJama = tx.type == "CREDIT"
+    var isExpanded by remember { mutableStateOf(false) }
+    val parsedItems = remember(tx) { parseTransactionItems(tx) }
+
     val formattedDate = remember(tx.timestamp) {
         val sdf = SimpleDateFormat("MMM dd, yyyy · hh:mm a", Locale.getDefault())
         sdf.format(Date(tx.timestamp))
@@ -680,76 +758,510 @@ private fun LedgerTransactionRow(tx: CustomerTransactionEntity) {
 
     Card(
         colors = CardDefaults.cardColors(containerColor = Color(0x1F1E295D)),
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(14.dp),
         modifier = Modifier
             .fillMaxWidth()
-            .border(1.dp, Color(0x11FFFFFF), RoundedCornerShape(12.dp))
+            .border(
+                width = if (isExpanded) 1.5.dp else 1.dp,
+                color = if (isExpanded) (if (isJama) EmeraldGreen else RoseRed) else Color(0x11FFFFFF),
+                shape = RoundedCornerShape(14.dp)
+            )
+            .clickable { isExpanded = !isExpanded }
+            .testTag("ledger_tx_card_${tx.id}")
     ) {
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+                .padding(12.dp)
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier = Modifier
-                        .size(36.dp)
-                        .background(
-                            if (isJama) Color(0x2210B981) else Color(0x22EF4444),
-                            CircleShape
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = if (isJama) Icons.Default.ArrowDownward else Icons.Default.ArrowUpward,
-                        contentDescription = tx.type,
-                        tint = if (isJama) EmeraldGreen else Color(0xFFF87171),
-                        modifier = Modifier.size(18.dp)
-                    )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                    Box(
+                        modifier = Modifier
+                            .size(38.dp)
+                            .background(
+                                if (isJama) Color(0x2210B981) else Color(0x22EF4444),
+                                CircleShape
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = if (isJama) Icons.Default.ArrowDownward else Icons.Default.ArrowUpward,
+                            contentDescription = tx.type,
+                            tint = if (isJama) EmeraldGreen else Color(0xFFF87171),
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(10.dp))
+
+                    Column {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = if (isJama) "Jama (Payment Received)" else "Udhar Given",
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.sp
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Surface(
+                                color = Color(0x22FFFFFF),
+                                shape = RoundedCornerShape(4.dp)
+                            ) {
+                                Text(
+                                    text = tx.paymentMode,
+                                    color = Color(0xFF94A3B8),
+                                    fontSize = 10.sp,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(2.dp))
+
+                        // Timestamp visibility requirement
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.Schedule,
+                                contentDescription = "Time",
+                                tint = EmeraldLight,
+                                modifier = Modifier.size(12.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = formattedDate,
+                                color = EmeraldLight,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    }
                 }
 
-                Spacer(modifier = Modifier.width(10.dp))
-
-                Column {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(horizontalAlignment = Alignment.End) {
                         Text(
-                            text = if (isJama) "Jama (Payment Received)" else "Udhar Given",
-                            color = Color.White,
+                            text = "${if (isJama) "- ₹" else "+ ₹"}${String.format(Locale.US, "%.2f", tx.amount)}",
+                            color = if (isJama) EmeraldLight else Color(0xFFF87171),
                             fontWeight = FontWeight.Bold,
-                            fontSize = 13.sp
+                            fontSize = 16.sp
                         )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = "[${tx.paymentMode}]",
-                            color = Color(0xFF94A3B8),
-                            fontSize = 10.sp
-                        )
+                        if (!isJama) {
+                            Text(
+                                text = "${parsedItems.size} ${if (parsedItems.size == 1) "Item" else "Items"}",
+                                color = Color(0xFF94A3B8),
+                                fontSize = 10.sp
+                            )
+                        }
                     }
-                    if (tx.note.isNotBlank()) {
-                        Text(
-                            text = tx.note,
-                            color = Color(0xFFCBD5E1),
-                            fontSize = 11.sp
-                        )
-                    }
-                    Text(
-                        text = formattedDate,
-                        color = Color(0xFF64748B),
-                        fontSize = 10.sp
+
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    Icon(
+                        imageVector = if (isExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                        contentDescription = "Expand",
+                        tint = Color(0xFF94A3B8),
+                        modifier = Modifier.size(22.dp)
                     )
                 }
             }
 
-            Text(
-                text = "${if (isJama) "- ₹" else "+ ₹"}${String.format(Locale.US, "%.2f", tx.amount)}",
-                color = if (isJama) EmeraldLight else Color(0xFFF87171),
-                fontWeight = FontWeight.Bold,
-                fontSize = 15.sp
-            )
+            // Expanded Itemized Purchase Breakdown & Quick Actions
+            AnimatedVisibility(visible = isExpanded) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 12.dp)
+                ) {
+                    HorizontalDivider(color = Color(0x22FFFFFF))
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    Text(
+                        text = "ITEMIZED PURCHASE BREAKDOWN",
+                        color = GoldYellow,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 0.5.sp
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Item Table Header
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(Color(0x33000000), RoundedCornerShape(6.dp))
+                            .padding(horizontal = 8.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("ITEM NAME", color = Color(0xFF94A3B8), fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(2f))
+                        Text("QTY & UNIT", color = Color(0xFF94A3B8), fontSize = 10.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, modifier = Modifier.weight(1.2f))
+                        Text("PRICE", color = Color(0xFF94A3B8), fontSize = 10.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.End, modifier = Modifier.weight(1f))
+                        Text("TOTAL", color = Color(0xFF94A3B8), fontSize = 10.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.End, modifier = Modifier.weight(1f))
+                    }
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    // Item Table Rows
+                    parsedItems.forEachIndexed { idx, item ->
+                        val formattedQty = com.example.util.KiranaUnitUtils.formatQuantityWithUnit(item.quantity, item.unit)
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(if (idx % 2 == 0) Color(0x0AFFFFFF) else Color.Transparent)
+                                .padding(horizontal = 8.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = item.name,
+                                color = Color.White,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(2f)
+                            )
+                            Text(
+                                text = formattedQty,
+                                color = EmeraldLight,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.weight(1.2f)
+                            )
+                            Text(
+                                text = if (item.unitPrice > 0) "₹${String.format(Locale.US, "%.2f", item.unitPrice)}" else "—",
+                                color = Color(0xFFCBD5E1),
+                                fontSize = 11.sp,
+                                textAlign = TextAlign.End,
+                                modifier = Modifier.weight(1f)
+                            )
+                            Text(
+                                text = if (item.lineTotal > 0) "₹${String.format(Locale.US, "%.2f", item.lineTotal)}" else "₹${String.format(Locale.US, "%.2f", tx.amount)}",
+                                color = Color.White,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                textAlign = TextAlign.End,
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+                    HorizontalDivider(color = Color(0x11FFFFFF))
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Quick Action: View / Print Bill Button
+                    Button(
+                        onClick = { onViewReceipt(tx) },
+                        colors = ButtonDefaults.buttonColors(containerColor = EmeraldGreen),
+                        shape = RoundedCornerShape(8.dp),
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(38.dp)
+                            .testTag("view_print_receipt_btn_${tx.id}")
+                    ) {
+                        Icon(Icons.Default.ReceiptLong, contentDescription = "Receipt", modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("View Full Receipt / Print Bill", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
         }
     }
+}
+
+@Composable
+private fun UdharBillReceiptModalDialog(
+    transaction: CustomerTransactionEntity,
+    customer: CustomerEntity,
+    currentUser: com.example.data.db.UserEntity?,
+    onDismiss: () -> Unit
+) {
+    val context = LocalContext.current
+    val parsedItems = remember(transaction) { parseTransactionItems(transaction) }
+    val formattedDate = remember(transaction.timestamp) {
+        val sdf = SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault())
+        sdf.format(Date(transaction.timestamp))
+    }
+
+    val storeName = currentUser?.businessName?.ifBlank { "Kirana Store" } ?: "Kirana Store"
+    val merchantMobile = currentUser?.mobileNumber ?: ""
+
+    val invoiceForPdf = remember(transaction, customer, parsedItems, storeName) {
+        com.example.data.db.InvoiceEntity(
+            id = transaction.id,
+            firestoreId = transaction.invoiceId.ifBlank { "UDHAR-${transaction.id}" },
+            customerName = customer.name,
+            customerMobile = customer.mobileNumber,
+            amount = transaction.amount,
+            itemsCount = parsedItems.size,
+            subtotal = transaction.amount,
+            discountAmount = 0.0,
+            taxAmount = 0.0,
+            paymentMode = transaction.paymentMode,
+            itemsSummary = parsedItems.joinToString(", ") { "${com.example.util.KiranaUnitUtils.formatQuantityWithUnit(it.quantity, it.unit)} x ${it.name}" },
+            timestamp = transaction.timestamp,
+            status = "Credit Udhar"
+        )
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .background(Color(0x2210B981), CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(Icons.Default.ReceiptLong, contentDescription = null, tint = EmeraldGreen, modifier = Modifier.size(20.dp))
+                    }
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Column {
+                        Text(
+                            text = "Udhar Tax Invoice",
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 16.sp
+                        )
+                        Text(
+                            text = "Bill #${invoiceForPdf.firestoreId.take(10)}",
+                            color = Color(0xFF94A3B8),
+                            fontSize = 11.sp
+                        )
+                    }
+                }
+
+                IconButton(onClick = onDismiss) {
+                    Icon(Icons.Default.Close, contentDescription = "Close", tint = Color.White)
+                }
+            }
+        },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
+            ) {
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF1E293B)),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .border(1.dp, Color(0x33FFFFFF), RoundedCornerShape(12.dp))
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(14.dp)
+                    ) {
+                        Text(
+                            text = storeName.uppercase(Locale.getDefault()),
+                            color = EmeraldLight,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 15.sp,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        if (merchantMobile.isNotBlank()) {
+                            Text(
+                                text = "Contact: $merchantMobile",
+                                color = Color(0xFF94A3B8),
+                                fontSize = 11.sp,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(10.dp))
+                        HorizontalDivider(color = Color(0x22FFFFFF))
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column {
+                                Text("CUSTOMER", color = Color(0xFF94A3B8), fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                Text(customer.name, color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                                Text("📱 ${customer.mobileNumber}", color = Color(0xFFCBD5E1), fontSize = 11.sp)
+                            }
+                            Column(horizontalAlignment = Alignment.End) {
+                                Text("DATE & TIME", color = Color(0xFF94A3B8), fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                Text(formattedDate, color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                                Surface(
+                                    color = Color(0x33EF4444),
+                                    shape = RoundedCornerShape(4.dp),
+                                    modifier = Modifier.padding(top = 2.dp)
+                                ) {
+                                    Text(
+                                        text = transaction.paymentMode,
+                                        color = Color(0xFFF87171),
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                    )
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(12.dp))
+                        HorizontalDivider(color = Color(0x22FFFFFF))
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        Text("PURCHASED ITEMS", color = GoldYellow, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                        Spacer(modifier = Modifier.height(6.dp))
+
+                        parsedItems.forEachIndexed { idx, item ->
+                            val formattedQty = com.example.util.KiranaUnitUtils.formatQuantityWithUnit(item.quantity, item.unit)
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 4.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(modifier = Modifier.weight(1.5f)) {
+                                    Text(item.name, color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                                    Text(
+                                        text = if (item.unitPrice > 0) "@ ₹${String.format(Locale.US, "%.2f", item.unitPrice)} / ${item.unit}" else "",
+                                        color = Color(0xFF94A3B8),
+                                        fontSize = 10.sp
+                                    )
+                                }
+                                Text(formattedQty, color = EmeraldLight, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                Text(
+                                    text = if (item.lineTotal > 0) "₹${String.format(Locale.US, "%.2f", item.lineTotal)}" else "₹${String.format(Locale.US, "%.2f", transaction.amount)}",
+                                    color = Color.White,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    textAlign = TextAlign.End,
+                                    modifier = Modifier.width(70.dp)
+                                )
+                            }
+                            if (idx < parsedItems.size - 1) {
+                                HorizontalDivider(color = Color(0x0AFFFFFF))
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(12.dp))
+                        HorizontalDivider(color = Color(0x33FFFFFF))
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("TOTAL UDHAR BILLED", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                            Text(
+                                text = "₹${String.format(Locale.US, "%.2f", transaction.amount)}",
+                                color = Color(0xFFF87171),
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Button(
+                        onClick = {
+                            val pdf = com.example.util.InvoicePdfHelper.generateInvoicePdf(
+                                context = context,
+                                invoice = invoiceForPdf,
+                                businessName = storeName,
+                                merchantMobile = merchantMobile
+                            )
+                            com.example.util.InvoicePdfHelper.printInvoicePdf(context, pdf)
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = EmeraldGreen),
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier
+                            .weight(1f)
+                            .testTag("udhar_modal_print_btn")
+                    ) {
+                        Icon(Icons.Default.Print, contentDescription = "Print", modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Print Bill", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    }
+
+                    Button(
+                        onClick = {
+                            val pdf = com.example.util.InvoicePdfHelper.generateInvoicePdf(
+                                context = context,
+                                invoice = invoiceForPdf,
+                                businessName = storeName,
+                                merchantMobile = merchantMobile
+                            )
+                            com.example.util.InvoicePdfHelper.shareInvoicePdfWhatsApp(
+                                context = context,
+                                pdfFile = pdf,
+                                invoice = invoiceForPdf,
+                                businessName = storeName
+                            )
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF25D366)),
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier
+                            .weight(1f)
+                            .testTag("udhar_modal_whatsapp_btn")
+                    ) {
+                        Icon(Icons.Default.Send, contentDescription = "WhatsApp", modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("WhatsApp", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    }
+
+                    IconButton(
+                        onClick = {
+                            val pdf = com.example.util.InvoicePdfHelper.generateInvoicePdf(
+                                context = context,
+                                invoice = invoiceForPdf,
+                                businessName = storeName,
+                                merchantMobile = merchantMobile
+                            )
+                            com.example.util.InvoicePdfHelper.shareInvoicePdfGeneral(
+                                context = context,
+                                pdfFile = pdf,
+                                invoice = invoiceForPdf,
+                                businessName = storeName
+                            )
+                        },
+                        modifier = Modifier
+                            .background(Color(0x22FFFFFF), RoundedCornerShape(10.dp))
+                            .testTag("udhar_modal_share_btn")
+                    ) {
+                        Icon(Icons.Default.Share, contentDescription = "Share PDF", tint = Color.White)
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Close", color = Color.White, fontWeight = FontWeight.Bold)
+            }
+        },
+        containerColor = Color(0xFF0F172A),
+        shape = RoundedCornerShape(20.dp),
+        modifier = Modifier.border(1.dp, Color(0x3310B981), RoundedCornerShape(20.dp))
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

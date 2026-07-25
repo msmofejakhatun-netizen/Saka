@@ -63,63 +63,75 @@ object InvoicePdfHelper {
         titlePaint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
         canvas.drawText((businessName ?: "Billing Store").uppercase(Locale.ROOT), 30f, 45f, titlePaint)
 
-        // Sub-title / Merchant contact
+        // Sub-title / Merchant contact / DL No & GSTIN
         paint.color = Color.parseColor("#D1FAE5")
-        paint.textSize = 10f
+        paint.textSize = 9.5f
         paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
-        val contactText = if (!merchantMobile.isNull_or_blank()) "Contact: $merchantMobile | Tax Invoice" else "Point of Sale Tax Invoice"
-        canvas.drawText(contactText, 30f, 65f, paint)
+        val dlStr = invoice.dlNumber.ifBlank { "DL-20B/10492/2024" }
+        val gstinStr = invoice.gstin.ifBlank { "27ABCDE1234F1Z5" }
+        val contactText = "DL No: $dlStr | GSTIN: $gstinStr"
+        val phoneText = if (!merchantMobile.isNull_or_blank()) "Contact: $merchantMobile" else "Pharmacy Tax Invoice"
+        canvas.drawText(phoneText, 30f, 62f, paint)
+        canvas.drawText(contactText, 30f, 75f, paint)
 
         // INVOICE text on right
         titlePaint.textSize = 20f
         titlePaint.textAlign = Paint.Align.RIGHT
-        canvas.drawText("INVOICE", 565f, 50f, titlePaint)
+        canvas.drawText("PHARMACY INVOICE", 565f, 50f, titlePaint)
 
         // Reset text align
         titlePaint.textAlign = Paint.Align.LEFT
 
         // 2. Invoice Meta & Customer Details
-        var currentY = 120f
+        var currentY = 110f
+        val detailsBoxHeight = if (invoice.doctorName.isNotBlank() || invoice.patientInfo.isNotBlank()) 90f else 70f
 
         // Box background for details
         paint.color = lightGrayColor
-        canvas.drawRect(30f, currentY, 565f, currentY + 70f, paint)
+        canvas.drawRect(30f, currentY, 565f, currentY + detailsBoxHeight, paint)
 
         paint.color = borderColor
         paint.style = Paint.Style.STROKE
         paint.strokeWidth = 1f
-        canvas.drawRect(30f, currentY, 565f, currentY + 70f, paint)
+        canvas.drawRect(30f, currentY, 565f, currentY + detailsBoxHeight, paint)
         paint.style = Paint.Style.FILL
 
         // Metadata Left Side: Customer Name & Mobile
         headerPaint.color = darkTextColor
-        headerPaint.textSize = 11f
+        headerPaint.textSize = 10.5f
         headerPaint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-        canvas.drawText("CUSTOMER DETAILS:", 45f, currentY + 22f, headerPaint)
+        canvas.drawText("CUSTOMER / PATIENT DETAILS:", 45f, currentY + 20f, headerPaint)
 
         paint.color = darkTextColor
-        paint.textSize = 11f
+        paint.textSize = 10f
         paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
-        canvas.drawText("Name: ${invoice.customerName}", 45f, currentY + 40f, paint)
+        canvas.drawText("Name: ${invoice.customerName}", 45f, currentY + 36f, paint)
         val mobStr = if (invoice.customerMobile.isNotBlank()) invoice.customerMobile else "N/A"
-        canvas.drawText("Mobile: $mobStr", 45f, currentY + 56f, paint)
+        canvas.drawText("Mobile: $mobStr", 45f, currentY + 52f, paint)
 
-        // Metadata Right Side: Invoice #, Date, Payment Mode
+        if (invoice.patientInfo.isNotBlank()) {
+            canvas.drawText("Patient: ${invoice.patientInfo}", 45f, currentY + 68f, paint)
+        }
+
+        // Metadata Right Side: Invoice #, Date, Doctor Name
         headerPaint.textAlign = Paint.Align.RIGHT
         paint.textAlign = Paint.Align.RIGHT
 
         val formattedDate = SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault()).format(Date(invoice.timestamp))
         val invNo = invoice.firestoreId.take(8).ifBlank { "${invoice.id}" }.uppercase(Locale.ROOT)
 
-        canvas.drawText("INVOICE NO: #$invNo", 550f, currentY + 22f, headerPaint)
-        canvas.drawText("Date: $formattedDate", 550f, currentY + 40f, paint)
-        canvas.drawText("Payment Mode: ${invoice.paymentMode}", 550f, currentY + 56f, paint)
+        canvas.drawText("INVOICE NO: #$invNo", 550f, currentY + 20f, headerPaint)
+        canvas.drawText("Date: $formattedDate", 550f, currentY + 36f, paint)
+        canvas.drawText("Payment Mode: ${invoice.paymentMode}", 550f, currentY + 52f, paint)
+        if (invoice.doctorName.isNotBlank()) {
+            canvas.drawText("Doctor: ${invoice.doctorName}", 550f, currentY + 68f, paint)
+        }
 
         headerPaint.textAlign = Paint.Align.LEFT
         paint.textAlign = Paint.Align.LEFT
 
         // 3. Itemized Table Header
-        currentY += 95f
+        currentY += detailsBoxHeight + 20f
 
         // Table Header Bar
         paint.color = Color.parseColor("#0F172A")
@@ -223,14 +235,15 @@ object InvoicePdfHelper {
         canvas.drawText("₹${String.format(Locale.US, "%.2f", invoice.amount)}", 550f, sumY, headerPaint)
 
         // 6. Footer
-        currentY = 780f
+        currentY = 770f
         paint.color = borderColor
         canvas.drawLine(30f, currentY, 565f, currentY, paint)
 
         paint.color = Color.parseColor("#64748B")
-        paint.textSize = 9f
+        paint.textSize = 8.5f
         paint.textAlign = Paint.Align.CENTER
-        canvas.drawText("Thank you for your business! This is a computer-generated tax invoice.", 297f, currentY + 20f, paint)
+        canvas.drawText("DISCLAIMER: Medicines sold without prescription at patient's risk. Goods once sold will not be taken back.", 297f, currentY + 16f, paint)
+        canvas.drawText("Thank you for your business! Computer-generated Pharmacy Tax Invoice.", 297f, currentY + 30f, paint)
 
         pdfDocument.finishPage(page)
 

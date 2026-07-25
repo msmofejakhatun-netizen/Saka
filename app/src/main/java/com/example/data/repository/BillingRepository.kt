@@ -323,18 +323,21 @@ class BillingRepository(
         // Prepopulate local Room Categories
         if (categoryDao.getCategoryCount() == 0) {
             val defaults = listOf(
+                CategoryEntity(name = "Pharmacy / Medical", description = "Medicines, Rx drugs, salt compositions, batch & expiry management", iconName = "local_pharmacy", isEnabled = true),
                 CategoryEntity(name = "Kirana / Grocery", description = "Daily staples, loose items, pulses, rice, edible oils, spices", iconName = "shopping_basket", isEnabled = true),
                 CategoryEntity(name = "Garments", description = "Clothing, activewear, and fashion accessories", iconName = "checkroom", isEnabled = true),
-                CategoryEntity(name = "Electronics", description = "Smartphones, home appliances, laptops, and gadgets", iconName = "devices", isEnabled = true),
-                CategoryEntity(name = "Pharmacy", description = "Medicines, healthcare devices, and wellness products", iconName = "local_pharmacy", isEnabled = true)
+                CategoryEntity(name = "Electronics", description = "Smartphones, home appliances, laptops, and gadgets", iconName = "devices", isEnabled = true)
             )
             for (category in defaults) {
                 categoryDao.insertCategory(category)
             }
         }
 
-        // Prepopulate local Room Sample Kirana Loose Products if empty
-        if (productDao.getProductCount() == 0) {
+        // Prepopulate local Room Sample Products (including Pharmacy) if empty or no pharmacy items exist
+        val existingProducts = productDao.getAllProductsList()
+        val hasPharmacyProducts = existingProducts.any { it.category.contains("Pharmacy", ignoreCase = true) || it.batchNumber.isNotBlank() }
+        
+        if (existingProducts.isEmpty()) {
             val sampleProducts = listOf(
                 ProductEntity(name = "Sugar (Loose)", salePrice = 40.0, purchasePrice = 34.0, stockQuantity = 50.0, unit = "Kg", category = "Kirana / Grocery"),
                 ProductEntity(name = "Edible Sunflower Oil", salePrice = 150.0, purchasePrice = 130.0, stockQuantity = 30.0, unit = "Ltr", category = "Kirana / Grocery"),
@@ -344,6 +347,104 @@ class BillingRepository(
             )
             for (p in sampleProducts) {
                 productDao.insertProduct(p)
+            }
+        }
+
+        if (!hasPharmacyProducts) {
+            val samplePharmacyProducts = listOf(
+                ProductEntity(
+                    name = "Paracetamol 650mg (Dolo 650)",
+                    salePrice = 32.0,
+                    purchasePrice = 24.0,
+                    stockQuantity = 120.0,
+                    unit = "Strip",
+                    category = "Pharmacy / Medical",
+                    barcode = "8901234567890",
+                    batchNumber = "DLO-9910",
+                    expiryDate = "11/2027",
+                    manufacturer = "Micro Labs",
+                    saltComposition = "Paracetamol 650mg",
+                    packUnitConfig = "1 Strip = 15 Tablets",
+                    isRxRequired = false
+                ),
+                ProductEntity(
+                    name = "Amoxicillin 500mg (Mox 500)",
+                    salePrice = 78.50,
+                    purchasePrice = 60.0,
+                    stockQuantity = 45.0,
+                    unit = "Strip",
+                    category = "Pharmacy / Medical",
+                    barcode = "8901234567891",
+                    batchNumber = "AMX-8820",
+                    expiryDate = "08/2027",
+                    manufacturer = "Sun Pharma",
+                    saltComposition = "Amoxicillin Trihydrate 500mg",
+                    packUnitConfig = "1 Strip = 10 Capsules",
+                    isRxRequired = true
+                ),
+                ProductEntity(
+                    name = "Pantoprazole 40mg (Pan 40)",
+                    salePrice = 115.00,
+                    purchasePrice = 85.0,
+                    stockQuantity = 30.0,
+                    unit = "Strip",
+                    category = "Pharmacy / Medical",
+                    barcode = "8901234567892",
+                    batchNumber = "PAN-4091",
+                    expiryDate = "08/2026",
+                    manufacturer = "Alkem Labs",
+                    saltComposition = "Pantoprazole Sodium 40mg",
+                    packUnitConfig = "1 Strip = 15 Tablets",
+                    isRxRequired = false
+                ),
+                ProductEntity(
+                    name = "Benadryl Cough Syrup 100ml",
+                    salePrice = 135.00,
+                    purchasePrice = 100.0,
+                    stockQuantity = 15.0,
+                    unit = "Bottle",
+                    category = "Pharmacy / Medical",
+                    barcode = "8901234567893",
+                    batchNumber = "BCS-1102",
+                    expiryDate = "01/2025", // Expired
+                    manufacturer = "Johnson & Johnson",
+                    saltComposition = "Diphenhydramine HCl & Ammonium Chloride",
+                    packUnitConfig = "1 Bottle = 100ml",
+                    isRxRequired = false
+                ),
+                ProductEntity(
+                    name = "Cetirizine 10mg (Cetzine)",
+                    salePrice = 22.00,
+                    purchasePrice = 15.0,
+                    stockQuantity = 80.0,
+                    unit = "Strip",
+                    category = "Pharmacy / Medical",
+                    barcode = "8901234567894",
+                    batchNumber = "CTZ-5501",
+                    expiryDate = "12/2027",
+                    manufacturer = "Dr. Reddy's",
+                    saltComposition = "Cetirizine Hydrochloride 10mg",
+                    packUnitConfig = "1 Strip = 10 Tablets",
+                    isRxRequired = false
+                ),
+                ProductEntity(
+                    name = "Azithromycin 500mg (Azithral 500)",
+                    salePrice = 120.00,
+                    purchasePrice = 95.0,
+                    stockQuantity = 25.0,
+                    unit = "Strip",
+                    category = "Pharmacy / Medical",
+                    barcode = "8901234567895",
+                    batchNumber = "AZI-7711",
+                    expiryDate = "10/2027",
+                    manufacturer = "Alembic",
+                    saltComposition = "Azithromycin Dihydrate 500mg",
+                    packUnitConfig = "1 Strip = 5 Tablets",
+                    isRxRequired = true
+                )
+            )
+            for (pharm in samplePharmacyProducts) {
+                productDao.insertProduct(pharm)
             }
         }
 
@@ -626,7 +727,14 @@ class BillingRepository(
                                 stockQuantity = doc.getDouble("stockQuantity") ?: 0.0,
                                 unit = doc.getString("unit") ?: "Pcs",
                                 category = doc.getString("category") ?: "General",
-                                updatedAt = doc.getLong("updatedAt") ?: System.currentTimeMillis()
+                                barcode = doc.getString("barcode") ?: "",
+                                updatedAt = doc.getLong("updatedAt") ?: System.currentTimeMillis(),
+                                batchNumber = doc.getString("batchNumber") ?: "",
+                                expiryDate = doc.getString("expiryDate") ?: "",
+                                manufacturer = doc.getString("manufacturer") ?: "",
+                                saltComposition = doc.getString("saltComposition") ?: "",
+                                packUnitConfig = doc.getString("packUnitConfig") ?: "",
+                                isRxRequired = doc.getBoolean("isRxRequired") ?: false
                             )
                         }
                         trySend(productList)
@@ -671,7 +779,14 @@ class BillingRepository(
                         "stockQuantity" to product.stockQuantity,
                         "unit" to product.unit,
                         "category" to product.category,
-                        "updatedAt" to System.currentTimeMillis()
+                        "barcode" to product.barcode,
+                        "updatedAt" to System.currentTimeMillis(),
+                        "batchNumber" to product.batchNumber,
+                        "expiryDate" to product.expiryDate,
+                        "manufacturer" to product.manufacturer,
+                        "saltComposition" to product.saltComposition,
+                        "packUnitConfig" to product.packUnitConfig,
+                        "isRxRequired" to product.isRxRequired
                     )
                     docRef.set(data).await()
                 } catch (e: Exception) {

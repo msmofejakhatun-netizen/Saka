@@ -12,7 +12,9 @@ data class UserEntity(
     val passwordHash: String,
     val category: String,
     val upiId: String = "merchant@upi",
-    val merchantName: String = ""
+    val merchantName: String = "",
+    val dlNumber: String = "DL-20B/10492/2024",
+    val gstin: String = "27ABCDE1234F1Z5"
 )
 
 @Entity(tableName = "categories")
@@ -38,7 +40,11 @@ data class InvoiceEntity(
     val paymentMode: String = "Cash", // Cash, UPI / QR, Online, Credit (Udhar)
     val itemsSummary: String = "",
     val timestamp: Long = System.currentTimeMillis(),
-    val status: String = "Paid" // Paid, Unpaid, Pending
+    val status: String = "Paid", // Paid, Unpaid, Pending
+    val doctorName: String = "",
+    val patientInfo: String = "",
+    val dlNumber: String = "",
+    val gstin: String = ""
 )
 
 @Entity(tableName = "products")
@@ -49,10 +55,16 @@ data class ProductEntity(
     val salePrice: Double,
     val purchasePrice: Double = 0.0,
     val stockQuantity: Double,
-    val unit: String = "Pcs", // Pcs, Kg, Ltr, Box, Meter
+    val unit: String = "Pcs", // Pcs, Kg, Ltr, Box, Meter, Strip, Bottle
     val category: String = "General",
     val barcode: String = "",
-    val updatedAt: Long = System.currentTimeMillis()
+    val updatedAt: Long = System.currentTimeMillis(),
+    val batchNumber: String = "",
+    val expiryDate: String = "", // e.g. "11/2026" or "10/2025"
+    val manufacturer: String = "",
+    val saltComposition: String = "",
+    val packUnitConfig: String = "", // e.g. "1 Strip = 10 Tablets"
+    val isRxRequired: Boolean = false
 )
 
 @Entity(tableName = "customers")

@@ -53,6 +53,32 @@ fun ProductsScreen(
     var selectedProductForEdit by remember { mutableStateOf<ProductEntity?>(null) }
     var productToDelete by remember { mutableStateOf<ProductEntity?>(null) }
 
+    var selectedTab by remember { mutableStateOf(0) } // 0: All, 1: Expiry Tracker, 2: Low Stock
+
+    val expiredProducts = remember(filteredProducts) {
+        filteredProducts.filter {
+            com.example.util.PharmacyUtils.getExpiryStatus(it.expiryDate) is com.example.util.ExpiryStatus.Expired
+        }
+    }
+
+    val nearExpiryProducts = remember(filteredProducts) {
+        filteredProducts.filter {
+            com.example.util.PharmacyUtils.getExpiryStatus(it.expiryDate) is com.example.util.ExpiryStatus.NearExpiry
+        }
+    }
+
+    val lowStockProducts = remember(filteredProducts) {
+        filteredProducts.filter { it.stockQuantity <= 5.0 }
+    }
+
+    val activeDisplayList = remember(selectedTab, filteredProducts, expiredProducts, nearExpiryProducts, lowStockProducts) {
+        when (selectedTab) {
+            1 -> (expiredProducts + nearExpiryProducts).distinctBy { it.id }
+            2 -> lowStockProducts
+            else -> filteredProducts
+        }
+    }
+
     // Form inputs state
     var itemNameInput by remember { mutableStateOf("") }
     var salePriceInput by remember { mutableStateOf("") }
@@ -62,12 +88,20 @@ fun ProductsScreen(
     var selectedUnit by remember { mutableStateOf("Pcs") }
     var selectedCategory by remember { mutableStateOf("General") }
 
+    // Pharmacy specific form inputs
+    var batchNumberInput by remember { mutableStateOf("") }
+    var expiryDateInput by remember { mutableStateOf("") }
+    var manufacturerInput by remember { mutableStateOf("") }
+    var saltCompositionInput by remember { mutableStateOf("") }
+    var packConfigInput by remember { mutableStateOf("") }
+    var isRxRequiredInput by remember { mutableStateOf(false) }
+
     var showScannerInDialog by remember { mutableStateOf(false) }
 
     var unitDropdownExpanded by remember { mutableStateOf(false) }
     var categoryDropdownExpanded by remember { mutableStateOf(false) }
 
-    val units = remember { listOf("Pcs", "Kg", "Gm", "Ltr", "Ml", "Box", "Meter", "Pack", "Set") }
+    val units = remember { listOf("Pcs", "Strip", "Bottle", "Box", "Tablet", "Capsule", "Kg", "Gm", "Ltr", "Ml", "Pack") }
 
     fun openAddDialog() {
         selectedProductForEdit = null
@@ -76,8 +110,14 @@ fun ProductsScreen(
         purchasePriceInput = ""
         stockInput = "10"
         barcodeInput = ""
-        selectedUnit = "Pcs"
-        selectedCategory = activeCategories.firstOrNull()?.name ?: "General"
+        selectedUnit = "Strip"
+        selectedCategory = activeCategories.firstOrNull { it.name.contains("Pharmacy", ignoreCase = true) }?.name ?: "Pharmacy / Medical"
+        batchNumberInput = ""
+        expiryDateInput = ""
+        manufacturerInput = ""
+        saltCompositionInput = ""
+        packConfigInput = "1 Strip = 10 Tablets"
+        isRxRequiredInput = false
         viewModel.productFormError = null
         showAddEditDialog = true
     }
@@ -91,6 +131,12 @@ fun ProductsScreen(
         barcodeInput = product.barcode
         selectedUnit = product.unit
         selectedCategory = product.category
+        batchNumberInput = product.batchNumber
+        expiryDateInput = product.expiryDate
+        manufacturerInput = product.manufacturer
+        saltCompositionInput = product.saltComposition
+        packConfigInput = product.packUnitConfig
+        isRxRequiredInput = product.isRxRequired
         viewModel.productFormError = null
         showAddEditDialog = true
     }
@@ -215,10 +261,112 @@ fun ProductsScreen(
                         .testTag("products_search_input")
                 )
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Category & Filter Tabs
+                ScrollableTabRow(
+                    selectedTabIndex = selectedTab,
+                    containerColor = Color.Transparent,
+                    contentColor = EmeraldLight,
+                    edgePadding = 0.dp,
+                    divider = {},
+                    indicator = {}
+                ) {
+                    Tab(
+                        selected = selectedTab == 0,
+                        onClick = { selectedTab = 0 },
+                        modifier = Modifier.testTag("tab_all_products")
+                    ) {
+                        Surface(
+                            color = if (selectedTab == 0) EmeraldGreen else Color(0x1F1E295D),
+                            shape = RoundedCornerShape(20.dp),
+                            modifier = Modifier.padding(end = 8.dp, bottom = 8.dp)
+                        ) {
+                            Text(
+                                text = "All Products (${filteredProducts.size})",
+                                color = Color.White,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                            )
+                        }
+                    }
+
+                    Tab(
+                        selected = selectedTab == 1,
+                        onClick = { selectedTab = 1 },
+                        modifier = Modifier.testTag("tab_expiry_tracker")
+                    ) {
+                        Surface(
+                            color = if (selectedTab == 1) Color(0xFFEF4444) else Color(0x1F1E295D),
+                            shape = RoundedCornerShape(20.dp),
+                            modifier = Modifier.padding(end = 8.dp, bottom = 8.dp)
+                        ) {
+                            Text(
+                                text = "⚡ Expiry Tracker (${expiredProducts.size + nearExpiryProducts.size})",
+                                color = Color.White,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                            )
+                        }
+                    }
+
+                    Tab(
+                        selected = selectedTab == 2,
+                        onClick = { selectedTab = 2 },
+                        modifier = Modifier.testTag("tab_low_stock")
+                    ) {
+                        Surface(
+                            color = if (selectedTab == 2) GoldYellow else Color(0x1F1E295D),
+                            shape = RoundedCornerShape(20.dp),
+                            modifier = Modifier.padding(end = 8.dp, bottom = 8.dp)
+                        ) {
+                            Text(
+                                text = "⚠️ Low Stock (${lowStockProducts.size})",
+                                color = if (selectedTab == 2) Color.Black else Color.White,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Summary Stats Banner for Expiry Tracker Tab
+                if (selectedTab == 1) {
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = Color(0x22131B3E)),
+                        shape = RoundedCornerShape(16.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .border(1.dp, Color(0x33EF4444), RoundedCornerShape(16.dp))
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(12.dp),
+                            horizontalArrangement = Arrangement.SpaceAround,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text("Expired Items", color = Color(0xFFF87171), fontSize = 11.sp)
+                                Text("${expiredProducts.size}", color = Color(0xFFEF4444), fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                            }
+                            Box(modifier = Modifier.height(24.dp).width(1.dp).background(Color(0x22FFFFFF)))
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text("Near Expiry (60 Days)", color = Color(0xFFFBBF24), fontSize = 11.sp)
+                                Text("${nearExpiryProducts.size}", color = Color(0xFFF59E0B), fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
 
                 // Product List
-                if (filteredProducts.isEmpty()) {
+                if (activeDisplayList.isEmpty()) {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -234,7 +382,11 @@ fun ProductsScreen(
                             )
                             Spacer(modifier = Modifier.height(12.dp))
                             Text(
-                                text = if (searchQuery.isEmpty()) "No products in inventory yet" else "No matching products found",
+                                text = when (selectedTab) {
+                                    1 -> "Great! No expired or near-expiry medicines found."
+                                    2 -> "All products are well stocked!"
+                                    else -> if (searchQuery.isEmpty()) "No products in inventory yet" else "No matching products found"
+                                },
                                 color = Color(0xFF94A3B8),
                                 fontSize = 15.sp,
                                 fontWeight = FontWeight.Medium
@@ -257,7 +409,7 @@ fun ProductsScreen(
                         contentPadding = PaddingValues(bottom = 80.dp)
                     ) {
                         items(
-                            items = filteredProducts,
+                            items = activeDisplayList,
                             key = { it.firestoreId.ifEmpty { it.id.toString() } }
                         ) { product ->
                             ProductItemCard(
@@ -521,6 +673,135 @@ fun ProductsScreen(
                                 .fillMaxWidth()
                                 .testTag("product_barcode_input")
                         )
+
+                        // --- Pharmacy / Medical Specific Fields ---
+                        HorizontalDivider(color = Color(0x22FFFFFF), modifier = Modifier.padding(vertical = 4.dp))
+                        Text(
+                            text = "Pharmacy & Medicine Details",
+                            color = EmeraldLight,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+
+                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            // Batch Number
+                            OutlinedTextField(
+                                value = batchNumberInput,
+                                onValueChange = { batchNumberInput = it },
+                                label = { Text("Batch No.", color = Color(0xFF94A3B8)) },
+                                placeholder = { Text("e.g. BATCH-1049") },
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = EmeraldGreen,
+                                    unfocusedBorderColor = Color(0x22FFFFFF),
+                                    focusedTextColor = Color.White,
+                                    unfocusedTextColor = Color.White
+                                ),
+                                singleLine = true,
+                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .testTag("product_batch_input")
+                            )
+
+                            // Expiry Date (MM/YYYY)
+                            OutlinedTextField(
+                                value = expiryDateInput,
+                                onValueChange = { expiryDateInput = it },
+                                label = { Text("Expiry (MM/YYYY)", color = Color(0xFF94A3B8)) },
+                                placeholder = { Text("e.g. 11/2027") },
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = EmeraldGreen,
+                                    unfocusedBorderColor = Color(0x22FFFFFF),
+                                    focusedTextColor = Color.White,
+                                    unfocusedTextColor = Color.White
+                                ),
+                                singleLine = true,
+                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .testTag("product_expiry_input")
+                            )
+                        }
+
+                        // Manufacturer & Salt Composition
+                        OutlinedTextField(
+                            value = manufacturerInput,
+                            onValueChange = { manufacturerInput = it },
+                            label = { Text("Manufacturer / Brand", color = Color(0xFF94A3B8)) },
+                            placeholder = { Text("e.g. Micro Labs / Sun Pharma") },
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = EmeraldGreen,
+                                unfocusedBorderColor = Color(0x22FFFFFF),
+                                focusedTextColor = Color.White,
+                                unfocusedTextColor = Color.White
+                            ),
+                            singleLine = true,
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .testTag("product_manufacturer_input")
+                        )
+
+                        OutlinedTextField(
+                            value = saltCompositionInput,
+                            onValueChange = { saltCompositionInput = it },
+                            label = { Text("Salt / Composition Name", color = Color(0xFF94A3B8)) },
+                            placeholder = { Text("e.g. Paracetamol 650mg") },
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = EmeraldGreen,
+                                unfocusedBorderColor = Color(0x22FFFFFF),
+                                focusedTextColor = Color.White,
+                                unfocusedTextColor = Color.White
+                            ),
+                            singleLine = true,
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .testTag("product_salt_input")
+                        )
+
+                        OutlinedTextField(
+                            value = packConfigInput,
+                            onValueChange = { packConfigInput = it },
+                            label = { Text("Pack Config", color = Color(0xFF94A3B8)) },
+                            placeholder = { Text("e.g. 1 Strip = 10 Tablets") },
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = EmeraldGreen,
+                                unfocusedBorderColor = Color(0x22FFFFFF),
+                                focusedTextColor = Color.White,
+                                unfocusedTextColor = Color.White
+                            ),
+                            singleLine = true,
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .testTag("product_pack_input")
+                        )
+
+                        // Rx Required Checkbox Row
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { isRxRequiredInput = !isRxRequiredInput }
+                                .padding(vertical = 4.dp)
+                        ) {
+                            Checkbox(
+                                checked = isRxRequiredInput,
+                                onCheckedChange = { isRxRequiredInput = it },
+                                colors = CheckboxDefaults.colors(
+                                    checkedColor = EmeraldGreen,
+                                    uncheckedColor = Color(0xFF94A3B8)
+                                )
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "Rx Prescription Required for Sale",
+                                color = Color.White,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
                     }
                 },
                 confirmButton = {
@@ -540,6 +821,12 @@ fun ProductsScreen(
                                 unit = selectedUnit,
                                 category = selectedCategory,
                                 barcode = barcodeInput,
+                                batchNumber = batchNumberInput,
+                                expiryDate = expiryDateInput,
+                                manufacturer = manufacturerInput,
+                                saltComposition = saltCompositionInput,
+                                packUnitConfig = packConfigInput,
+                                isRxRequired = isRxRequiredInput,
                                 onSuccess = {
                                     showAddEditDialog = false
                                 }
@@ -630,6 +917,7 @@ fun ProductItemCard(
     onDelete: () -> Unit
 ) {
     val isLowStock = product.stockQuantity <= 5.0
+    val expiryStatus = com.example.util.PharmacyUtils.getExpiryStatus(product.expiryDate)
 
     Card(
         colors = CardDefaults.cardColors(containerColor = Color(0x1F1E295D)),
@@ -659,8 +947,32 @@ fun ProductItemCard(
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+
+                    if (product.saltComposition.isNotBlank()) {
+                        Text(
+                            text = "Salt: ${product.saltComposition}",
+                            color = Color(0xFF94A3B8),
+                            fontSize = 11.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+
+                    if (product.manufacturer.isNotBlank()) {
+                        Text(
+                            text = "Mfg: ${product.manufacturer}",
+                            color = Color(0xFF64748B),
+                            fontSize = 10.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
                         Box(
                             modifier = Modifier
                                 .background(Color(0x228B5CF6), RoundedCornerShape(6.dp))
@@ -674,12 +986,41 @@ fun ProductItemCard(
                             )
                         }
 
+                        if (product.batchNumber.isNotBlank()) {
+                            Box(
+                                modifier = Modifier
+                                    .background(Color(0x223B82F6), RoundedCornerShape(6.dp))
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                            ) {
+                                Text(
+                                    text = "Batch: ${product.batchNumber}",
+                                    color = Color(0xFF60A5FA),
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+                        }
+
+                        if (product.isRxRequired) {
+                            Box(
+                                modifier = Modifier
+                                    .background(Color(0x33EC4899), RoundedCornerShape(6.dp))
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                            ) {
+                                Text(
+                                    text = "Rx Required",
+                                    color = Color(0xFFF472B6),
+                                    fontSize = 9.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+
                         if (isLowStock) {
-                            Spacer(modifier = Modifier.width(6.dp))
                             Box(
                                 modifier = Modifier
                                     .background(Color(0x22EF4444), RoundedCornerShape(6.dp))
-                                    .padding(horizontal = 8.dp, vertical = 2.dp)
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
                             ) {
                                 Text(
                                     text = "LOW STOCK",
@@ -688,6 +1029,28 @@ fun ProductItemCard(
                                     fontWeight = FontWeight.Bold
                                 )
                             }
+                        }
+                    }
+
+                    // Expiry status indicator badge
+                    if (product.expiryDate.isNotBlank()) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        val (bgColor, textColor, label) = when (expiryStatus) {
+                            is com.example.util.ExpiryStatus.Expired -> Triple(Color(0x33EF4444), Color(0xFFEF4444), "EXPIRED (${product.expiryDate})")
+                            is com.example.util.ExpiryStatus.NearExpiry -> Triple(Color(0x33F59E0B), Color(0xFFF59E0B), "EXPIRING SOON (${product.expiryDate})")
+                            else -> Triple(Color(0x2210B981), Color(0xFF34D399), "Exp: ${product.expiryDate}")
+                        }
+                        Box(
+                            modifier = Modifier
+                                .background(bgColor, RoundedCornerShape(6.dp))
+                                .padding(horizontal = 8.dp, vertical = 3.dp)
+                        ) {
+                            Text(
+                                text = label,
+                                color = textColor,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold
+                            )
                         }
                     }
                 }

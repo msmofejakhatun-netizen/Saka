@@ -327,6 +327,43 @@ fun CreateBillScreen(
                                 )
                             }
 
+                            // Optional Pharmacy Doctor & Patient Details
+                            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                OutlinedTextField(
+                                    value = viewModel.posDoctorName,
+                                    onValueChange = { viewModel.posDoctorName = it },
+                                    label = { Text("Doctor Name (Opt)", color = Color(0xFF94A3B8), fontSize = 11.sp) },
+                                    placeholder = { Text("Dr. Sharma") },
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedBorderColor = EmeraldGreen,
+                                        unfocusedBorderColor = Color(0x22FFFFFF),
+                                        focusedTextColor = Color.White,
+                                        unfocusedTextColor = Color.White
+                                    ),
+                                    singleLine = true,
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .testTag("pos_doctor_name_input")
+                                )
+
+                                OutlinedTextField(
+                                    value = viewModel.posPatientInfo,
+                                    onValueChange = { viewModel.posPatientInfo = it },
+                                    label = { Text("Patient Name/Age (Opt)", color = Color(0xFF94A3B8), fontSize = 11.sp) },
+                                    placeholder = { Text("Rahul / 32Y") },
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedBorderColor = EmeraldGreen,
+                                        unfocusedBorderColor = Color(0x22FFFFFF),
+                                        focusedTextColor = Color.White,
+                                        unfocusedTextColor = Color.White
+                                    ),
+                                    singleLine = true,
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .testTag("pos_patient_info_input")
+                                )
+                            }
+
                             // Banner button to trigger search/select customer dialog
                             Surface(
                                 onClick = { showCustomerPickerModal = true },
@@ -1185,18 +1222,33 @@ private fun ProductPOSRow(
     product: ProductEntity,
     onAddToCart: () -> Unit
 ) {
+    val expiryStatus = com.example.util.PharmacyUtils.getExpiryStatus(product.expiryDate)
+    val isExpired = expiryStatus is com.example.util.ExpiryStatus.Expired
     val isOutOfStock = product.stockQuantity <= 0
+    val isDisabled = isOutOfStock || isExpired
+
+    val cardBorderColor = when {
+        isExpired -> Color(0xFFEF4444)
+        expiryStatus is com.example.util.ExpiryStatus.NearExpiry -> Color(0xFFF59E0B)
+        isOutOfStock -> Color(0x22EF4444)
+        else -> Color(0x11FFFFFF)
+    }
 
     Card(
         colors = CardDefaults.cardColors(
-            containerColor = if (isOutOfStock) Color(0x0C1E295D) else Color(0x1F1E295D)
+            containerColor = when {
+                isExpired -> Color(0x1AEF4444)
+                expiryStatus is com.example.util.ExpiryStatus.NearExpiry -> Color(0x1AF59E0B)
+                isOutOfStock -> Color(0x0C1E295D)
+                else -> Color(0x1F1E295D)
+            }
         ),
         shape = RoundedCornerShape(12.dp),
         modifier = Modifier
             .fillMaxWidth()
-            .border(1.dp, if (isOutOfStock) Color(0x22EF4444) else Color(0x11FFFFFF), RoundedCornerShape(12.dp))
+            .border(1.dp, cardBorderColor, RoundedCornerShape(12.dp))
             .then(
-                if (!isOutOfStock) {
+                if (!isDisabled) {
                     Modifier.clickable { onAddToCart() }
                 } else Modifier
             )
@@ -1217,40 +1269,111 @@ private fun ProductPOSRow(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
-                Row(verticalAlignment = Alignment.CenterVertically) {
+
+                if (product.saltComposition.isNotBlank()) {
+                    Text(
+                        text = "Salt: ${product.saltComposition}",
+                        color = Color(0xFF94A3B8),
+                        fontSize = 10.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
                     Text(
                         text = "₹${String.format(Locale.US, "%.2f", product.salePrice)} / ${product.unit}",
                         color = GoldYellow,
                         fontWeight = FontWeight.Bold,
                         fontSize = 12.sp
                     )
-                    Text("  ·  ", color = Color(0xFF64748B), fontSize = 11.sp)
+                    Text("·", color = Color(0xFF64748B), fontSize = 11.sp)
                     Text(
                         text = if (isOutOfStock) "Out of stock" else "Stock: ${KiranaUnitUtils.formatQuantityWithUnit(product.stockQuantity, product.unit)}",
                         color = if (isOutOfStock) Color(0xFFF87171) else Color(0xFF94A3B8),
                         fontSize = 11.sp
                     )
                 }
+
+                // Batch & Expiry Row
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    modifier = Modifier.padding(top = 2.dp)
+                ) {
+                    if (product.batchNumber.isNotBlank()) {
+                        Text(
+                            text = "B:${product.batchNumber}",
+                            color = Color(0xFF60A5FA),
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+
+                    if (product.expiryDate.isNotBlank()) {
+                        when (expiryStatus) {
+                            is com.example.util.ExpiryStatus.Expired -> {
+                                Text(
+                                    text = "⚠️ EXPIRED (${product.expiryDate})",
+                                    color = Color(0xFFEF4444),
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                            is com.example.util.ExpiryStatus.NearExpiry -> {
+                                Text(
+                                    text = "⚡ EXPIRING SOON (${product.expiryDate})",
+                                    color = Color(0xFFF59E0B),
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                            else -> {
+                                Text(
+                                    text = "Exp: ${product.expiryDate}",
+                                    color = Color(0xFF34D399),
+                                    fontSize = 10.sp
+                                )
+                            }
+                        }
+                    }
+
+                    if (product.isRxRequired) {
+                        Text(
+                            text = "Rx Required",
+                            color = Color(0xFFF472B6),
+                            fontSize = 9.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
             }
 
             Button(
                 onClick = onAddToCart,
-                enabled = !isOutOfStock,
+                enabled = !isDisabled,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = GoldYellow,
                     disabledContainerColor = Color(0x22FFFFFF)
                 ),
-                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
                 shape = RoundedCornerShape(8.dp),
                 modifier = Modifier
                     .height(34.dp)
                     .testTag("pos_add_product_${product.name.lowercase().replace(" ", "_")}")
             ) {
-                Icon(imageVector = Icons.Default.Add, contentDescription = null, tint = if (isOutOfStock) Color.Gray else Color.Black, modifier = Modifier.size(16.dp))
-                Spacer(modifier = Modifier.width(4.dp))
+                Icon(imageVector = Icons.Default.Add, contentDescription = null, tint = if (isDisabled) Color.Gray else Color.Black, modifier = Modifier.size(14.dp))
+                Spacer(modifier = Modifier.width(2.dp))
                 Text(
-                    text = if (isOutOfStock) "Empty" else "Add",
-                    color = if (isOutOfStock) Color.Gray else Color.Black,
+                    text = when {
+                        isExpired -> "Expired"
+                        isOutOfStock -> "Empty"
+                        else -> "Add"
+                    },
+                    color = if (isDisabled) Color.Gray else Color.Black,
                     fontWeight = FontWeight.Bold,
                     fontSize = 11.sp
                 )
@@ -1297,6 +1420,16 @@ private fun CartItemRow(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
+                if (cartItem.product.batchNumber.isNotBlank() || cartItem.product.expiryDate.isNotBlank()) {
+                    Text(
+                        text = listOfNotNull(
+                            cartItem.product.batchNumber.takeIf { it.isNotBlank() }?.let { "Batch: $it" },
+                            cartItem.product.expiryDate.takeIf { it.isNotBlank() }?.let { "Exp: $it" }
+                        ).joinToString(" · "),
+                        color = Color(0xFF94A3B8),
+                        fontSize = 10.sp
+                    )
+                }
                 Text(
                     text = "₹${String.format(Locale.US, "%.2f", cartItem.customPrice)} / ${cartItem.product.unit}  =  ₹${String.format(Locale.US, "%.2f", cartItem.totalAmount)}",
                     color = EmeraldLight,

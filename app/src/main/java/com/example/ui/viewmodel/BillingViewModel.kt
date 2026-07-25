@@ -136,9 +136,7 @@ class BillingViewModel(private val repository: BillingRepository) : ViewModel() 
             productList
         } else {
             productList.filter {
-                it.name.contains(query, ignoreCase = true) ||
-                it.category.contains(query, ignoreCase = true) ||
-                (it.barcode.isNotBlank() && it.barcode.contains(query, ignoreCase = true))
+                com.example.util.PharmacyUtils.matchesPharmacySearch(it, query)
             }
         }
     }.stateIn(
@@ -704,6 +702,8 @@ class BillingViewModel(private val repository: BillingRepository) : ViewModel() 
     // --- Core POS & Billing State ---
     var posCustomerName by mutableStateOf("Walk-in Customer")
     var posCustomerMobile by mutableStateOf("")
+    var posDoctorName by mutableStateOf("")
+    var posPatientInfo by mutableStateOf("")
     var posPaymentMode by mutableStateOf("Cash") // Cash, UPI / QR, Online, Credit (Udhar)
     var posDiscountType by mutableStateOf("Fixed") // Fixed or Percentage
     var posDiscountInput by mutableStateOf("")
@@ -737,6 +737,14 @@ class BillingViewModel(private val repository: BillingRepository) : ViewModel() 
         get() = (posSubtotal - posDiscountAmount + posTaxAmount).coerceAtLeast(0.0)
 
     fun addToPOSCart(product: ProductEntity, addQty: Double = 1.0) {
+        val expiryStatus = com.example.util.PharmacyUtils.getExpiryStatus(product.expiryDate)
+        if (expiryStatus is com.example.util.ExpiryStatus.Expired) {
+            viewModelScope.launch {
+                _toastMessage.emit("⚠️ EXPIRED MEDICINE: '${product.name}' expired on ${product.expiryDate} and cannot be sold!")
+            }
+            return
+        }
+
         val maxAvailable = product.stockQuantity
         if (maxAvailable <= 0) {
             viewModelScope.launch {
@@ -796,6 +804,8 @@ class BillingViewModel(private val repository: BillingRepository) : ViewModel() 
         posCartItems.clear()
         posCustomerName = "Walk-in Customer"
         posCustomerMobile = ""
+        posDoctorName = ""
+        posPatientInfo = ""
         posPaymentMode = "Cash"
         posDiscountType = "Fixed"
         posDiscountInput = ""
@@ -820,13 +830,19 @@ class BillingViewModel(private val repository: BillingRepository) : ViewModel() 
 
         val name = if (posCustomerName.isBlank()) "Walk-in Customer" else posCustomerName.trim()
         val mobile = posCustomerMobile.trim()
+        val doctor = posDoctorName.trim()
+        val patient = posPatientInfo.trim()
+        val userDl = _currentUser.value?.dlNumber?.ifBlank { "DL-20B/10492/2024" } ?: "DL-20B/10492/2024"
+        val userGstin = _currentUser.value?.gstin?.ifBlank { "27ABCDE1234F1Z5" } ?: "27ABCDE1234F1Z5"
+
         val finalAmount = posFinalTotal
         val totalItemsCount = posCartItems.size
 
         val summaryStringBuilder = StringBuilder()
         posCartItems.forEachIndexed { idx, item ->
             val formattedQty = com.example.util.KiranaUnitUtils.formatQuantityWithUnit(item.quantity, item.product.unit)
-            summaryStringBuilder.append("$formattedQty x ${item.product.name}")
+            val batchInfo = if (item.product.batchNumber.isNotBlank()) " (Batch: ${item.product.batchNumber})" else ""
+            summaryStringBuilder.append("$formattedQty x ${item.product.name}$batchInfo")
             if (idx < posCartItems.size - 1) summaryStringBuilder.append(", ")
         }
         val itemsSummaryStr = summaryStringBuilder.toString()
@@ -850,7 +866,11 @@ class BillingViewModel(private val repository: BillingRepository) : ViewModel() 
                     paymentMode = posPaymentMode,
                     itemsSummary = itemsSummaryStr,
                     timestamp = System.currentTimeMillis(),
-                    status = "Paid"
+                    status = "Paid",
+                    doctorName = doctor,
+                    patientInfo = patient,
+                    dlNumber = userDl,
+                    gstin = userGstin
                 )
 
                 val purchasedList = posCartItems.map { Pair(it.product, it.quantity) }
@@ -932,6 +952,12 @@ class BillingViewModel(private val repository: BillingRepository) : ViewModel() 
         unit: String,
         category: String,
         barcode: String = "",
+        batchNumber: String = "",
+        expiryDate: String = "",
+        manufacturer: String = "",
+        saltComposition: String = "",
+        packUnitConfig: String = "",
+        isRxRequired: Boolean = false,
         onSuccess: () -> Unit
     ) {
         if (name.isBlank()) {
@@ -964,7 +990,13 @@ class BillingViewModel(private val repository: BillingRepository) : ViewModel() 
                     stockQuantity = stockQuantity,
                     unit = unit.ifBlank { "Pcs" },
                     category = category.ifBlank { "General" },
-                    barcode = barcode.trim()
+                    barcode = barcode.trim(),
+                    batchNumber = batchNumber.trim(),
+                    expiryDate = expiryDate.trim(),
+                    manufacturer = manufacturer.trim(),
+                    saltComposition = saltComposition.trim(),
+                    packUnitConfig = packUnitConfig.trim(),
+                    isRxRequired = isRxRequired
                 )
 
                 repository.saveProduct(userUid, product)

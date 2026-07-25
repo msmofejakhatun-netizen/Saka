@@ -1,20 +1,27 @@
 package com.example.util
 
+import com.example.data.db.ProductEntity
 import java.util.Locale
 
 enum class LooseInputType {
     DUAL,
-    DECIMAL
+    DECIMAL,
+    PHARMACY_FULL_STRIP,
+    PHARMACY_LOOSE_TABLETS
 }
 
 object KiranaUnitUtils {
 
-    val SUPPORTED_UNITS = listOf("Kg", "Gm", "Ltr", "Ml", "Pcs", "Pack", "Box", "Meter", "Set")
+    val SUPPORTED_UNITS = listOf("Kg", "Gm", "Ltr", "Ml", "Pcs", "Pack", "Box", "Strip", "Meter", "Set")
 
-    fun isLooseUnit(unit: String): Boolean {
+    fun isLooseUnit(unit: String, product: ProductEntity? = null): Boolean {
+        if (product != null && (PharmacyUtils.isPharmacyProduct(product) || product.packUnitConfig.isNotBlank())) {
+            return true
+        }
         val u = unit.trim().lowercase(Locale.ROOT)
         return u == "kg" || u == "gm" || u == "gram" || u == "grams" ||
-               u == "ltr" || u == "l" || u == "liter" || u == "liters" || u == "ml"
+               u == "ltr" || u == "l" || u == "liter" || u == "liters" || u == "ml" ||
+               u == "strip" || u == "strips" || u == "tab" || u == "tablets" || u == "box"
     }
 
     fun isWeightUnit(unit: String): Boolean {
@@ -37,8 +44,23 @@ object KiranaUnitUtils {
      * e.g. 1200 Ml -> "1 Ltr 200 ml"
      * e.g. 3 Pcs -> "3 Pcs"
      */
-    fun formatQuantityWithUnit(quantity: Double, unit: String): String {
+    fun formatQuantityWithUnit(quantity: Double, unit: String, product: ProductEntity? = null): String {
+        if (product != null && (PharmacyUtils.isPharmacyProduct(product) || unit.equals("Strip", ignoreCase = true) || product.packUnitConfig.isNotBlank())) {
+            return PharmacyUtils.formatPharmacyQuantity(quantity, product)
+        }
         val u = unit.trim().lowercase(Locale.ROOT)
+        if (u == "strip" || u == "strips") {
+            val packSize = 10
+            val totalTablets = Math.round(quantity * packSize).toInt()
+            val fullStrips = totalTablets / packSize
+            val looseTablets = totalTablets % packSize
+            return when {
+                fullStrips > 0 && looseTablets > 0 -> "$fullStrips Strip + $looseTablets Tablets"
+                fullStrips > 0 -> "$fullStrips Strip${if (fullStrips > 1) "s" else ""}"
+                looseTablets > 0 -> "$looseTablets Tablet${if (looseTablets > 1) "s" else ""}"
+                else -> "0 Strip"
+            }
+        }
         if (quantity <= 0.0) return "0 $unit"
 
         return when {

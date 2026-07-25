@@ -14,6 +14,7 @@ import com.example.data.db.InvoiceEntity
 import com.example.data.db.ProductEntity
 import com.example.data.db.UserEntity
 import com.example.data.repository.BillingRepository
+import java.util.Locale
 
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
@@ -840,9 +841,24 @@ class BillingViewModel(private val repository: BillingRepository) : ViewModel() 
 
         val summaryStringBuilder = StringBuilder()
         posCartItems.forEachIndexed { idx, item ->
-            val formattedQty = com.example.util.KiranaUnitUtils.formatQuantityWithUnit(item.quantity, item.product.unit)
+            val formattedQty = com.example.util.KiranaUnitUtils.formatQuantityWithUnit(item.quantity, item.product.unit, item.product)
+            val isPharm = com.example.util.PharmacyUtils.isPharmacyProduct(item.product) || item.product.unit.equals("Strip", ignoreCase = true) || item.product.packUnitConfig.isNotBlank()
+            
+            val itemLineStr = if (isPharm) {
+                val packSize = com.example.util.PharmacyUtils.getPackSize(item.product)
+                val perTab = com.example.util.PharmacyUtils.getPerTabletUnitPrice(item.product)
+                val totalTabs = Math.round(item.quantity * packSize).toInt()
+                val isLooseTab = totalTabs % packSize != 0
+                if (isLooseTab) {
+                    "${item.product.name} — $formattedQty @ ₹${String.format(Locale.US, "%.2f", perTab)}/Tab = ₹${String.format(Locale.US, "%.2f", item.totalAmount)}"
+                } else {
+                    "${item.product.name} — $formattedQty @ ₹${String.format(Locale.US, "%.2f", item.customPrice)}/${item.product.unit} = ₹${String.format(Locale.US, "%.2f", item.totalAmount)}"
+                }
+            } else {
+                "$formattedQty x ${item.product.name}"
+            }
             val batchInfo = if (item.product.batchNumber.isNotBlank()) " (Batch: ${item.product.batchNumber})" else ""
-            summaryStringBuilder.append("$formattedQty x ${item.product.name}$batchInfo")
+            summaryStringBuilder.append("$itemLineStr$batchInfo")
             if (idx < posCartItems.size - 1) summaryStringBuilder.append(", ")
         }
         val itemsSummaryStr = summaryStringBuilder.toString()

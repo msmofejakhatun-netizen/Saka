@@ -170,8 +170,10 @@ object InvoicePdfHelper {
 
             paint.textAlign = Paint.Align.RIGHT
             canvas.drawText(item.qtyStr, 380f, currentY + 15f, paint)
-            canvas.drawText("₹${String.format(Locale.US, "%.2f", item.price)}", 470f, currentY + 15f, paint)
-            canvas.drawText("₹${String.format(Locale.US, "%.2f", item.total)}", 555f, currentY + 15f, paint)
+            val priceDisplay = if (item.priceStr.isNotBlank() && item.priceStr != "-") item.priceStr else if (item.price > 0) "₹${String.format(Locale.US, "%.2f", item.price)}" else "-"
+            canvas.drawText(priceDisplay, 470f, currentY + 15f, paint)
+            val totalDisplay = if (item.total > 0) "₹${String.format(Locale.US, "%.2f", item.total)}" else "-"
+            canvas.drawText(totalDisplay, 555f, currentY + 15f, paint)
 
             currentY += 22f
         }
@@ -266,11 +268,11 @@ object InvoicePdfHelper {
 
     private fun String?.isNull_or_blank(): Boolean = this == null || this.isBlank()
 
-    private data class PdfItemRow(val name: String, val qtyStr: String, val price: Double, val total: Double)
+    private data class PdfItemRow(val name: String, val qtyStr: String, val priceStr: String, val price: Double, val total: Double)
 
     private fun parseItemsSummary(summary: String): List<PdfItemRow> {
         if (summary.isBlank()) {
-            return listOf(PdfItemRow("Billed Products", "1", 0.0, 0.0))
+            return listOf(PdfItemRow("Billed Products", "1", "-", 0.0, 0.0))
         }
 
         val rows = mutableListOf<PdfItemRow>()
@@ -278,18 +280,42 @@ object InvoicePdfHelper {
         for (part in parts) {
             val trimmed = part.trim()
             if (trimmed.isNotBlank()) {
-                // e.g. "1 kg 200 gm x Sugar" or "1.2 kg x Sugar" or "2x Wireless Mouse" or "Wireless Mouse"
-                val matchResult = Regex("""^(.+?)\s*x\s*(.+)$""", RegexOption.IGNORE_CASE).find(trimmed)
-                if (matchResult != null) {
-                    val qStr = matchResult.groupValues[1].trim()
-                    val name = matchResult.groupValues[2].trim()
-                    rows.add(PdfItemRow(name, qStr, 0.0, 0.0))
+                if (trimmed.contains(" — ")) {
+                    // e.g. "Dolo 650mg — 3 Tablets @ ₹10.00/Tab = ₹30.00 (Batch: B123)"
+                    val subParts = trimmed.split(" — ")
+                    val name = subParts[0].trim()
+                    val rest = subParts.getOrElse(1) { "" }.trim()
+
+                    if (rest.contains(" = ")) {
+                        val rateAndTotal = rest.split(" = ")
+                        val qtyAndRate = rateAndTotal[0].trim() // "3 Tablets @ ₹10.00/Tab"
+                        val totalStr = rateAndTotal.getOrElse(1) { "" }.trim()
+                        val totalVal = totalStr.replace(Regex("[^0-9.]"), "").toDoubleOrNull() ?: 0.0
+
+                        if (qtyAndRate.contains(" @ ")) {
+                            val qrParts = qtyAndRate.split(" @ ")
+                            val qtyStr = qrParts[0].trim() // "3 Tablets"
+                            val priceStr = qrParts.getOrElse(1) { "" }.trim() // "₹10.00/Tab"
+                            rows.add(PdfItemRow(name, qtyStr, priceStr, 0.0, totalVal))
+                        } else {
+                            rows.add(PdfItemRow(name, qtyAndRate, "-", 0.0, totalVal))
+                        }
+                    } else {
+                        rows.add(PdfItemRow(name, rest, "-", 0.0, 0.0))
+                    }
                 } else {
-                    rows.add(PdfItemRow(trimmed, "1", 0.0, 0.0))
+                    val matchResult = Regex("""^(.+?)\s*x\s*(.+)$""", RegexOption.IGNORE_CASE).find(trimmed)
+                    if (matchResult != null) {
+                        val qStr = matchResult.groupValues[1].trim()
+                        val name = matchResult.groupValues[2].trim()
+                        rows.add(PdfItemRow(name, qStr, "-", 0.0, 0.0))
+                    } else {
+                        rows.add(PdfItemRow(trimmed, "1", "-", 0.0, 0.0))
+                    }
                 }
             }
         }
-        return if (rows.isEmpty()) listOf(PdfItemRow("Billed Products", "1", 0.0, 0.0)) else rows
+        return if (rows.isEmpty()) listOf(PdfItemRow("Billed Products", "1", "-", 0.0, 0.0)) else rows
     }
 
     // --- Android Printing Support ---

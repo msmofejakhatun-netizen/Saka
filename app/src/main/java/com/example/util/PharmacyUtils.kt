@@ -75,4 +75,52 @@ object PharmacyUtils {
                 product.barcode.lowercase(Locale.ROOT).contains(q) ||
                 product.category.lowercase(Locale.ROOT).contains(q)
     }
+
+    /**
+     * Extracts tablets/capsules per strip or pack size for pharmacy items.
+     * e.g., "1 Strip = 10 Tablets" -> 10
+     * e.g., "15 Tablets" -> 15
+     */
+    fun getPackSize(product: ProductEntity): Int {
+        val config = product.packUnitConfig.trim()
+        if (config.isNotBlank()) {
+            val digits = config.replace(Regex("[^0-9]"), " ").trim().split("\\s+".toRegex()).mapNotNull { it.toIntOrNull() }
+            if (digits.isNotEmpty()) {
+                val maxDigit = digits.maxOrNull() ?: 10
+                if (maxDigit > 1) return maxDigit
+            }
+        }
+        val unitLower = product.unit.lowercase(Locale.ROOT)
+        if (unitLower == "strip" || unitLower == "box" || isPharmacyProduct(product)) {
+            return 10
+        }
+        return 1
+    }
+
+    /**
+     * Calculates unit price per loose tablet = Strip Price / Pack Size.
+     */
+    fun getPerTabletUnitPrice(product: ProductEntity): Double {
+        val packSize = getPackSize(product)
+        return if (packSize > 0) product.salePrice / packSize else product.salePrice
+    }
+
+    /**
+     * Formats pharmacy quantity into clear unit labels (e.g. "3 Tablets", "1 Strip + 3 Tablets", "2 Strips").
+     */
+    fun formatPharmacyQuantity(quantity: Double, product: ProductEntity): String {
+        val packSize = getPackSize(product)
+        if (packSize <= 1) {
+            return if (quantity % 1.0 == 0.0) "${quantity.toInt()} ${product.unit}" else "${String.format(Locale.US, "%.2f", quantity)} ${product.unit}"
+        }
+        val totalTablets = Math.round(quantity * packSize).toInt()
+        val fullStrips = totalTablets / packSize
+        val looseTablets = totalTablets % packSize
+        return when {
+            fullStrips > 0 && looseTablets > 0 -> "$fullStrips Strip + $looseTablets Tablets"
+            fullStrips > 0 -> "$fullStrips Strip${if (fullStrips > 1) "s" else ""}"
+            looseTablets > 0 -> "$looseTablets Tablet${if (looseTablets > 1) "s" else ""}"
+            else -> "0 ${product.unit}"
+        }
+    }
 }

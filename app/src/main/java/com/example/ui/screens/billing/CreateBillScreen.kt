@@ -134,6 +134,9 @@ fun CreateBillScreen(
     var showCustomerPickerModal by remember { mutableStateOf(false) }
     var showAddNewCustomerModal by remember { mutableStateOf(false) }
 
+    var showCartReviewModal by remember { mutableStateOf(false) }
+    var showPaymentModal by remember { mutableStateOf(false) }
+
     val categoriesList = remember(products) {
         val set = products.map { it.category }.filter { it.isNotBlank() }.toSet()
         listOf("All") + set.toList()
@@ -538,355 +541,9 @@ fun CreateBillScreen(
                     }
                 }
 
-                // 3. Itemized Bill / Cart Section
-                item {
-                    Card(
-                        colors = CardDefaults.cardColors(containerColor = Color(0x1F1E295D)),
-                        shape = RoundedCornerShape(16.dp),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .border(1.dp, Color(0x2210B981), RoundedCornerShape(16.dp))
-                            .testTag("pos_cart_section")
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(14.dp),
-                            verticalArrangement = Arrangement.spacedBy(10.dp)
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(
-                                        imageVector = Icons.Default.ShoppingBag,
-                                        contentDescription = "Cart",
-                                        tint = EmeraldGreen,
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text(
-                                        text = "Itemized Bill (${viewModel.posCartItems.size} items)",
-                                        color = Color.White,
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 14.sp
-                                    )
-                                }
-
-                                Text(
-                                    text = "Subtotal: ₹${String.format(Locale.US, "%.2f", viewModel.posSubtotal)}",
-                                    color = EmeraldLight,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 13.sp
-                                )
-                            }
-
-                            if (viewModel.posCartItems.isEmpty()) {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(vertical = 24.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                        Icon(
-                                            imageVector = Icons.Default.ShoppingBag,
-                                            contentDescription = null,
-                                            tint = Color(0x44FFFFFF),
-                                            modifier = Modifier.size(40.dp)
-                                        )
-                                        Spacer(modifier = Modifier.height(6.dp))
-                                        Text("Cart is currently empty", color = Color(0xFF94A3B8), fontSize = 13.sp)
-                                        Text("Tap products above to add items to bill", color = Color(0xFF64748B), fontSize = 11.sp)
-                                    }
-                                }
-                            } else {
-                                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    viewModel.posCartItems.forEach { cartItem ->
-                                        CartItemRow(
-                                            cartItem = cartItem,
-                                            onEditQuantity = {
-                                                editingCartItemQuantity = cartItem
-                                            },
-                                            onIncrease = {
-                                                val step = if (KiranaUnitUtils.isLooseUnit(cartItem.product.unit)) 0.25 else 1.0
-                                                viewModel.updatePOSCartQuantity(cartItem.product, cartItem.quantity + step)
-                                            },
-                                            onDecrease = {
-                                                val step = if (KiranaUnitUtils.isLooseUnit(cartItem.product.unit)) 0.25 else 1.0
-                                                viewModel.updatePOSCartQuantity(cartItem.product, cartItem.quantity - step)
-                                            },
-                                            onRemove = {
-                                                viewModel.removeFromPOSCart(cartItem.product)
-                                            }
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // 4. Summary Calculation Breakdown (Discount, Tax, Payment Mode, Final Total)
-                item {
-                    Card(
-                        colors = CardDefaults.cardColors(containerColor = Color(0x1F1E295D)),
-                        shape = RoundedCornerShape(16.dp),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .border(1.dp, Color(0x22FFFFFF), RoundedCornerShape(16.dp))
-                            .testTag("pos_summary_card")
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(14.dp),
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            Text(
-                                text = "Invoice Summary & Payment",
-                                color = Color.White,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 14.sp
-                            )
-
-                            // Discount Row
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                Icon(Icons.Default.Discount, contentDescription = "Discount", tint = ElectricVioletLight, modifier = Modifier.size(18.dp))
-                                Text("Discount", color = Color(0xFF94A3B8), fontSize = 12.sp, modifier = Modifier.width(64.dp))
-
-                                // Toggle Fixed ($) or Percentage (%)
-                                Row(
-                                    modifier = Modifier
-                                        .clip(RoundedCornerShape(8.dp))
-                                        .background(Color(0x22FFFFFF))
-                                ) {
-                                    Box(
-                                        modifier = Modifier
-                                            .background(if (viewModel.posDiscountType == "Fixed") ElectricViolet else Color.Transparent)
-                                            .clickable { viewModel.posDiscountType = "Fixed" }
-                                            .padding(horizontal = 8.dp, vertical = 6.dp)
-                                    ) {
-                                        Text("₹", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                                    }
-                                    Box(
-                                        modifier = Modifier
-                                            .background(if (viewModel.posDiscountType == "Percentage") ElectricViolet else Color.Transparent)
-                                            .clickable { viewModel.posDiscountType = "Percentage" }
-                                            .padding(horizontal = 8.dp, vertical = 6.dp)
-                                    ) {
-                                        Text("%", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                                    }
-                                }
-
-                                OutlinedTextField(
-                                    value = viewModel.posDiscountInput,
-                                    onValueChange = { viewModel.posDiscountInput = it },
-                                    placeholder = { Text("0", color = Color(0xFF64748B), fontSize = 12.sp) },
-                                    colors = OutlinedTextFieldDefaults.colors(
-                                        focusedBorderColor = ElectricVioletLight,
-                                        unfocusedBorderColor = Color(0x22FFFFFF),
-                                        focusedTextColor = Color.White,
-                                        unfocusedTextColor = Color.White
-                                    ),
-                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                                    singleLine = true,
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .testTag("pos_discount_input")
-                                )
-
-                                Text(
-                                    text = "-₹${String.format(Locale.US, "%.2f", viewModel.posDiscountAmount)}",
-                                    color = AccentPink,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 12.sp
-                                )
-                            }
-
-                            // Tax / GST Row
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                Icon(Icons.Default.ReceiptLong, contentDescription = "Tax", tint = GoldYellow, modifier = Modifier.size(18.dp))
-                                Text("Tax / GST", color = Color(0xFF94A3B8), fontSize = 12.sp, modifier = Modifier.width(64.dp))
-
-                                Row(
-                                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                                    modifier = Modifier.weight(1f)
-                                ) {
-                                    listOf("0", "5", "12", "18").forEach { taxRate ->
-                                        val isSelected = viewModel.posTaxPercentageInput == taxRate
-                                        Box(
-                                            modifier = Modifier
-                                                .clip(RoundedCornerShape(6.dp))
-                                                .background(if (isSelected) GoldYellow else Color(0x22FFFFFF))
-                                                .clickable { viewModel.posTaxPercentageInput = taxRate }
-                                                .padding(horizontal = 8.dp, vertical = 6.dp)
-                                        ) {
-                                            Text(
-                                                text = "$taxRate%",
-                                                color = if (isSelected) Color.Black else Color.White,
-                                                fontSize = 11.sp,
-                                                fontWeight = FontWeight.Bold
-                                            )
-                                        }
-                                    }
-                                }
-
-                                Text(
-                                    text = "+₹${String.format(Locale.US, "%.2f", viewModel.posTaxAmount)}",
-                                    color = GoldYellow,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 12.sp
-                                )
-                            }
-
-                            // Payment Mode Selector
-                            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                                Text("Select Payment Mode", color = Color(0xFF94A3B8), fontSize = 12.sp, fontWeight = FontWeight.Medium)
-                                Row(
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                    modifier = Modifier.fillMaxWidth()
-                                ) {
-                                    listOf("Cash", "UPI / QR", "Online", "Credit (Udhar)").forEach { mode ->
-                                        val isSelected = viewModel.posPaymentMode == mode
-                                        Card(
-                                            onClick = { viewModel.posPaymentMode = mode },
-                                            colors = CardDefaults.cardColors(
-                                                containerColor = if (isSelected) EmeraldGreen else Color(0x11FFFFFF)
-                                            ),
-                                            shape = RoundedCornerShape(10.dp),
-                                            modifier = Modifier
-                                                .weight(1f)
-                                                .border(
-                                                    1.dp,
-                                                    if (isSelected) EmeraldLight else Color(0x22FFFFFF),
-                                                    RoundedCornerShape(10.dp)
-                                                )
-                                                .testTag("pos_payment_mode_${mode.lowercase().replace(" ", "_").replace("/", "")}")
-                                        ) {
-                                            Box(
-                                                modifier = Modifier
-                                                    .fillMaxWidth()
-                                                    .padding(vertical = 10.dp),
-                                                contentAlignment = Alignment.Center
-                                            ) {
-                                                Text(
-                                                    text = mode,
-                                                    color = Color.White,
-                                                    fontSize = 10.sp,
-                                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                                    textAlign = TextAlign.Center
-                                                )
-                                            }
-                                        }
-                                    }
-                                }
-
-                                if (viewModel.posPaymentMode == "UPI / QR") {
-                                    Spacer(modifier = Modifier.height(4.dp))
-                                    Surface(
-                                        onClick = { showUpiQrPaymentDialog = true },
-                                        shape = RoundedCornerShape(10.dp),
-                                        color = Color(0x3310B981),
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .testTag("pos_show_upi_qr_banner")
-                                    ) {
-                                        Row(
-                                            modifier = Modifier.padding(10.dp),
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.SpaceBetween
-                                        ) {
-                                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                                Icon(Icons.Default.QrCode, contentDescription = null, tint = EmeraldGreen, modifier = Modifier.size(20.dp))
-                                                Spacer(modifier = Modifier.width(8.dp))
-                                                Column {
-                                                    Text("Dynamic UPI QR Ready", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                                                    Text("Pay to: ${currentUser?.upiId?.ifBlank { "store@upi" } ?: "store@upi"}", color = EmeraldLight, fontSize = 10.sp)
-                                                }
-                                            }
-                                            Button(
-                                                onClick = { showUpiQrPaymentDialog = true },
-                                                colors = ButtonDefaults.buttonColors(containerColor = EmeraldGreen),
-                                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
-                                                shape = RoundedCornerShape(6.dp),
-                                                modifier = Modifier.height(30.dp)
-                                            ) {
-                                                Text("Show QR", fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-
-                            // Divider
-                            Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(Color(0x22FFFFFF)))
-
-                            // Total Breakdown Table
-                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                SummaryLineItem("Subtotal", "₹${String.format(Locale.US, "%.2f", viewModel.posSubtotal)}")
-                                if (viewModel.posDiscountAmount > 0) {
-                                    SummaryLineItem("Discount Deducted", "-₹${String.format(Locale.US, "%.2f", viewModel.posDiscountAmount)}", isNegative = true)
-                                }
-                                if (viewModel.posTaxAmount > 0) {
-                                    SummaryLineItem("Tax (${viewModel.posTaxPercentageInput}%)", "+₹${String.format(Locale.US, "%.2f", viewModel.posTaxAmount)}")
-                                }
-
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text("Grand Total Amount", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                                    Text(
-                                        text = "₹${String.format(Locale.US, "%.2f", viewModel.posFinalTotal)}",
-                                        color = EmeraldLight,
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 20.sp,
-                                        modifier = Modifier.testTag("pos_final_total_value")
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // Error Banner
-                item {
-                    AnimatedVisibility(
-                        visible = viewModel.posInvoiceError != null,
-                        enter = fadeIn(),
-                        exit = fadeOut()
-                    ) {
-                        viewModel.posInvoiceError?.let { err ->
-                            Card(
-                                colors = CardDefaults.cardColors(containerColor = Color(0x33EF4444)),
-                                shape = RoundedCornerShape(10.dp),
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .border(1.dp, Color(0x55EF4444), RoundedCornerShape(10.dp))
-                            ) {
-                                Text(
-                                    text = err,
-                                    color = Color(0xFFF87171),
-                                    fontSize = 12.sp,
-                                    modifier = Modifier.padding(12.dp),
-                                    textAlign = TextAlign.Center
-                                )
-                            }
-                        }
-                    }
-                }
             }
 
-            // Bottom Sticky Bar: Generate Bill Action
+            // Step 1 Bottom Sticky Bar: View Cart Summary Action
             Surface(
                 color = Color(0xFF0D122B),
                 modifier = Modifier
@@ -902,9 +559,15 @@ fun CreateBillScreen(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Column {
-                        Text("TOTAL BILL", color = Color(0xFF94A3B8), fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.5.sp)
                         Text(
-                            text = "₹${String.format(Locale.US, "%.2f", viewModel.posFinalTotal)}",
+                            text = if (viewModel.posCartItems.isEmpty()) "Cart is Empty" else "${viewModel.posCartItems.sumOf { it.quantity.toInt() }} Items in Cart",
+                            color = Color(0xFF94A3B8),
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            letterSpacing = 0.5.sp
+                        )
+                        Text(
+                            text = "₹${String.format(Locale.US, "%.2f", viewModel.posSubtotal)}",
                             color = EmeraldGreen,
                             fontWeight = FontWeight.Bold,
                             fontSize = 22.sp
@@ -912,13 +575,8 @@ fun CreateBillScreen(
                     }
 
                     Button(
-                        onClick = {
-                            viewModel.generatePOSInvoice { generatedInvoice ->
-                                generatedInvoiceForReceipt = generatedInvoice
-                                showSuccessReceiptDialog = true
-                            }
-                        },
-                        enabled = viewModel.posCartItems.isNotEmpty() && !viewModel.isGeneratingPOSInvoice,
+                        onClick = { showCartReviewModal = true },
+                        enabled = viewModel.posCartItems.isNotEmpty(),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = EmeraldGreen,
                             disabledContainerColor = Color(0x3310B981)
@@ -926,17 +584,15 @@ fun CreateBillScreen(
                         shape = RoundedCornerShape(14.dp),
                         modifier = Modifier
                             .height(50.dp)
-                            .testTag("pos_generate_bill_button")
+                            .testTag("pos_view_cart_button")
                     ) {
-                        if (viewModel.isGeneratingPOSInvoice) {
-                            CircularProgressIndicator(color = Color.White, modifier = Modifier.size(20.dp))
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Processing...")
-                        } else {
-                            Icon(imageVector = Icons.Default.ReceiptLong, contentDescription = null, modifier = Modifier.size(20.dp))
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("GENERATE BILL", fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                        }
+                        Icon(imageVector = Icons.Default.ShoppingBag, contentDescription = null, modifier = Modifier.size(20.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "View Cart (${viewModel.posCartItems.size}) ->",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp
+                        )
                     }
                 }
             }
@@ -1215,6 +871,670 @@ fun CreateBillScreen(
             onDismiss = { showAddNewCustomerModal = false }
         )
     }
+
+    if (showCartReviewModal) {
+        CartReviewModalDialog(
+            viewModel = viewModel,
+            onProceedToPayment = {
+                showCartReviewModal = false
+                showPaymentModal = true
+            },
+            onChangeCustomerClick = {
+                showCustomerPickerModal = true
+            },
+            onDismiss = { showCartReviewModal = false },
+            onEditQuantity = { cartItem -> editingCartItemQuantity = cartItem }
+        )
+    }
+
+    if (showPaymentModal) {
+        PaymentAndCheckoutModalDialog(
+            viewModel = viewModel,
+            currentUser = currentUser,
+            onShowUpiQr = { showUpiQrPaymentDialog = true },
+            onCompleteSale = {
+                viewModel.generatePOSInvoice { generatedInvoice ->
+                    showPaymentModal = false
+                    showCartReviewModal = false
+                    generatedInvoiceForReceipt = generatedInvoice
+                    showSuccessReceiptDialog = true
+                }
+            },
+            onBackToCart = {
+                showPaymentModal = false
+                showCartReviewModal = true
+            },
+            onDismiss = { showPaymentModal = false }
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun CartReviewModalDialog(
+    viewModel: BillingViewModel,
+    onProceedToPayment: () -> Unit,
+    onChangeCustomerClick: () -> Unit,
+    onDismiss: () -> Unit,
+    onEditQuantity: (POSCartItem) -> Unit
+) {
+    androidx.compose.ui.window.Dialog(
+        onDismissRequest = onDismiss,
+        properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth(0.95f)
+                .fillMaxHeight(0.92f),
+            color = Color(0xFF0F172A),
+            shape = RoundedCornerShape(20.dp),
+            tonalElevation = 8.dp
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp)
+            ) {
+                // Header
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .background(Color(0x2210B981), CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(Icons.Default.ShoppingBag, contentDescription = null, tint = EmeraldGreen, modifier = Modifier.size(20.dp))
+                        }
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Column {
+                            Text("Step 2/3: Review Cart & Discounts", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                            Text("${viewModel.posCartItems.size} products added to bill", color = Color(0xFF94A3B8), fontSize = 11.sp)
+                        }
+                    }
+
+                    IconButton(onClick = onDismiss, modifier = Modifier.testTag("cart_review_close_btn")) {
+                        Icon(Icons.Default.Close, contentDescription = "Close", tint = Color.White)
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Scrollable Body
+                LazyColumn(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    // Customer Summary Card
+                    item {
+                        Card(
+                            colors = CardDefaults.cardColors(containerColor = Color(0x1F1E295D)),
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .border(1.dp, Color(0x22FFFFFF), RoundedCornerShape(12.dp))
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                                    Icon(Icons.Default.Person, contentDescription = null, tint = EmeraldGreen, modifier = Modifier.size(18.dp))
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Column {
+                                        Text(
+                                            text = viewModel.posCustomerName.ifBlank { "Walk-in Customer" },
+                                            color = Color.White,
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 13.sp
+                                        )
+                                        if (viewModel.posCustomerMobile.isNotBlank()) {
+                                            Text(viewModel.posCustomerMobile, color = EmeraldLight, fontSize = 11.sp)
+                                        }
+                                        if (viewModel.posDoctorName.isNotBlank() || viewModel.posPatientInfo.isNotBlank()) {
+                                            Text(
+                                                text = listOfNotNull(
+                                                    viewModel.posDoctorName.takeIf { it.isNotBlank() }?.let { "Dr. $it" },
+                                                    viewModel.posPatientInfo.takeIf { it.isNotBlank() }?.let { "Patient: $it" }
+                                                ).joinToString(" · "),
+                                                color = Color(0xFF94A3B8),
+                                                fontSize = 10.sp
+                                            )
+                                        }
+                                    }
+                                }
+
+                                TextButton(
+                                    onClick = onChangeCustomerClick,
+                                    modifier = Modifier.testTag("cart_review_change_customer_btn")
+                                ) {
+                                    Text("Change", color = EmeraldLight, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        }
+                    }
+
+                    // Itemized Product List Section
+                    item {
+                        Text(
+                            text = "ITEMIZED MEDICINES / PRODUCTS",
+                            color = Color(0xFF94A3B8),
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 0.5.sp
+                        )
+                    }
+
+                    if (viewModel.posCartItems.isEmpty()) {
+                        item {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 24.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Icon(Icons.Default.ShoppingBag, contentDescription = null, tint = Color(0x44FFFFFF), modifier = Modifier.size(40.dp))
+                                    Spacer(modifier = Modifier.height(6.dp))
+                                    Text("Your cart is empty", color = Color(0xFF94A3B8), fontSize = 13.sp)
+                                }
+                            }
+                        }
+                    } else {
+                        items(viewModel.posCartItems, key = { it.product.id }) { cartItem ->
+                            CartItemRow(
+                                cartItem = cartItem,
+                                onEditQuantity = { onEditQuantity(cartItem) },
+                                onIncrease = {
+                                    val step = if (KiranaUnitUtils.isLooseUnit(cartItem.product.unit)) 0.25 else 1.0
+                                    viewModel.updatePOSCartQuantity(cartItem.product, cartItem.quantity + step)
+                                },
+                                onDecrease = {
+                                    val step = if (KiranaUnitUtils.isLooseUnit(cartItem.product.unit)) 0.25 else 1.0
+                                    viewModel.updatePOSCartQuantity(cartItem.product, cartItem.quantity - step)
+                                },
+                                onRemove = {
+                                    viewModel.removeFromPOSCart(cartItem.product)
+                                }
+                            )
+                        }
+                    }
+
+                    // Adjustments Section: Discount & Tax
+                    item {
+                        Card(
+                            colors = CardDefaults.cardColors(containerColor = Color(0x1F1E295D)),
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .border(1.dp, Color(0x22FFFFFF), RoundedCornerShape(12.dp))
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(12.dp),
+                                verticalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                Text("Bill Adjustments (Discount & GST)", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+
+                                // Discount Row
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Icon(Icons.Default.Discount, contentDescription = "Discount", tint = ElectricVioletLight, modifier = Modifier.size(18.dp))
+                                    Text("Discount", color = Color(0xFF94A3B8), fontSize = 12.sp, modifier = Modifier.width(60.dp))
+
+                                    Row(
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(8.dp))
+                                            .background(Color(0x22FFFFFF))
+                                    ) {
+                                        Box(
+                                            modifier = Modifier
+                                                .background(if (viewModel.posDiscountType == "Fixed") ElectricViolet else Color.Transparent)
+                                                .clickable { viewModel.posDiscountType = "Fixed" }
+                                                .padding(horizontal = 8.dp, vertical = 6.dp)
+                                        ) {
+                                            Text("₹", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                        }
+                                        Box(
+                                            modifier = Modifier
+                                                .background(if (viewModel.posDiscountType == "Percentage") ElectricViolet else Color.Transparent)
+                                                .clickable { viewModel.posDiscountType = "Percentage" }
+                                                .padding(horizontal = 8.dp, vertical = 6.dp)
+                                        ) {
+                                            Text("%", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                        }
+                                    }
+
+                                    OutlinedTextField(
+                                        value = viewModel.posDiscountInput,
+                                        onValueChange = { viewModel.posDiscountInput = it },
+                                        placeholder = { Text("0", color = Color(0xFF64748B), fontSize = 12.sp) },
+                                        colors = OutlinedTextFieldDefaults.colors(
+                                            focusedBorderColor = ElectricVioletLight,
+                                            unfocusedBorderColor = Color(0x22FFFFFF),
+                                            focusedTextColor = Color.White,
+                                            unfocusedTextColor = Color.White
+                                        ),
+                                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                                        singleLine = true,
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .testTag("pos_discount_input")
+                                    )
+
+                                    Text(
+                                        text = "-₹${String.format(Locale.US, "%.2f", viewModel.posDiscountAmount)}",
+                                        color = AccentPink,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 12.sp
+                                    )
+                                }
+
+                                // Tax / GST Row
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Icon(Icons.Default.ReceiptLong, contentDescription = "Tax", tint = GoldYellow, modifier = Modifier.size(18.dp))
+                                    Text("Tax / GST", color = Color(0xFF94A3B8), fontSize = 12.sp, modifier = Modifier.width(60.dp))
+
+                                    Row(
+                                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        listOf("0", "5", "12", "18").forEach { taxRate ->
+                                            val isSelected = viewModel.posTaxPercentageInput == taxRate
+                                            Box(
+                                                modifier = Modifier
+                                                    .clip(RoundedCornerShape(6.dp))
+                                                    .background(if (isSelected) GoldYellow else Color(0x22FFFFFF))
+                                                    .clickable { viewModel.posTaxPercentageInput = taxRate }
+                                                    .padding(horizontal = 8.dp, vertical = 6.dp)
+                                            ) {
+                                                Text(
+                                                    text = "$taxRate%",
+                                                    color = if (isSelected) Color.Black else Color.White,
+                                                    fontSize = 11.sp,
+                                                    fontWeight = FontWeight.Bold
+                                                )
+                                            }
+                                        }
+                                    }
+
+                                    Text(
+                                        text = "+₹${String.format(Locale.US, "%.2f", viewModel.posTaxAmount)}",
+                                        color = GoldYellow,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 12.sp
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    // Calculation Summary Card
+                    item {
+                        Card(
+                            colors = CardDefaults.cardColors(containerColor = Color(0x2210B981)),
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(12.dp),
+                                verticalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                SummaryLineItem("Cart Subtotal", "₹${String.format(Locale.US, "%.2f", viewModel.posSubtotal)}")
+                                if (viewModel.posDiscountAmount > 0) {
+                                    SummaryLineItem("Discount Deducted", "-₹${String.format(Locale.US, "%.2f", viewModel.posDiscountAmount)}", isNegative = true)
+                                }
+                                if (viewModel.posTaxAmount > 0) {
+                                    SummaryLineItem("Tax (${viewModel.posTaxPercentageInput}%)", "+₹${String.format(Locale.US, "%.2f", viewModel.posTaxAmount)}")
+                                }
+                                HorizontalDivider(color = Color(0x22FFFFFF), modifier = Modifier.padding(vertical = 4.dp))
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text("Verified Total Amount", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                                    Text(
+                                        text = "₹${String.format(Locale.US, "%.2f", viewModel.posFinalTotal)}",
+                                        color = EmeraldGreen,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 18.sp
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Bottom Action Buttons
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Button(
+                        onClick = onDismiss,
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0x22FFFFFF)),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(48.dp)
+                    ) {
+                        Text("Add More Items", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                    }
+
+                    Button(
+                        onClick = onProceedToPayment,
+                        enabled = viewModel.posCartItems.isNotEmpty(),
+                        colors = ButtonDefaults.buttonColors(containerColor = EmeraldGreen),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier
+                            .weight(1.3f)
+                            .height(48.dp)
+                            .testTag("pos_proceed_to_payment_button")
+                    ) {
+                        Text("Proceed to Payment ->", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun PaymentAndCheckoutModalDialog(
+    viewModel: BillingViewModel,
+    currentUser: com.example.data.db.UserEntity?,
+    onShowUpiQr: () -> Unit,
+    onCompleteSale: () -> Unit,
+    onBackToCart: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    androidx.compose.ui.window.Dialog(
+        onDismissRequest = onDismiss,
+        properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth(0.95f)
+                .fillMaxHeight(0.85f),
+            color = Color(0xFF0F172A),
+            shape = RoundedCornerShape(20.dp),
+            tonalElevation = 8.dp
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp)
+            ) {
+                // Header
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .background(Color(0x2210B981), CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(Icons.Default.PointOfSale, contentDescription = null, tint = EmeraldGreen, modifier = Modifier.size(20.dp))
+                        }
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Column {
+                            Text("Step 3/3: Payment & Complete Sale", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                            Text("Final verification & payment collection", color = Color(0xFF94A3B8), fontSize = 11.sp)
+                        }
+                    }
+
+                    IconButton(onClick = onDismiss, modifier = Modifier.testTag("payment_modal_close_btn")) {
+                        Icon(Icons.Default.Close, contentDescription = "Close", tint = Color.White)
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                LazyColumn(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                ) {
+                    // Final Breakdown Card
+                    item {
+                        Card(
+                            colors = CardDefaults.cardColors(containerColor = Color(0x2A131B3E)),
+                            shape = RoundedCornerShape(16.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .border(1.dp, Color(0x3310B981), RoundedCornerShape(16.dp))
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(16.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Text(
+                                    text = "FINAL INVOICE BREAKDOWN",
+                                    color = EmeraldLight,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    letterSpacing = 0.5.sp
+                                )
+
+                                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    SummaryLineItem("Subtotal (${viewModel.posCartItems.size} items)", "₹${String.format(Locale.US, "%.2f", viewModel.posSubtotal)}")
+                                    if (viewModel.posDiscountAmount > 0) {
+                                        SummaryLineItem("Discount Deducted", "-₹${String.format(Locale.US, "%.2f", viewModel.posDiscountAmount)}", isNegative = true)
+                                    }
+                                    if (viewModel.posTaxAmount > 0) {
+                                        SummaryLineItem("Tax / GST (${viewModel.posTaxPercentageInput}%)", "+₹${String.format(Locale.US, "%.2f", viewModel.posTaxAmount)}")
+                                    }
+                                }
+
+                                HorizontalDivider(color = Color(0x22FFFFFF), modifier = Modifier.padding(vertical = 4.dp))
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column {
+                                        Text("GRAND TOTAL", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                                        Text("Customer: ${viewModel.posCustomerName.ifBlank { "Walk-in Customer" }}", color = Color(0xFF94A3B8), fontSize = 11.sp)
+                                    }
+                                    Text(
+                                        text = "₹${String.format(Locale.US, "%.2f", viewModel.posFinalTotal)}",
+                                        color = EmeraldGreen,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 24.sp,
+                                        modifier = Modifier.testTag("pos_final_total_value")
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    // Payment Mode Selection
+                    item {
+                        Card(
+                            colors = CardDefaults.cardColors(containerColor = Color(0x1F1E295D)),
+                            shape = RoundedCornerShape(16.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .border(1.dp, Color(0x22FFFFFF), RoundedCornerShape(16.dp))
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(14.dp),
+                                verticalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                Text("Select Payment Mode", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    listOf("Cash", "UPI / QR", "Card", "Credit (Udhar)").forEach { mode ->
+                                        val isSelected = viewModel.posPaymentMode == mode
+                                        Card(
+                                            onClick = { viewModel.posPaymentMode = mode },
+                                            colors = CardDefaults.cardColors(
+                                                containerColor = if (isSelected) EmeraldGreen else Color(0x11FFFFFF)
+                                            ),
+                                            shape = RoundedCornerShape(10.dp),
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .border(
+                                                    1.dp,
+                                                    if (isSelected) EmeraldLight else Color(0x22FFFFFF),
+                                                    RoundedCornerShape(10.dp)
+                                                )
+                                                .testTag("pos_payment_mode_${mode.lowercase().replace(" ", "_").replace("/", "")}")
+                                        ) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .padding(vertical = 12.dp),
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                Text(
+                                                    text = mode,
+                                                    color = Color.White,
+                                                    fontSize = 11.sp,
+                                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                                    textAlign = TextAlign.Center
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+
+                                if (viewModel.posPaymentMode == "UPI / QR") {
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Surface(
+                                        onClick = onShowUpiQr,
+                                        shape = RoundedCornerShape(10.dp),
+                                        color = Color(0x3310B981),
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .testTag("pos_show_upi_qr_banner")
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.padding(12.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.SpaceBetween
+                                        ) {
+                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                                Icon(Icons.Default.QrCode, contentDescription = null, tint = EmeraldGreen, modifier = Modifier.size(22.dp))
+                                                Spacer(modifier = Modifier.width(10.dp))
+                                                Column {
+                                                    Text("Dynamic UPI QR Scanner Ready", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                                    val upiText = currentUser?.upiId?.takeIf { it.isNotBlank() } ?: "store@upi"
+                                                    Text("Pay to: $upiText", color = EmeraldLight, fontSize = 11.sp)
+                                                }
+                                            }
+                                            Button(
+                                                onClick = onShowUpiQr,
+                                                colors = ButtonDefaults.buttonColors(containerColor = EmeraldGreen),
+                                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
+                                                shape = RoundedCornerShape(6.dp),
+                                                modifier = Modifier.height(32.dp)
+                                            ) {
+                                                Text("Show QR", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // Error Message Banner if any
+                    item {
+                        AnimatedVisibility(
+                            visible = viewModel.posInvoiceError != null,
+                            enter = fadeIn(),
+                            exit = fadeOut()
+                        ) {
+                            viewModel.posInvoiceError?.let { err ->
+                                Card(
+                                    colors = CardDefaults.cardColors(containerColor = Color(0x33EF4444)),
+                                    shape = RoundedCornerShape(10.dp),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .border(1.dp, Color(0x55EF4444), RoundedCornerShape(10.dp))
+                                ) {
+                                    Text(
+                                        text = err,
+                                        color = Color(0xFFF87171),
+                                        fontSize = 12.sp,
+                                        modifier = Modifier.padding(12.dp),
+                                        textAlign = TextAlign.Center
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                // Bottom Action Buttons
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Button(
+                        onClick = onBackToCart,
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0x22FFFFFF)),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(50.dp)
+                    ) {
+                        Text("<- Back to Cart", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                    }
+
+                    Button(
+                        onClick = onCompleteSale,
+                        enabled = viewModel.posCartItems.isNotEmpty() && !viewModel.isGeneratingPOSInvoice,
+                        colors = ButtonDefaults.buttonColors(containerColor = EmeraldGreen),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier
+                            .weight(1.5f)
+                            .height(50.dp)
+                            .testTag("pos_complete_sale_button")
+                    ) {
+                        if (viewModel.isGeneratingPOSInvoice) {
+                            CircularProgressIndicator(color = Color.White, modifier = Modifier.size(20.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Processing...")
+                        } else {
+                            Icon(imageVector = Icons.Default.ReceiptLong, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Complete Sale & Print", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 @Composable
@@ -1430,8 +1750,18 @@ private fun CartItemRow(
                         fontSize = 10.sp
                     )
                 }
+                val isPharm = com.example.util.PharmacyUtils.isPharmacyProduct(cartItem.product) || cartItem.product.unit.equals("Strip", ignoreCase = true) || cartItem.product.packUnitConfig.isNotBlank()
+                val packSize = com.example.util.PharmacyUtils.getPackSize(cartItem.product)
+                val totalTabs = Math.round(cartItem.quantity * packSize).toInt()
+                val isLooseTablet = isPharm && (totalTabs % packSize != 0)
+
                 Text(
-                    text = "₹${String.format(Locale.US, "%.2f", cartItem.customPrice)} / ${cartItem.product.unit}  =  ₹${String.format(Locale.US, "%.2f", cartItem.totalAmount)}",
+                    text = if (isLooseTablet) {
+                        val perTab = com.example.util.PharmacyUtils.getPerTabletUnitPrice(cartItem.product)
+                        "₹${String.format(Locale.US, "%.2f", perTab)} / Tab  =  ₹${String.format(Locale.US, "%.2f", cartItem.totalAmount)}"
+                    } else {
+                        "₹${String.format(Locale.US, "%.2f", cartItem.customPrice)} / ${cartItem.product.unit}  =  ₹${String.format(Locale.US, "%.2f", cartItem.totalAmount)}"
+                    },
                     color = EmeraldLight,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.SemiBold
@@ -1461,7 +1791,7 @@ private fun CartItemRow(
                     modifier = Modifier.padding(horizontal = 2.dp)
                 ) {
                     Text(
-                        text = KiranaUnitUtils.formatQuantityWithUnit(cartItem.quantity, cartItem.product.unit),
+                        text = KiranaUnitUtils.formatQuantityWithUnit(cartItem.quantity, cartItem.product.unit, cartItem.product),
                         color = Color.White,
                         fontWeight = FontWeight.Bold,
                         fontSize = 12.sp,

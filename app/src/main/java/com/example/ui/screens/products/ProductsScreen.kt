@@ -760,11 +760,13 @@ fun ProductsScreen(
                                 .testTag("product_salt_input")
                         )
 
+                        val isPharmacy = selectedCategory.contains("Pharmacy", ignoreCase = true) || selectedUnit.equals("Strip", ignoreCase = true) || packConfigInput.isNotBlank()
+                        
                         OutlinedTextField(
                             value = packConfigInput,
                             onValueChange = { packConfigInput = it },
-                            label = { Text("Pack Config", color = Color(0xFF94A3B8)) },
-                            placeholder = { Text("e.g. 1 Strip = 10 Tablets") },
+                            label = { Text(if (isPharmacy) "Pack Size / Tablets Per Strip *" else "Pack Config / Unit Size", color = Color(0xFF94A3B8)) },
+                            placeholder = { Text(if (isPharmacy) "e.g. 10 tablets/strip or 1 Strip = 10 Tablets" else "e.g. 1 Strip = 10 Tablets") },
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedBorderColor = EmeraldGreen,
                                 unfocusedBorderColor = Color(0x22FFFFFF),
@@ -777,6 +779,45 @@ fun ProductsScreen(
                                 .fillMaxWidth()
                                 .testTag("product_pack_input")
                         )
+
+                        // Live Per-Tablet Price Calculation Card for Pharmacy
+                        if (isPharmacy) {
+                            val tempSalePrice = salePriceInput.toDoubleOrNull() ?: 0.0
+                            val tempProd = ProductEntity(name = itemNameInput, salePrice = tempSalePrice, packUnitConfig = packConfigInput, unit = selectedUnit, category = selectedCategory, stockQuantity = 100.0)
+                            val calcPackSize = com.example.util.PharmacyUtils.getPackSize(tempProd)
+                            val calcPerTabPrice = com.example.util.PharmacyUtils.getPerTabletUnitPrice(tempProd)
+
+                            Card(
+                                colors = CardDefaults.cardColors(containerColor = Color(0x2210B981)),
+                                shape = RoundedCornerShape(10.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .border(1.dp, Color(0x3310B981), RoundedCornerShape(10.dp))
+                            ) {
+                                Column(
+                                    modifier = Modifier.padding(10.dp),
+                                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                                ) {
+                                    Text(
+                                        text = "⚡ Loose Tablet Billing Config:",
+                                        color = EmeraldLight,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 11.sp
+                                    )
+                                    Text(
+                                        text = "Per-Tablet Price: ₹${String.format(Locale.US, "%.2f", calcPerTabPrice)} / Tablet",
+                                        color = Color.White,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        fontSize = 13.sp
+                                    )
+                                    Text(
+                                        text = "Formula: (Strip Price ₹${String.format(Locale.US, "%.2f", tempSalePrice)} ÷ $calcPackSize Tablets)",
+                                        color = Color(0xFF94A3B8),
+                                        fontSize = 10.sp
+                                    )
+                                }
+                            }
+                        }
 
                         // Rx Required Checkbox Row
                         Row(
@@ -1106,6 +1147,16 @@ fun ProductItemCard(
                         fontWeight = FontWeight.Bold,
                         fontSize = 15.sp
                     )
+                    if (com.example.util.PharmacyUtils.isPharmacyProduct(product) || product.unit.equals("Strip", ignoreCase = true) || product.packUnitConfig.isNotBlank()) {
+                        val packSz = com.example.util.PharmacyUtils.getPackSize(product)
+                        val perTabP = com.example.util.PharmacyUtils.getPerTabletUnitPrice(product)
+                        Text(
+                            text = "₹${String.format(Locale.US, "%.2f", perTabP)}/Tab ($packSz Tabs)",
+                            color = GoldYellow,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
                 }
 
                 // Purchase Price (if exists)

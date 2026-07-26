@@ -19,6 +19,9 @@ interface UserDao {
 
     @Query("SELECT COUNT(*) FROM users")
     suspend fun getUserCount(): Int
+
+    @Query("DELETE FROM users")
+    suspend fun clearAllUsers()
 }
 
 @Dao
@@ -52,6 +55,9 @@ interface InvoiceDao {
 
     @Query("SELECT COUNT(*) FROM invoices")
     fun getInvoicesCount(): Flow<Int>
+
+    @Query("DELETE FROM invoices")
+    suspend fun clearAllInvoices()
 }
 
 @Dao
@@ -76,6 +82,9 @@ interface ProductDao {
 
     @Query("SELECT COUNT(*) FROM products")
     suspend fun getProductCount(): Int
+
+    @Query("DELETE FROM products")
+    suspend fun clearAllProducts()
 }
 
 @Dao
@@ -97,6 +106,9 @@ interface CustomerDao {
 
     @Query("SELECT COUNT(*) FROM customers")
     suspend fun getCustomerCount(): Int
+
+    @Query("DELETE FROM customers")
+    suspend fun clearAllCustomers()
 }
 
 @Dao
@@ -109,4 +121,7 @@ interface CustomerTransactionDao {
 
     @Query("SELECT COUNT(*) FROM customer_transactions")
     suspend fun getTransactionCount(): Int
+
+    @Query("DELETE FROM customer_transactions")
+    suspend fun clearAllTransactions()
 }

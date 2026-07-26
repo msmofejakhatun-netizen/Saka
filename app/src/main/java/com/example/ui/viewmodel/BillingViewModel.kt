@@ -95,21 +95,39 @@ class BillingViewModel(private val repository: BillingRepository) : ViewModel() 
         )
 
     // --- Invoices & Dashboard Flow ---
-    val invoices: StateFlow<List<InvoiceEntity>> = repository.allInvoices
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val invoices: StateFlow<List<InvoiceEntity>> = _currentUser
+        .flatMapLatest { user ->
+            val uid = user?.id?.toString() ?: ""
+            val firebaseUid = com.example.data.firebase.FirebaseManager.auth?.currentUser?.uid ?: uid
+            repository.getInvoicesStream(firebaseUid)
+        }
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = emptyList()
         )
 
-    val totalSales: StateFlow<Double?> = repository.totalSales
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val totalSales: StateFlow<Double?> = _currentUser
+        .flatMapLatest { user ->
+            val uid = user?.id?.toString() ?: ""
+            val firebaseUid = com.example.data.firebase.FirebaseManager.auth?.currentUser?.uid ?: uid
+            repository.getTotalSalesStream(firebaseUid)
+        }
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = 0.0
         )
 
-    val invoicesCount: StateFlow<Int> = repository.invoicesCount
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val invoicesCount: StateFlow<Int> = _currentUser
+        .flatMapLatest { user ->
+            val uid = user?.id?.toString() ?: ""
+            val firebaseUid = com.example.data.firebase.FirebaseManager.auth?.currentUser?.uid ?: uid
+            repository.getInvoicesCountStream(firebaseUid)
+        }
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
@@ -621,6 +639,7 @@ class BillingViewModel(private val repository: BillingRepository) : ViewModel() 
                     Log.e("Logout", "Sign out error: ${e.localizedMessage}")
                 }
             }
+            repository.clearLocalCache()
             _currentUser.value = null
             resetAuthState()
             _toastMessage.emit("Logged out successfully")

@@ -433,10 +433,33 @@ fun ProductsScreen(
                             )
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                text = "Tap '+ Add Product' to populate your item list",
+                                text = "Tap '+ Add Product' below or click to start",
                                 color = Color(0xFF64748B),
                                 fontSize = 12.sp
                             )
+                            if (searchQuery.isEmpty() && selectedTab == 0) {
+                                Spacer(modifier = Modifier.height(16.dp))
+                                Button(
+                                    onClick = { openAddDialog() },
+                                    colors = ButtonDefaults.buttonColors(containerColor = EmeraldGreen),
+                                    shape = RoundedCornerShape(10.dp),
+                                    modifier = Modifier.testTag("empty_add_first_product_button")
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Add,
+                                        contentDescription = "Add",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = "+ Add Your First Product",
+                                        color = Color.White,
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
                         }
                     }
                 } else {

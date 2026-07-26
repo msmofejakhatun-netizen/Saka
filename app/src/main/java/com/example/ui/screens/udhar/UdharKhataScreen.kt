@@ -250,10 +250,33 @@ fun UdharKhataScreen(
                                     fontSize = 14.sp
                                 )
                                 Text(
-                                    text = "Tap '+ New Udhar Entry' below to record credit given",
+                                    text = "Tap below to add your first customer and record credit",
                                     color = Color(0xFF64748B),
                                     fontSize = 12.sp
                                 )
+                                if (searchQuery.isBlank()) {
+                                    Spacer(modifier = Modifier.height(16.dp))
+                                    Button(
+                                        onClick = { showAddUdharDialog = true },
+                                        colors = ButtonDefaults.buttonColors(containerColor = EmeraldGreen),
+                                        shape = RoundedCornerShape(10.dp),
+                                        modifier = Modifier.testTag("empty_add_first_customer_button")
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.PersonAdd,
+                                            contentDescription = "Add Customer",
+                                            tint = Color.White,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text(
+                                            text = "+ Add Customer to Udhar Khata",
+                                            color = Color.White,
+                                            fontSize = 13.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+                                }
                             }
                         }
                     } else {

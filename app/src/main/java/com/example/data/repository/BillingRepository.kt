@@ -319,8 +319,20 @@ class BillingRepository(
         categoryDao.deleteCategory(category)
     }
 
+    suspend fun clearLocalCache() = withContext(Dispatchers.IO) {
+        try {
+            productDao.clearAllProducts()
+            customerDao.clearAllCustomers()
+            customerTransactionDao.clearAllTransactions()
+            invoiceDao.clearAllInvoices()
+            userDao.clearAllUsers()
+        } catch (e: Exception) {
+            Log.e(TAG, "clearLocalCache error: ${e.localizedMessage}")
+        }
+    }
+
     suspend fun prepopulateCategoriesIfEmpty() = withContext(Dispatchers.IO) {
-        // Prepopulate local Room Categories
+        // Prepopulate system default categories if empty
         if (categoryDao.getCategoryCount() == 0) {
             val defaults = listOf(
                 CategoryEntity(name = "Pharmacy / Medical", description = "Medicines, Rx drugs, salt compositions, batch & expiry management", iconName = "local_pharmacy", isEnabled = true),
@@ -333,144 +345,7 @@ class BillingRepository(
             }
         }
 
-        // Prepopulate local Room Sample Products (including Pharmacy) if empty or no pharmacy items exist
-        val existingProducts = productDao.getAllProductsList()
-        val hasPharmacyProducts = existingProducts.any { it.category.contains("Pharmacy", ignoreCase = true) || it.batchNumber.isNotBlank() }
-        
-        if (existingProducts.isEmpty()) {
-            val sampleProducts = listOf(
-                ProductEntity(name = "Sugar (Loose)", salePrice = 40.0, purchasePrice = 34.0, stockQuantity = 50.0, unit = "Kg", category = "Kirana / Grocery"),
-                ProductEntity(name = "Edible Sunflower Oil", salePrice = 150.0, purchasePrice = 130.0, stockQuantity = 30.0, unit = "Ltr", category = "Kirana / Grocery"),
-                ProductEntity(name = "Basmati Rice", salePrice = 110.0, purchasePrice = 90.0, stockQuantity = 100.0, unit = "Kg", category = "Kirana / Grocery"),
-                ProductEntity(name = "Toor Dal", salePrice = 160.0, purchasePrice = 135.0, stockQuantity = 40.0, unit = "Kg", category = "Kirana / Grocery"),
-                ProductEntity(name = "Wheat Flour (Atta)", salePrice = 45.0, purchasePrice = 38.0, stockQuantity = 80.0, unit = "Kg", category = "Kirana / Grocery")
-            )
-            for (p in sampleProducts) {
-                productDao.insertProduct(p)
-            }
-        }
-
-        if (!hasPharmacyProducts) {
-            val samplePharmacyProducts = listOf(
-                ProductEntity(
-                    name = "Paracetamol 650mg (Dolo 650)",
-                    salePrice = 32.0,
-                    purchasePrice = 24.0,
-                    stockQuantity = 120.0,
-                    unit = "Strip",
-                    category = "Pharmacy / Medical",
-                    barcode = "8901234567890",
-                    batchNumber = "DLO-9910",
-                    expiryDate = "11/2027",
-                    manufacturer = "Micro Labs",
-                    saltComposition = "Paracetamol 650mg",
-                    packUnitConfig = "1 Strip = 15 Tablets",
-                    isRxRequired = false
-                ),
-                ProductEntity(
-                    name = "Amoxicillin 500mg (Mox 500)",
-                    salePrice = 78.50,
-                    purchasePrice = 60.0,
-                    stockQuantity = 45.0,
-                    unit = "Strip",
-                    category = "Pharmacy / Medical",
-                    barcode = "8901234567891",
-                    batchNumber = "AMX-8820",
-                    expiryDate = "08/2027",
-                    manufacturer = "Sun Pharma",
-                    saltComposition = "Amoxicillin Trihydrate 500mg",
-                    packUnitConfig = "1 Strip = 10 Capsules",
-                    isRxRequired = true
-                ),
-                ProductEntity(
-                    name = "Pantoprazole 40mg (Pan 40)",
-                    salePrice = 115.00,
-                    purchasePrice = 85.0,
-                    stockQuantity = 30.0,
-                    unit = "Strip",
-                    category = "Pharmacy / Medical",
-                    barcode = "8901234567892",
-                    batchNumber = "PAN-4091",
-                    expiryDate = "08/2026",
-                    manufacturer = "Alkem Labs",
-                    saltComposition = "Pantoprazole Sodium 40mg",
-                    packUnitConfig = "1 Strip = 15 Tablets",
-                    isRxRequired = false
-                ),
-                ProductEntity(
-                    name = "Benadryl Cough Syrup 100ml",
-                    salePrice = 135.00,
-                    purchasePrice = 100.0,
-                    stockQuantity = 15.0,
-                    unit = "Bottle",
-                    category = "Pharmacy / Medical",
-                    barcode = "8901234567893",
-                    batchNumber = "BCS-1102",
-                    expiryDate = "01/2025", // Expired
-                    manufacturer = "Johnson & Johnson",
-                    saltComposition = "Diphenhydramine HCl & Ammonium Chloride",
-                    packUnitConfig = "1 Bottle = 100ml",
-                    isRxRequired = false
-                ),
-                ProductEntity(
-                    name = "Cetirizine 10mg (Cetzine)",
-                    salePrice = 22.00,
-                    purchasePrice = 15.0,
-                    stockQuantity = 80.0,
-                    unit = "Strip",
-                    category = "Pharmacy / Medical",
-                    barcode = "8901234567894",
-                    batchNumber = "CTZ-5501",
-                    expiryDate = "12/2027",
-                    manufacturer = "Dr. Reddy's",
-                    saltComposition = "Cetirizine Hydrochloride 10mg",
-                    packUnitConfig = "1 Strip = 10 Tablets",
-                    isRxRequired = false
-                ),
-                ProductEntity(
-                    name = "Azithromycin 500mg (Azithral 500)",
-                    salePrice = 120.00,
-                    purchasePrice = 95.0,
-                    stockQuantity = 25.0,
-                    unit = "Strip",
-                    category = "Pharmacy / Medical",
-                    barcode = "8901234567895",
-                    batchNumber = "AZI-7711",
-                    expiryDate = "10/2027",
-                    manufacturer = "Alembic",
-                    saltComposition = "Azithromycin Dihydrate 500mg",
-                    packUnitConfig = "1 Strip = 5 Tablets",
-                    isRxRequired = true
-                )
-            )
-            for (pharm in samplePharmacyProducts) {
-                productDao.insertProduct(pharm)
-            }
-        }
-
-        // Prepopulate local Room Sample Udhar Customers if empty
-        if (customerDao.getCustomerCount() == 0) {
-            val sampleCustomers = listOf(
-                com.example.data.db.CustomerEntity(name = "Ramesh Kumar", mobileNumber = "9876543210", totalPendingBalance = 450.0, lastTransactionTimestamp = System.currentTimeMillis() - 86400000L),
-                com.example.data.db.CustomerEntity(name = "Priya Sharma", mobileNumber = "9123456789", totalPendingBalance = 1250.0, lastTransactionTimestamp = System.currentTimeMillis() - 43200000L)
-            )
-            for (c in sampleCustomers) {
-                customerDao.insertCustomer(c)
-                customerTransactionDao.insertTransaction(
-                    com.example.data.db.CustomerTransactionEntity(
-                        customerMobile = c.mobileNumber,
-                        customerName = c.name,
-                        type = "DEBIT",
-                        amount = c.totalPendingBalance,
-                        paymentMode = "Credit",
-                        note = "Monthly Udhar Ration",
-                        timestamp = c.lastTransactionTimestamp
-                    )
-                )
-            }
-        }
-
-        // Prepopulate Firestore if available
+        // Prepopulate Firestore categories if available
         if (FirebaseManager.isFirebaseAvailable) {
             try {
                 val firestore = FirebaseManager.firestore
@@ -496,15 +371,26 @@ class BillingRepository(
 
     // --- Invoices ---
 
-    val allInvoices: Flow<List<InvoiceEntity>> = callbackFlow {
+    fun getInvoicesStream(userUid: String): Flow<List<InvoiceEntity>> = callbackFlow {
         if (FirebaseManager.isFirebaseAvailable) {
             val firestore = FirebaseManager.firestore
             if (firestore != null) {
-                val listenerRegistration = firestore.collection("invoices")
+                val collectionRef = if (userUid.isNotBlank()) {
+                    firestore.collection("users").document(userUid).collection("invoices")
+                } else {
+                    firestore.collection("invoices")
+                }
+
+                val listenerRegistration = collectionRef
                     .orderBy("timestamp", com.google.firebase.firestore.Query.Direction.DESCENDING)
                     .addSnapshotListener { snapshot, error ->
                         if (error != null) {
                             Log.e(TAG, "Firestore invoices listener error: ${error.localizedMessage}")
+                            CoroutineScope(Dispatchers.IO).launch {
+                                invoiceDao.getAllInvoices().collect { list ->
+                                    trySend(list)
+                                }
+                            }
                             return@addSnapshotListener
                         }
                         if (snapshot != null) {
@@ -540,11 +426,17 @@ class BillingRepository(
         }
     }.flowOn(Dispatchers.IO)
 
-    val totalSales: Flow<Double?> = callbackFlow {
+    fun getTotalSalesStream(userUid: String): Flow<Double?> = callbackFlow {
         if (FirebaseManager.isFirebaseAvailable) {
             val firestore = FirebaseManager.firestore
             if (firestore != null) {
-                val listenerRegistration = firestore.collection("invoices")
+                val collectionRef = if (userUid.isNotBlank()) {
+                    firestore.collection("users").document(userUid).collection("invoices")
+                } else {
+                    firestore.collection("invoices")
+                }
+
+                val listenerRegistration = collectionRef
                     .addSnapshotListener { snapshot, error ->
                         if (error != null) return@addSnapshotListener
                         if (snapshot != null) {
@@ -568,11 +460,17 @@ class BillingRepository(
         }
     }.flowOn(Dispatchers.IO)
 
-    val invoicesCount: Flow<Int> = callbackFlow {
+    fun getInvoicesCountStream(userUid: String): Flow<Int> = callbackFlow {
         if (FirebaseManager.isFirebaseAvailable) {
             val firestore = FirebaseManager.firestore
             if (firestore != null) {
-                val listenerRegistration = firestore.collection("invoices")
+                val collectionRef = if (userUid.isNotBlank()) {
+                    firestore.collection("users").document(userUid).collection("invoices")
+                } else {
+                    firestore.collection("invoices")
+                }
+
+                val listenerRegistration = collectionRef
                     .addSnapshotListener { snapshot, error ->
                         if (error != null) return@addSnapshotListener
                         if (snapshot != null) {

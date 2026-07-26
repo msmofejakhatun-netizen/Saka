@@ -79,6 +79,9 @@ fun ProductsScreen(
         }
     }
 
+    val currentUser by viewModel.currentUser.collectAsStateWithLifecycle()
+    val activeBusinessType = remember(currentUser) { com.example.util.BusinessCategoryUtils.getBusinessType(currentUser) }
+
     // Form inputs state
     var itemNameInput by remember { mutableStateOf("") }
     var salePriceInput by remember { mutableStateOf("") }
@@ -88,20 +91,22 @@ fun ProductsScreen(
     var selectedUnit by remember { mutableStateOf("Pcs") }
     var selectedCategory by remember { mutableStateOf("General") }
 
-    // Pharmacy specific form inputs
+    // Industry-specific form inputs
     var batchNumberInput by remember { mutableStateOf("") }
     var expiryDateInput by remember { mutableStateOf("") }
     var manufacturerInput by remember { mutableStateOf("") }
     var saltCompositionInput by remember { mutableStateOf("") }
     var packConfigInput by remember { mutableStateOf("") }
     var isRxRequiredInput by remember { mutableStateOf(false) }
+    var sizeInput by remember { mutableStateOf("") }
+    var colorInput by remember { mutableStateOf("") }
 
     var showScannerInDialog by remember { mutableStateOf(false) }
 
     var unitDropdownExpanded by remember { mutableStateOf(false) }
     var categoryDropdownExpanded by remember { mutableStateOf(false) }
 
-    val units = remember { listOf("Pcs", "Strip", "Bottle", "Box", "Tablet", "Capsule", "Kg", "Gm", "Ltr", "Ml", "Pack") }
+    val units = remember { listOf("Pcs", "Strip", "Bottle", "Box", "Tablet", "Capsule", "Kg", "Gm", "Ltr", "Ml", "Pack", "Plate", "Portion") }
 
     fun openAddDialog() {
         selectedProductForEdit = null
@@ -110,14 +115,47 @@ fun ProductsScreen(
         purchasePriceInput = ""
         stockInput = "10"
         barcodeInput = ""
-        selectedUnit = "Strip"
-        selectedCategory = activeCategories.firstOrNull { it.name.contains("Pharmacy", ignoreCase = true) }?.name ?: "Pharmacy / Medical"
         batchNumberInput = ""
         expiryDateInput = ""
         manufacturerInput = ""
         saltCompositionInput = ""
-        packConfigInput = "1 Strip = 10 Tablets"
-        isRxRequiredInput = false
+        sizeInput = ""
+        colorInput = ""
+
+        when (activeBusinessType) {
+            com.example.util.BusinessType.PHARMACY -> {
+                selectedUnit = "Strip"
+                selectedCategory = "Pharmacy / Medical"
+                packConfigInput = "1 Strip = 10 Tablets"
+                isRxRequiredInput = false
+            }
+            com.example.util.BusinessType.KIRANA -> {
+                selectedUnit = "Kg"
+                selectedCategory = "Kirana / Grocery"
+                packConfigInput = ""
+                isRxRequiredInput = false
+            }
+            com.example.util.BusinessType.GARMENTS -> {
+                selectedUnit = "Pcs"
+                selectedCategory = "Garments / Clothing"
+                sizeInput = "M"
+                colorInput = "Black"
+                packConfigInput = ""
+                isRxRequiredInput = false
+            }
+            com.example.util.BusinessType.RESTAURANT -> {
+                selectedUnit = "Plate"
+                selectedCategory = "Restaurant / Cafe / Food"
+                packConfigInput = ""
+                isRxRequiredInput = false
+            }
+            else -> {
+                selectedUnit = "Pcs"
+                selectedCategory = "General Store / Retail"
+                packConfigInput = ""
+                isRxRequiredInput = false
+            }
+        }
         viewModel.productFormError = null
         showAddEditDialog = true
     }
@@ -137,6 +175,8 @@ fun ProductsScreen(
         saltCompositionInput = product.saltComposition
         packConfigInput = product.packUnitConfig
         isRxRequiredInput = product.isRxRequired
+        sizeInput = product.size
+        colorInput = product.color
         viewModel.productFormError = null
         showAddEditDialog = true
     }
@@ -674,22 +714,55 @@ fun ProductsScreen(
                                 .testTag("product_barcode_input")
                         )
 
-                        // --- Pharmacy / Medical Specific Fields ---
-                        HorizontalDivider(color = Color(0x22FFFFFF), modifier = Modifier.padding(vertical = 4.dp))
-                        Text(
-                            text = "Pharmacy & Medicine Details",
-                            color = EmeraldLight,
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Bold
-                        )
+                        // --- Category Specific Form Fields ---
+                        if (activeBusinessType == com.example.util.BusinessType.PHARMACY) {
+                            HorizontalDivider(color = Color(0x22FFFFFF), modifier = Modifier.padding(vertical = 4.dp))
+                            Text(
+                                text = "Pharmacy & Medicine Details",
+                                color = EmeraldLight,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold
+                            )
 
-                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                            // Batch Number
+                            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                OutlinedTextField(
+                                    value = batchNumberInput,
+                                    onValueChange = { batchNumberInput = it },
+                                    label = { Text("Batch No.", color = Color(0xFF94A3B8)) },
+                                    placeholder = { Text("e.g. BATCH-1049") },
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedBorderColor = EmeraldGreen,
+                                        unfocusedBorderColor = Color(0x22FFFFFF),
+                                        focusedTextColor = Color.White,
+                                        unfocusedTextColor = Color.White
+                                    ),
+                                    singleLine = true,
+                                    shape = RoundedCornerShape(12.dp),
+                                    modifier = Modifier.weight(1f).testTag("product_batch_input")
+                                )
+
+                                OutlinedTextField(
+                                    value = expiryDateInput,
+                                    onValueChange = { expiryDateInput = it },
+                                    label = { Text("Expiry (MM/YYYY)", color = Color(0xFF94A3B8)) },
+                                    placeholder = { Text("e.g. 11/2027") },
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedBorderColor = EmeraldGreen,
+                                        unfocusedBorderColor = Color(0x22FFFFFF),
+                                        focusedTextColor = Color.White,
+                                        unfocusedTextColor = Color.White
+                                    ),
+                                    singleLine = true,
+                                    shape = RoundedCornerShape(12.dp),
+                                    modifier = Modifier.weight(1f).testTag("product_expiry_input")
+                                )
+                            }
+
                             OutlinedTextField(
-                                value = batchNumberInput,
-                                onValueChange = { batchNumberInput = it },
-                                label = { Text("Batch No.", color = Color(0xFF94A3B8)) },
-                                placeholder = { Text("e.g. BATCH-1049") },
+                                value = manufacturerInput,
+                                onValueChange = { manufacturerInput = it },
+                                label = { Text("Manufacturer / Brand", color = Color(0xFF94A3B8)) },
+                                placeholder = { Text("e.g. Micro Labs / Sun Pharma") },
                                 colors = OutlinedTextFieldDefaults.colors(
                                     focusedBorderColor = EmeraldGreen,
                                     unfocusedBorderColor = Color(0x22FFFFFF),
@@ -698,17 +771,14 @@ fun ProductsScreen(
                                 ),
                                 singleLine = true,
                                 shape = RoundedCornerShape(12.dp),
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .testTag("product_batch_input")
+                                modifier = Modifier.fillMaxWidth().testTag("product_manufacturer_input")
                             )
 
-                            // Expiry Date (MM/YYYY)
                             OutlinedTextField(
-                                value = expiryDateInput,
-                                onValueChange = { expiryDateInput = it },
-                                label = { Text("Expiry (MM/YYYY)", color = Color(0xFF94A3B8)) },
-                                placeholder = { Text("e.g. 11/2027") },
+                                value = saltCompositionInput,
+                                onValueChange = { saltCompositionInput = it },
+                                label = { Text("Salt / Composition Name", color = Color(0xFF94A3B8)) },
+                                placeholder = { Text("e.g. Paracetamol 650mg") },
                                 colors = OutlinedTextFieldDefaults.colors(
                                     focusedBorderColor = EmeraldGreen,
                                     unfocusedBorderColor = Color(0x22FFFFFF),
@@ -717,71 +787,26 @@ fun ProductsScreen(
                                 ),
                                 singleLine = true,
                                 shape = RoundedCornerShape(12.dp),
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .testTag("product_expiry_input")
+                                modifier = Modifier.fillMaxWidth().testTag("product_salt_input")
                             )
-                        }
 
-                        // Manufacturer & Salt Composition
-                        OutlinedTextField(
-                            value = manufacturerInput,
-                            onValueChange = { manufacturerInput = it },
-                            label = { Text("Manufacturer / Brand", color = Color(0xFF94A3B8)) },
-                            placeholder = { Text("e.g. Micro Labs / Sun Pharma") },
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = EmeraldGreen,
-                                unfocusedBorderColor = Color(0x22FFFFFF),
-                                focusedTextColor = Color.White,
-                                unfocusedTextColor = Color.White
-                            ),
-                            singleLine = true,
-                            shape = RoundedCornerShape(12.dp),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .testTag("product_manufacturer_input")
-                        )
+                            OutlinedTextField(
+                                value = packConfigInput,
+                                onValueChange = { packConfigInput = it },
+                                label = { Text("Pack Size / Tablets Per Strip *", color = Color(0xFF94A3B8)) },
+                                placeholder = { Text("e.g. 10 tablets/strip or 1 Strip = 10 Tablets") },
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = EmeraldGreen,
+                                    unfocusedBorderColor = Color(0x22FFFFFF),
+                                    focusedTextColor = Color.White,
+                                    unfocusedTextColor = Color.White
+                                ),
+                                singleLine = true,
+                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier.fillMaxWidth().testTag("product_pack_input")
+                            )
 
-                        OutlinedTextField(
-                            value = saltCompositionInput,
-                            onValueChange = { saltCompositionInput = it },
-                            label = { Text("Salt / Composition Name", color = Color(0xFF94A3B8)) },
-                            placeholder = { Text("e.g. Paracetamol 650mg") },
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = EmeraldGreen,
-                                unfocusedBorderColor = Color(0x22FFFFFF),
-                                focusedTextColor = Color.White,
-                                unfocusedTextColor = Color.White
-                            ),
-                            singleLine = true,
-                            shape = RoundedCornerShape(12.dp),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .testTag("product_salt_input")
-                        )
-
-                        val isPharmacy = selectedCategory.contains("Pharmacy", ignoreCase = true) || selectedUnit.equals("Strip", ignoreCase = true) || packConfigInput.isNotBlank()
-                        
-                        OutlinedTextField(
-                            value = packConfigInput,
-                            onValueChange = { packConfigInput = it },
-                            label = { Text(if (isPharmacy) "Pack Size / Tablets Per Strip *" else "Pack Config / Unit Size", color = Color(0xFF94A3B8)) },
-                            placeholder = { Text(if (isPharmacy) "e.g. 10 tablets/strip or 1 Strip = 10 Tablets" else "e.g. 1 Strip = 10 Tablets") },
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = EmeraldGreen,
-                                unfocusedBorderColor = Color(0x22FFFFFF),
-                                focusedTextColor = Color.White,
-                                unfocusedTextColor = Color.White
-                            ),
-                            singleLine = true,
-                            shape = RoundedCornerShape(12.dp),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .testTag("product_pack_input")
-                        )
-
-                        // Live Per-Tablet Price Calculation Card for Pharmacy
-                        if (isPharmacy) {
+                            // Live Per-Tablet Price Calculation Card
                             val tempSalePrice = salePriceInput.toDoubleOrNull() ?: 0.0
                             val tempProd = ProductEntity(name = itemNameInput, salePrice = tempSalePrice, packUnitConfig = packConfigInput, unit = selectedUnit, category = selectedCategory, stockQuantity = 100.0)
                             val calcPackSize = com.example.util.PharmacyUtils.getPackSize(tempProd)
@@ -790,57 +815,131 @@ fun ProductsScreen(
                             Card(
                                 colors = CardDefaults.cardColors(containerColor = Color(0x2210B981)),
                                 shape = RoundedCornerShape(10.dp),
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .border(1.dp, Color(0x3310B981), RoundedCornerShape(10.dp))
+                                modifier = Modifier.fillMaxWidth().border(1.dp, Color(0x3310B981), RoundedCornerShape(10.dp))
                             ) {
-                                Column(
-                                    modifier = Modifier.padding(10.dp),
-                                    verticalArrangement = Arrangement.spacedBy(2.dp)
-                                ) {
-                                    Text(
-                                        text = "⚡ Loose Tablet Billing Config:",
-                                        color = EmeraldLight,
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 11.sp
-                                    )
-                                    Text(
-                                        text = "Per-Tablet Price: ₹${String.format(Locale.US, "%.2f", calcPerTabPrice)} / Tablet",
-                                        color = Color.White,
-                                        fontWeight = FontWeight.ExtraBold,
-                                        fontSize = 13.sp
-                                    )
-                                    Text(
-                                        text = "Formula: (Strip Price ₹${String.format(Locale.US, "%.2f", tempSalePrice)} ÷ $calcPackSize Tablets)",
-                                        color = Color(0xFF94A3B8),
-                                        fontSize = 10.sp
+                                Column(modifier = Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                    Text("⚡ Loose Tablet Billing Config:", color = EmeraldLight, fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                                    Text("Per-Tablet Price: ₹${String.format(Locale.US, "%.2f", calcPerTabPrice)} / Tablet", color = Color.White, fontWeight = FontWeight.ExtraBold, fontSize = 13.sp)
+                                    Text("Formula: (Strip Price ₹${String.format(Locale.US, "%.2f", tempSalePrice)} ÷ $calcPackSize Tablets)", color = Color(0xFF94A3B8), fontSize = 10.sp)
+                                }
+                            }
+
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.fillMaxWidth().clickable { isRxRequiredInput = !isRxRequiredInput }.padding(vertical = 4.dp)
+                            ) {
+                                Checkbox(
+                                    checked = isRxRequiredInput,
+                                    onCheckedChange = { isRxRequiredInput = it },
+                                    colors = CheckboxDefaults.colors(checkedColor = EmeraldGreen, uncheckedColor = Color(0xFF94A3B8))
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("Rx Prescription Required for Sale", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                            }
+                        } else if (activeBusinessType == com.example.util.BusinessType.GARMENTS) {
+                            HorizontalDivider(color = Color(0x22FFFFFF), modifier = Modifier.padding(vertical = 4.dp))
+                            Text(
+                                text = "Garments & Apparel Details",
+                                color = EmeraldLight,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+
+                            // Size Selection Chips
+                            Text("Size / Fitting Variant:", color = Color(0xFF94A3B8), fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                            val commonSizes = listOf("S", "M", "L", "XL", "XXL", "28", "30", "32", "34", "36")
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                commonSizes.take(5).forEach { sz ->
+                                    FilterChip(
+                                        selected = sizeInput == sz,
+                                        onClick = { sizeInput = sz },
+                                        label = { Text(sz, fontSize = 11.sp, fontWeight = FontWeight.Bold) },
+                                        colors = FilterChipDefaults.filterChipColors(
+                                            selectedContainerColor = EmeraldGreen,
+                                            selectedLabelColor = Color.White,
+                                            containerColor = Color(0x22FFFFFF),
+                                            labelColor = Color.White
+                                        )
                                     )
                                 }
                             }
-                        }
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                commonSizes.drop(5).take(5).forEach { sz ->
+                                    FilterChip(
+                                        selected = sizeInput == sz,
+                                        onClick = { sizeInput = sz },
+                                        label = { Text(sz, fontSize = 11.sp, fontWeight = FontWeight.Bold) },
+                                        colors = FilterChipDefaults.filterChipColors(
+                                            selectedContainerColor = EmeraldGreen,
+                                            selectedLabelColor = Color.White,
+                                            containerColor = Color(0x22FFFFFF),
+                                            labelColor = Color.White
+                                        )
+                                    )
+                                }
+                            }
 
-                        // Rx Required Checkbox Row
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { isRxRequiredInput = !isRxRequiredInput }
-                                .padding(vertical = 4.dp)
-                        ) {
-                            Checkbox(
-                                checked = isRxRequiredInput,
-                                onCheckedChange = { isRxRequiredInput = it },
-                                colors = CheckboxDefaults.colors(
-                                    checkedColor = EmeraldGreen,
-                                    uncheckedColor = Color(0xFF94A3B8)
+                            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                OutlinedTextField(
+                                    value = sizeInput,
+                                    onValueChange = { sizeInput = it },
+                                    label = { Text("Size (Custom / Numeric)", color = Color(0xFF94A3B8)) },
+                                    placeholder = { Text("e.g. M, L, 32") },
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedBorderColor = EmeraldGreen,
+                                        unfocusedBorderColor = Color(0x22FFFFFF),
+                                        focusedTextColor = Color.White,
+                                        unfocusedTextColor = Color.White
+                                    ),
+                                    singleLine = true,
+                                    shape = RoundedCornerShape(12.dp),
+                                    modifier = Modifier.weight(1f).testTag("product_size_input")
                                 )
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
+
+                                OutlinedTextField(
+                                    value = colorInput,
+                                    onValueChange = { colorInput = it },
+                                    label = { Text("Color / Pattern", color = Color(0xFF94A3B8)) },
+                                    placeholder = { Text("e.g. Navy Blue, Black") },
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedBorderColor = EmeraldGreen,
+                                        unfocusedBorderColor = Color(0x22FFFFFF),
+                                        focusedTextColor = Color.White,
+                                        unfocusedTextColor = Color.White
+                                    ),
+                                    singleLine = true,
+                                    shape = RoundedCornerShape(12.dp),
+                                    modifier = Modifier.weight(1f).testTag("product_color_input")
+                                )
+                            }
+                        } else if (activeBusinessType == com.example.util.BusinessType.KIRANA) {
+                            HorizontalDivider(color = Color(0x22FFFFFF), modifier = Modifier.padding(vertical = 4.dp))
                             Text(
-                                text = "Rx Prescription Required for Sale",
-                                color = Color.White,
+                                text = "Grocery & Loose Weight Selling",
+                                color = EmeraldLight,
                                 fontSize = 13.sp,
-                                fontWeight = FontWeight.Medium
+                                fontWeight = FontWeight.Bold
+                            )
+                            OutlinedTextField(
+                                value = manufacturerInput,
+                                onValueChange = { manufacturerInput = it },
+                                label = { Text("Brand / Manufacturer (Opt)", color = Color(0xFF94A3B8)) },
+                                placeholder = { Text("e.g. Fortune / Tata / Aashirvaad") },
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = EmeraldGreen,
+                                    unfocusedBorderColor = Color(0x22FFFFFF),
+                                    focusedTextColor = Color.White,
+                                    unfocusedTextColor = Color.White
+                                ),
+                                singleLine = true,
+                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier.fillMaxWidth().testTag("product_brand_input")
                             )
                         }
                     }
@@ -868,6 +967,8 @@ fun ProductsScreen(
                                 saltComposition = saltCompositionInput,
                                 packUnitConfig = packConfigInput,
                                 isRxRequired = isRxRequiredInput,
+                                size = sizeInput,
+                                color = colorInput,
                                 onSuccess = {
                                     showAddEditDialog = false
                                 }
@@ -1025,6 +1126,25 @@ fun ProductItemCard(
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.SemiBold
                             )
+                        }
+
+                        if (product.size.isNotBlank() || product.color.isNotBlank()) {
+                            Box(
+                                modifier = Modifier
+                                    .background(Color(0x3310B981), RoundedCornerShape(6.dp))
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                            ) {
+                                val garmentTag = listOfNotNull(
+                                    product.size.takeIf { it.isNotBlank() }?.let { "Size: $it" },
+                                    product.color.takeIf { it.isNotBlank() }
+                                ).joinToString(" • ")
+                                Text(
+                                    text = garmentTag,
+                                    color = EmeraldLight,
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
                         }
 
                         if (product.batchNumber.isNotBlank()) {

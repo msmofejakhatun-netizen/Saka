@@ -44,7 +44,9 @@ data class InvoiceEntity(
     val doctorName: String = "",
     val patientInfo: String = "",
     val dlNumber: String = "",
-    val gstin: String = ""
+    val gstin: String = "",
+    val tableNumber: String = "",
+    val orderType: String = ""
 )
 
 @Entity(tableName = "products")
@@ -64,7 +66,9 @@ data class ProductEntity(
     val manufacturer: String = "",
     val saltComposition: String = "",
     val packUnitConfig: String = "", // e.g. "1 Strip = 10 Tablets"
-    val isRxRequired: Boolean = false
+    val isRxRequired: Boolean = false,
+    val size: String = "", // Garments e.g. "S", "M", "L", "XL", "32"
+    val color: String = "" // Garments e.g. "Red", "Blue", "Black"
 )
 
 @Entity(tableName = "customers")

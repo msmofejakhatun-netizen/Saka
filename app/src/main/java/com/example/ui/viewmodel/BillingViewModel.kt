@@ -705,6 +705,8 @@ class BillingViewModel(private val repository: BillingRepository) : ViewModel() 
     var posCustomerMobile by mutableStateOf("")
     var posDoctorName by mutableStateOf("")
     var posPatientInfo by mutableStateOf("")
+    var posTableNumber by mutableStateOf("")
+    var posOrderType by mutableStateOf("Dine-in") // Dine-in, Takeaway, Delivery
     var posPaymentMode by mutableStateOf("Cash") // Cash, UPI / QR, Online, Credit (Udhar)
     var posDiscountType by mutableStateOf("Fixed") // Fixed or Percentage
     var posDiscountInput by mutableStateOf("")
@@ -807,6 +809,8 @@ class BillingViewModel(private val repository: BillingRepository) : ViewModel() 
         posCustomerMobile = ""
         posDoctorName = ""
         posPatientInfo = ""
+        posTableNumber = ""
+        posOrderType = "Dine-in"
         posPaymentMode = "Cash"
         posDiscountType = "Fixed"
         posDiscountInput = ""
@@ -886,7 +890,9 @@ class BillingViewModel(private val repository: BillingRepository) : ViewModel() 
                     doctorName = doctor,
                     patientInfo = patient,
                     dlNumber = userDl,
-                    gstin = userGstin
+                    gstin = userGstin,
+                    tableNumber = posTableNumber.trim(),
+                    orderType = posOrderType.trim()
                 )
 
                 val purchasedList = posCartItems.map { Pair(it.product, it.quantity) }
@@ -974,6 +980,8 @@ class BillingViewModel(private val repository: BillingRepository) : ViewModel() 
         saltComposition: String = "",
         packUnitConfig: String = "",
         isRxRequired: Boolean = false,
+        size: String = "",
+        color: String = "",
         onSuccess: () -> Unit
     ) {
         if (name.isBlank()) {
@@ -1012,7 +1020,9 @@ class BillingViewModel(private val repository: BillingRepository) : ViewModel() 
                     manufacturer = manufacturer.trim(),
                     saltComposition = saltComposition.trim(),
                     packUnitConfig = packUnitConfig.trim(),
-                    isRxRequired = isRxRequired
+                    isRxRequired = isRxRequired,
+                    size = size.trim(),
+                    color = color.trim()
                 )
 
                 repository.saveProduct(userUid, product)

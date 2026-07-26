@@ -118,6 +118,7 @@ fun CreateBillScreen(
     val products by viewModel.products.collectAsState()
     val customers by viewModel.customers.collectAsState()
     val currentUser by viewModel.currentUser.collectAsState()
+    val activeBusinessType = remember(currentUser) { com.example.util.BusinessCategoryUtils.getBusinessType(currentUser) }
 
     val context = LocalContext.current
     var searchQuery by remember { mutableStateOf("") }
@@ -330,41 +331,87 @@ fun CreateBillScreen(
                                 )
                             }
 
-                            // Optional Pharmacy Doctor & Patient Details
-                            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                                OutlinedTextField(
-                                    value = viewModel.posDoctorName,
-                                    onValueChange = { viewModel.posDoctorName = it },
-                                    label = { Text("Doctor Name (Opt)", color = Color(0xFF94A3B8), fontSize = 11.sp) },
-                                    placeholder = { Text("Dr. Sharma") },
-                                    colors = OutlinedTextFieldDefaults.colors(
-                                        focusedBorderColor = EmeraldGreen,
-                                        unfocusedBorderColor = Color(0x22FFFFFF),
-                                        focusedTextColor = Color.White,
-                                        unfocusedTextColor = Color.White
-                                    ),
-                                    singleLine = true,
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .testTag("pos_doctor_name_input")
-                                )
+                            // Category-Specific Billing Information
+                            if (activeBusinessType == com.example.util.BusinessType.PHARMACY) {
+                                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                    OutlinedTextField(
+                                        value = viewModel.posDoctorName,
+                                        onValueChange = { viewModel.posDoctorName = it },
+                                        label = { Text("Doctor Name (Opt)", color = Color(0xFF94A3B8), fontSize = 11.sp) },
+                                        placeholder = { Text("Dr. Sharma") },
+                                        colors = OutlinedTextFieldDefaults.colors(
+                                            focusedBorderColor = EmeraldGreen,
+                                            unfocusedBorderColor = Color(0x22FFFFFF),
+                                            focusedTextColor = Color.White,
+                                            unfocusedTextColor = Color.White
+                                        ),
+                                        singleLine = true,
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .testTag("pos_doctor_name_input")
+                                    )
 
-                                OutlinedTextField(
-                                    value = viewModel.posPatientInfo,
-                                    onValueChange = { viewModel.posPatientInfo = it },
-                                    label = { Text("Patient Name/Age (Opt)", color = Color(0xFF94A3B8), fontSize = 11.sp) },
-                                    placeholder = { Text("Rahul / 32Y") },
-                                    colors = OutlinedTextFieldDefaults.colors(
-                                        focusedBorderColor = EmeraldGreen,
-                                        unfocusedBorderColor = Color(0x22FFFFFF),
-                                        focusedTextColor = Color.White,
-                                        unfocusedTextColor = Color.White
-                                    ),
-                                    singleLine = true,
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .testTag("pos_patient_info_input")
-                                )
+                                    OutlinedTextField(
+                                        value = viewModel.posPatientInfo,
+                                        onValueChange = { viewModel.posPatientInfo = it },
+                                        label = { Text("Patient Name/Age (Opt)", color = Color(0xFF94A3B8), fontSize = 11.sp) },
+                                        placeholder = { Text("Rahul / 32Y") },
+                                        colors = OutlinedTextFieldDefaults.colors(
+                                            focusedBorderColor = EmeraldGreen,
+                                            unfocusedBorderColor = Color(0x22FFFFFF),
+                                            focusedTextColor = Color.White,
+                                            unfocusedTextColor = Color.White
+                                        ),
+                                        singleLine = true,
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .testTag("pos_patient_info_input")
+                                    )
+                                }
+                            } else if (activeBusinessType == com.example.util.BusinessType.RESTAURANT) {
+                                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                    OutlinedTextField(
+                                        value = viewModel.posTableNumber,
+                                        onValueChange = { viewModel.posTableNumber = it },
+                                        label = { Text("Table No. / Counter", color = Color(0xFF94A3B8), fontSize = 11.sp) },
+                                        placeholder = { Text("Table 4") },
+                                        colors = OutlinedTextFieldDefaults.colors(
+                                            focusedBorderColor = EmeraldGreen,
+                                            unfocusedBorderColor = Color(0x22FFFFFF),
+                                            focusedTextColor = Color.White,
+                                            unfocusedTextColor = Color.White
+                                        ),
+                                        singleLine = true,
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .testTag("pos_table_number_input")
+                                    )
+
+                                    // Order Type selector (Dine-in / Takeaway / Delivery)
+                                    val orderTypes = listOf("Dine-in", "Takeaway", "Delivery")
+                                    Column(modifier = Modifier.weight(1.2f)) {
+                                        Text("Order Type:", color = Color(0xFF94A3B8), fontSize = 10.sp)
+                                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                            orderTypes.forEach { type ->
+                                                val isSel = viewModel.posOrderType.equals(type, ignoreCase = true) || (viewModel.posOrderType.isEmpty() && type == "Dine-in")
+                                                Box(
+                                                    modifier = Modifier
+                                                        .clip(RoundedCornerShape(6.dp))
+                                                        .background(if (isSel) EmeraldGreen else Color(0x22FFFFFF))
+                                                        .clickable { viewModel.posOrderType = type }
+                                                        .padding(horizontal = 6.dp, vertical = 6.dp)
+                                                ) {
+                                                    Text(
+                                                        text = type,
+                                                        color = Color.White,
+                                                        fontSize = 10.sp,
+                                                        fontWeight = FontWeight.Bold
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
                             }
 
                             // Banner button to trigger search/select customer dialog

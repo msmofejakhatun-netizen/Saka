@@ -47,6 +47,21 @@ fun ProfileSetupScreen(
         activeCategories.filter { it.isEnabled }
     }
 
+    val requiredBusinessCategories = remember {
+        listOf(
+            "Kirana / Grocery",
+            "Pharmacy / Medical",
+            "Garments / Clothing",
+            "Restaurant / Cafe / Food",
+            "General Store / Retail"
+        )
+    }
+
+    val selectableCategories = remember(enabledCategories) {
+        val extraCategories = enabledCategories.map { it.name }.filter { it.isNotBlank() }
+        (requiredBusinessCategories + extraCategories).distinct()
+    }
+
     var showCategoryMenu by remember { mutableStateOf(false) }
 
     PremiumGradientBackground {
@@ -221,24 +236,15 @@ fun ProfileSetupScreen(
                                 .background(Color(0xFF0F172A))
                                 .border(1.dp, Color(0x33FFFFFF), RoundedCornerShape(8.dp))
                         ) {
-                            if (enabledCategories.isEmpty()) {
+                            selectableCategories.forEach { categoryName ->
                                 DropdownMenuItem(
-                                    text = { Text("Retail (Default)", color = Color.White) },
+                                    text = { Text(categoryName, color = Color.White) },
                                     onClick = {
-                                        viewModel.profileCategory = "Retail"
+                                        viewModel.profileCategory = categoryName
                                         showCategoryMenu = false
-                                    }
+                                    },
+                                    modifier = Modifier.testTag("profile_category_option_${categoryName.lowercase().replace(" ", "_").replace("/", "")}")
                                 )
-                            } else {
-                                enabledCategories.forEach { category ->
-                                    DropdownMenuItem(
-                                        text = { Text(category.name, color = Color.White) },
-                                        onClick = {
-                                            viewModel.profileCategory = category.name
-                                            showCategoryMenu = false
-                                        }
-                                    )
-                                }
                             }
                         }
                     }

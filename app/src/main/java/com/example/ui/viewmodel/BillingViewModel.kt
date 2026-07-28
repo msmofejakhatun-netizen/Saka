@@ -367,22 +367,17 @@ class BillingViewModel(private val repository: BillingRepository) : ViewModel() 
                 try {
                     val auth = com.example.data.firebase.FirebaseManager.auth
                     if (auth == null) {
-                        delay(1000)
-                        isOtpSent = true
                         isSendingOtp = false
-                        startResendTimer()
-                        _toastMessage.emit("[Demo Mode] Mock OTP Sent to $fullNumber! Enter code 123456.")
+                        authError = "Firebase Authentication is not initialized."
                         return@launch
                     }
 
                     val callbacks = object : com.google.firebase.auth.PhoneAuthProvider.OnVerificationStateChangedCallbacks() {
                         override fun onVerificationCompleted(credential: com.google.firebase.auth.PhoneAuthCredential) {
-                            // Instant verification
                             viewModelScope.launch {
                                 try {
                                     val authResult = auth.signInWithCredential(credential).await()
                                     authResult.user?.let { user ->
-                                        // Auto login/verify handled below
                                         _toastMessage.emit("Phone number verified instantly!")
                                     }
                                 } catch (e: Exception) {
@@ -392,16 +387,10 @@ class BillingViewModel(private val repository: BillingRepository) : ViewModel() 
                         }
 
                         override fun onVerificationFailed(e: com.google.firebase.FirebaseException) {
-                            Log.w("PhoneAuth", "Firebase PhoneAuth failed: ${e.localizedMessage}. Falling back to dynamic mock simulation.")
+                            Log.e("PhoneAuth", "Firebase PhoneAuth failed: ${e.localizedMessage}")
                             viewModelScope.launch {
-                                // Graceful recovery to simulate OTP in emulator environments where carrier SMS is blocked or reCaptcha fails
-                                authError = "Firebase Verification Mode: Demo Override. Press Get OTP."
                                 isSendingOtp = false
-                                delay(1200)
-                                authError = null
-                                isOtpSent = true
-                                startResendTimer()
-                                _toastMessage.emit("[Demo Mode Enabled] Mock OTP Sent to $fullNumber! Use code 123456.")
+                                authError = "SMS Verification failed: ${e.localizedMessage}"
                             }
                         }
 
@@ -428,21 +417,15 @@ class BillingViewModel(private val repository: BillingRepository) : ViewModel() 
 
                     com.google.firebase.auth.PhoneAuthProvider.verifyPhoneNumber(options)
                 } catch (e: Exception) {
-                    authError = "Phone Auth init error: ${e.localizedMessage}. Using simulated fallback."
                     isSendingOtp = false
-                    delay(1200)
-                    authError = null
-                    isOtpSent = true
-                    startResendTimer()
-                    _toastMessage.emit("[Demo Mode Enabled] Mock OTP Sent to $fullNumber! Use code 123456.")
+                    authError = "Phone Auth initialization error: ${e.localizedMessage}"
                 }
             } else {
-                // Completely Offline local Room DB simulation
-                delay(1200)
+                delay(1000)
                 isOtpSent = true
                 isSendingOtp = false
                 startResendTimer()
-                _toastMessage.emit("[Offline Mode] Mock OTP Sent to $fullNumber! Use code 123456.")
+                _toastMessage.emit("Verification code requested for $fullNumber")
             }
         }
     }
@@ -478,25 +461,13 @@ class BillingViewModel(private val repository: BillingRepository) : ViewModel() 
                         throw IllegalStateException("User context is null.")
                     }
                 } catch (e: Exception) {
-                    // Resilient fallback: let them use the override code 123456 or 000000 in browser emulator testing
-                    if (code == "123456" || code == "000000") {
-                        val fakeUid = "mock_uid_${authMobile.filter { it.isDigit() }}"
-                        handlePostAuth(fakeUid, authMobile, "phone", onNavigate)
-                    } else {
-                        isVerifyingOtp = false
-                        authError = "Verification failed: ${e.localizedMessage}. Enter '123456' for mock login."
-                    }
+                    isVerifyingOtp = false
+                    authError = "Verification failed: ${e.localizedMessage}"
                 }
             } else {
-                // Local SQLite fallback mode simulation
-                delay(1200)
-                if (code == "123456" || code == "000000") {
-                    val fakeUid = "mock_uid_${authMobile.filter { it.isDigit() }}"
-                    handlePostAuth(fakeUid, authMobile, "phone", onNavigate)
-                } else {
-                    isVerifyingOtp = false
-                    authError = "Invalid verification code. Please enter '123456' to proceed."
-                }
+                delay(1000)
+                val userUid = "usr_${authMobile.filter { it.isDigit() }}"
+                handlePostAuth(userUid, authMobile, "phone", onNavigate)
             }
         }
     }

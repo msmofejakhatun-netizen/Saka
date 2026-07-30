@@ -46,7 +46,10 @@ data class InvoiceEntity(
     val dlNumber: String = "",
     val gstin: String = "",
     val tableNumber: String = "",
-    val orderType: String = ""
+    val orderType: String = "",
+    val isEdited: Boolean = false,
+    val lastEditedTimestamp: Long = 0L,
+    val itemsJson: String = ""
 )
 
 @Entity(tableName = "products")

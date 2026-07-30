@@ -24,10 +24,12 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.PictureAsPdf
 import androidx.compose.material.icons.filled.Print
@@ -88,7 +90,8 @@ import java.util.Locale
 @Composable
 fun TransactionHistoryScreen(
     viewModel: BillingViewModel,
-    onNavigateBack: () -> Unit
+    onNavigateBack: () -> Unit,
+    onNavigateToPOS: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val invoices by viewModel.invoices.collectAsState()
@@ -361,6 +364,10 @@ fun TransactionHistoryScreen(
                         HistoryInvoiceCard(
                             invoice = invoice,
                             onCardClick = { selectedInvoiceForDetail = invoice },
+                            onEditClick = {
+                                viewModel.loadInvoiceForEditing(invoice)
+                                onNavigateToPOS()
+                            },
                             onPrintClick = {
                                 val pdf = InvoicePdfHelper.generateInvoicePdf(
                                     context = context,
@@ -473,6 +480,24 @@ fun TransactionHistoryScreen(
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Button(
                             onClick = {
+                                selectedInvoiceForDetail = null
+                                viewModel.loadInvoiceForEditing(invoice)
+                                onNavigateToPOS()
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0x33F59E0B)),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(42.dp)
+                                .border(1.dp, Color(0xFFF59E0B), RoundedCornerShape(10.dp))
+                                .testTag("modal_edit_bill_button")
+                        ) {
+                            Icon(Icons.Default.Edit, contentDescription = null, tint = GoldYellow, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("✏️ Edit Bill Items & Quantities", color = GoldYellow, fontWeight = FontWeight.Bold)
+                        }
+
+                        Button(
+                            onClick = {
                                 val pdf = InvoicePdfHelper.generateInvoicePdf(
                                     context = context,
                                     invoice = invoice,
@@ -552,6 +577,7 @@ fun TransactionHistoryScreen(
 private fun HistoryInvoiceCard(
     invoice: InvoiceEntity,
     onCardClick: () -> Unit,
+    onEditClick: () -> Unit,
     onPrintClick: () -> Unit,
     onWhatsAppClick: () -> Unit
 ) {
@@ -574,7 +600,7 @@ private fun HistoryInvoiceCard(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
                     Box(
                         modifier = Modifier
                             .size(36.dp)
@@ -587,14 +613,27 @@ private fun HistoryInvoiceCard(
                     Spacer(modifier = Modifier.width(10.dp))
 
                     Column {
-                        Text(
-                            text = invoice.customerName,
-                            color = Color.White,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 14.sp,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = invoice.customerName,
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            if (invoice.isEdited) {
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(4.dp))
+                                        .background(Color(0x33F59E0B))
+                                        .padding(horizontal = 4.dp, vertical = 2.dp)
+                                ) {
+                                    Text("(Edited)", color = GoldYellow, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        }
                         Text(dateString, color = Color(0xFF94A3B8), fontSize = 11.sp)
                     }
                 }
@@ -606,13 +645,22 @@ private fun HistoryInvoiceCard(
                         fontWeight = FontWeight.Bold,
                         fontSize = 15.sp
                     )
+                    Spacer(modifier = Modifier.height(2.dp))
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(6.dp))
                             .background(Color(0x2210B981))
-                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                            .wrapContentWidth()
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
                     ) {
-                        Text(invoice.paymentMode, color = EmeraldGreen, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                        Text(
+                            text = invoice.paymentMode,
+                            color = EmeraldGreen,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            softWrap = false
+                        )
                     }
                 }
             }
@@ -634,23 +682,38 @@ private fun HistoryInvoiceCard(
             // Quick Action Buttons
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End,
+                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                IconButton(
-                    onClick = onPrintClick,
-                    modifier = Modifier.size(32.dp).testTag("item_print_button")
+                OutlinedButton(
+                    onClick = onEditClick,
+                    shape = RoundedCornerShape(8.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = GoldYellow),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0x66F59E0B)),
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                    modifier = Modifier.height(32.dp).testTag("item_edit_button_${invoice.id}")
                 ) {
-                    Icon(Icons.Default.Print, contentDescription = "Print PDF", tint = Color.White, modifier = Modifier.size(18.dp))
+                    Icon(Icons.Default.Edit, contentDescription = "Edit Bill", tint = GoldYellow, modifier = Modifier.size(14.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("✏️ Edit Bill", color = GoldYellow, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                 }
 
-                Spacer(modifier = Modifier.width(8.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(
+                        onClick = onPrintClick,
+                        modifier = Modifier.size(32.dp).testTag("item_print_button")
+                    ) {
+                        Icon(Icons.Default.Print, contentDescription = "Print PDF", tint = Color.White, modifier = Modifier.size(18.dp))
+                    }
 
-                IconButton(
-                    onClick = onWhatsAppClick,
-                    modifier = Modifier.size(32.dp).testTag("item_whatsapp_button")
-                ) {
-                    Icon(Icons.Default.Share, contentDescription = "Share WhatsApp", tint = Color(0xFF25D366), modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    IconButton(
+                        onClick = onWhatsAppClick,
+                        modifier = Modifier.size(32.dp).testTag("item_whatsapp_button")
+                    ) {
+                        Icon(Icons.Default.Share, contentDescription = "Share WhatsApp", tint = Color(0xFF25D366), modifier = Modifier.size(18.dp))
+                    }
                 }
             }
         }

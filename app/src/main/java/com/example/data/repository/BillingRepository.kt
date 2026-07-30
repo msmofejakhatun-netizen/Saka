@@ -408,7 +408,16 @@ class BillingRepository(
                                     paymentMode = doc.getString("paymentMode") ?: "Cash",
                                     itemsSummary = doc.getString("itemsSummary") ?: "",
                                     timestamp = doc.getLong("timestamp") ?: System.currentTimeMillis(),
-                                    status = doc.getString("status") ?: "Paid"
+                                    status = doc.getString("status") ?: "Paid",
+                                    doctorName = doc.getString("doctorName") ?: "",
+                                    patientInfo = doc.getString("patientInfo") ?: "",
+                                    dlNumber = doc.getString("dlNumber") ?: "",
+                                    gstin = doc.getString("gstin") ?: "",
+                                    tableNumber = doc.getString("tableNumber") ?: "",
+                                    orderType = doc.getString("orderType") ?: "",
+                                    isEdited = doc.getBoolean("isEdited") ?: false,
+                                    lastEditedTimestamp = doc.getLong("lastEditedTimestamp") ?: 0L,
+                                    itemsJson = doc.getString("itemsJson") ?: ""
                                 )
                             }
                             trySend(list)
@@ -544,7 +553,16 @@ class BillingRepository(
                         "paymentMode" to invoice.paymentMode,
                         "itemsSummary" to invoice.itemsSummary,
                         "timestamp" to invoice.timestamp,
-                        "status" to invoice.status
+                        "status" to invoice.status,
+                        "doctorName" to invoice.doctorName,
+                        "patientInfo" to invoice.patientInfo,
+                        "dlNumber" to invoice.dlNumber,
+                        "gstin" to invoice.gstin,
+                        "tableNumber" to invoice.tableNumber,
+                        "orderType" to invoice.orderType,
+                        "isEdited" to invoice.isEdited,
+                        "lastEditedTimestamp" to invoice.lastEditedTimestamp,
+                        "itemsJson" to invoice.itemsJson
                     )
 
                     rootDocRef.set(invoiceData).await()
@@ -589,6 +607,99 @@ class BillingRepository(
         // Insert invoice into local Room database
         val localInvoice = invoice.copy(firestoreId = generatedFirestoreId)
         invoiceDao.insertInvoice(localInvoice)
+    }
+
+    suspend fun updateInvoiceAndAdjustStock(
+        userUid: String,
+        updatedInvoice: InvoiceEntity,
+        oldPurchasedList: List<Pair<ProductEntity, Double>>,
+        newPurchasedList: List<Pair<ProductEntity, Double>>
+    ) = withContext(Dispatchers.IO) {
+        // 1. Revert old stock
+        for ((prod, oldQty) in oldPurchasedList) {
+            val currentProd = productDao.getProductById(prod.id) ?: prod
+            val revertedStock = currentProd.stockQuantity + oldQty
+            val updatedProd = currentProd.copy(stockQuantity = revertedStock, updatedAt = System.currentTimeMillis())
+            productDao.insertProduct(updatedProd)
+
+            if (FirebaseManager.isFirebaseAvailable && prod.firestoreId.isNotBlank()) {
+                val firestore = FirebaseManager.firestore
+                if (firestore != null) {
+                    try {
+                        val prodData = hashMapOf<String, Any>("stockQuantity" to revertedStock, "updatedAt" to System.currentTimeMillis())
+                        if (userUid.isNotBlank()) {
+                            firestore.collection("users").document(userUid).collection("products").document(prod.firestoreId).update(prodData)
+                        }
+                        firestore.collection("products").document(prod.firestoreId).update(prodData)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Revert stock firestore error: ${e.localizedMessage}")
+                    }
+                }
+            }
+        }
+
+        // 2. Deduct new stock
+        for ((prod, newQty) in newPurchasedList) {
+            val currentProd = productDao.getProductById(prod.id) ?: prod
+            val finalStock = (currentProd.stockQuantity - newQty).coerceAtLeast(0.0)
+            val updatedProd = currentProd.copy(stockQuantity = finalStock, updatedAt = System.currentTimeMillis())
+            productDao.insertProduct(updatedProd)
+
+            if (FirebaseManager.isFirebaseAvailable && prod.firestoreId.isNotBlank()) {
+                val firestore = FirebaseManager.firestore
+                if (firestore != null) {
+                    try {
+                        val prodData = hashMapOf<String, Any>("stockQuantity" to finalStock, "updatedAt" to System.currentTimeMillis())
+                        if (userUid.isNotBlank()) {
+                            firestore.collection("users").document(userUid).collection("products").document(prod.firestoreId).update(prodData)
+                        }
+                        firestore.collection("products").document(prod.firestoreId).update(prodData)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Deduct new stock firestore error: ${e.localizedMessage}")
+                    }
+                }
+            }
+        }
+
+        // 3. Save updated invoice in local Room DB
+        invoiceDao.insertInvoice(updatedInvoice)
+
+        // 4. Update Firestore invoice
+        if (FirebaseManager.isFirebaseAvailable && updatedInvoice.firestoreId.isNotBlank()) {
+            val firestore = FirebaseManager.firestore
+            if (firestore != null) {
+                try {
+                    val invoiceData = hashMapOf(
+                        "customerName" to updatedInvoice.customerName,
+                        "customerMobile" to updatedInvoice.customerMobile,
+                        "amount" to updatedInvoice.amount,
+                        "itemsCount" to updatedInvoice.itemsCount,
+                        "subtotal" to updatedInvoice.subtotal,
+                        "discountAmount" to updatedInvoice.discountAmount,
+                        "taxAmount" to updatedInvoice.taxAmount,
+                        "paymentMode" to updatedInvoice.paymentMode,
+                        "itemsSummary" to updatedInvoice.itemsSummary,
+                        "timestamp" to updatedInvoice.timestamp,
+                        "status" to updatedInvoice.status,
+                        "doctorName" to updatedInvoice.doctorName,
+                        "patientInfo" to updatedInvoice.patientInfo,
+                        "dlNumber" to updatedInvoice.dlNumber,
+                        "gstin" to updatedInvoice.gstin,
+                        "tableNumber" to updatedInvoice.tableNumber,
+                        "orderType" to updatedInvoice.orderType,
+                        "isEdited" to updatedInvoice.isEdited,
+                        "lastEditedTimestamp" to updatedInvoice.lastEditedTimestamp,
+                        "itemsJson" to updatedInvoice.itemsJson
+                    )
+                    firestore.collection("invoices").document(updatedInvoice.firestoreId).set(invoiceData).await()
+                    if (userUid.isNotBlank()) {
+                        firestore.collection("users").document(userUid).collection("invoices").document(updatedInvoice.firestoreId).set(invoiceData).await()
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "updateInvoiceAndAdjustStock firestore error: ${e.localizedMessage}")
+                }
+            }
+        }
     }
 
     // --- Product & Inventory Management ---

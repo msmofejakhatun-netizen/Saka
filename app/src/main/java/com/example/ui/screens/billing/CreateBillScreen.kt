@@ -33,6 +33,7 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Discount
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Phone
@@ -227,6 +228,58 @@ fun CreateBillScreen(
                 verticalArrangement = Arrangement.spacedBy(14.dp),
                 contentPadding = PaddingValues(bottom = 100.dp)
             ) {
+                // Editing Bill Banner
+                if (viewModel.isEditingBill) {
+                    item {
+                        Card(
+                            colors = CardDefaults.cardColors(containerColor = Color(0x33F59E0B)),
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .border(1.dp, Color(0xFFF59E0B), RoundedCornerShape(12.dp))
+                                .padding(top = 4.dp)
+                                .testTag("editing_bill_banner")
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                                    Icon(
+                                        imageVector = Icons.Default.Edit,
+                                        contentDescription = "Editing Bill",
+                                        tint = Color(0xFFFBBF24),
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Column {
+                                        Text(
+                                            text = "Editing Bill #${viewModel.editingInvoice?.id ?: ""}",
+                                            color = Color.White,
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 13.sp
+                                        )
+                                        Text(
+                                            text = "Modify items/customer and tap Update Bill",
+                                            color = Color(0xFFFCD34D),
+                                            fontSize = 11.sp
+                                        )
+                                    }
+                                }
+                                TextButton(
+                                    onClick = { viewModel.cancelEditingBill() },
+                                    modifier = Modifier.testTag("cancel_edit_bill_button")
+                                ) {
+                                    Text("Cancel Edit", color = Color(0xFFF87171), fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                }
+                            }
+                        }
+                    }
+                }
+
                 // 1. Customer Details Section
                 item {
                     val showCustomerFormFields = isCustomerFieldsExpanded ||
@@ -898,9 +951,16 @@ fun CreateBillScreen(
             merchantName = currentUser?.merchantName?.ifBlank { currentUser?.businessName } ?: "Kirana Store",
             onPaymentConfirmed = {
                 showUpiQrPaymentDialog = false
-                viewModel.generatePOSInvoice { generatedInvoice ->
-                    generatedInvoiceForReceipt = generatedInvoice
-                    showSuccessReceiptDialog = true
+                if (viewModel.isEditingBill) {
+                    viewModel.updatePOSInvoice { updated ->
+                        generatedInvoiceForReceipt = updated
+                        showSuccessReceiptDialog = true
+                    }
+                } else {
+                    viewModel.generatePOSInvoice { generatedInvoice ->
+                        generatedInvoiceForReceipt = generatedInvoice
+                        showSuccessReceiptDialog = true
+                    }
                 }
             },
             onConfigureUpiClicked = {
@@ -986,11 +1046,20 @@ fun CreateBillScreen(
             currentUser = currentUser,
             onShowUpiQr = { showUpiQrPaymentDialog = true },
             onCompleteSale = {
-                viewModel.generatePOSInvoice { generatedInvoice ->
-                    showPaymentModal = false
-                    showCartReviewModal = false
-                    generatedInvoiceForReceipt = generatedInvoice
-                    showSuccessReceiptDialog = true
+                if (viewModel.isEditingBill) {
+                    viewModel.updatePOSInvoice { updated ->
+                        showPaymentModal = false
+                        showCartReviewModal = false
+                        generatedInvoiceForReceipt = updated
+                        showSuccessReceiptDialog = true
+                    }
+                } else {
+                    viewModel.generatePOSInvoice { generatedInvoice ->
+                        showPaymentModal = false
+                        showCartReviewModal = false
+                        generatedInvoiceForReceipt = generatedInvoice
+                        showSuccessReceiptDialog = true
+                    }
                 }
             },
             onBackToCart = {
@@ -1673,7 +1742,12 @@ private fun PaymentAndCheckoutModalDialog(
                         } else {
                             Icon(imageVector = Icons.Default.ReceiptLong, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(modifier = Modifier.width(6.dp))
-                            Text("Complete Sale & Print", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            Text(
+                                text = if (viewModel.isEditingBill) "Update Bill & Save" else "Complete Sale & Print",
+                                color = Color.White,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold
+                            )
                         }
                     }
                 }

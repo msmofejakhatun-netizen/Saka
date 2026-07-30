@@ -706,6 +706,11 @@ class BillingViewModel(private val repository: BillingRepository) : ViewModel() 
     var posInvoiceError by mutableStateOf<String?>(null)
     var lastGeneratedInvoice by mutableStateOf<InvoiceEntity?>(null)
 
+    // Editing POS Invoice state
+    var editingInvoice by mutableStateOf<InvoiceEntity?>(null)
+    var originalPurchasedItems by mutableStateOf<List<Pair<ProductEntity, Double>>>(emptyList())
+    val isEditingBill: Boolean get() = editingInvoice != null
+
     val posSubtotal: Double
         get() = posCartItems.sumOf { it.totalAmount }
 
@@ -808,6 +813,201 @@ class BillingViewModel(private val repository: BillingRepository) : ViewModel() 
         posInvoiceError = null
     }
 
+    fun loadInvoiceForEditing(invoice: InvoiceEntity) {
+        clearPOSCart()
+        editingInvoice = invoice
+        posCustomerName = invoice.customerName
+        posCustomerMobile = invoice.customerMobile
+        posDoctorName = invoice.doctorName
+        posPatientInfo = invoice.patientInfo
+        posTableNumber = invoice.tableNumber
+        posOrderType = invoice.orderType.ifBlank { "Dine-in" }
+        posPaymentMode = invoice.paymentMode
+        posDiscountType = "Fixed"
+        posDiscountInput = if (invoice.discountAmount > 0) invoice.discountAmount.toString() else ""
+        posTaxPercentageInput = if (invoice.subtotal > 0 && invoice.taxAmount > 0) {
+            String.format(Locale.US, "%.1f", (invoice.taxAmount / (invoice.subtotal - invoice.discountAmount)) * 100.0)
+        } else "0"
+
+        val oldList = mutableListOf<Pair<ProductEntity, Double>>()
+        val availableProducts = products.value
+
+        if (invoice.itemsJson.isNotBlank()) {
+            try {
+                val jsonArr = org.json.JSONArray(invoice.itemsJson)
+                for (i in 0 until jsonArr.length()) {
+                    val obj = jsonArr.getJSONObject(i)
+                    val name = obj.optString("name", "Product")
+                    val qty = obj.optDouble("quantity", 1.0)
+                    val unit = obj.optString("unit", "Pcs")
+                    val unitPrice = obj.optDouble("unitPrice", 0.0)
+
+                    val matchedProd = availableProducts.firstOrNull { it.name.equals(name, ignoreCase = true) }
+                        ?: ProductEntity(
+                            id = name.hashCode(),
+                            name = name,
+                            salePrice = unitPrice,
+                            stockQuantity = 999.0,
+                            unit = unit
+                        )
+                    posCartItems.add(POSCartItem(product = matchedProd, quantity = qty, customPrice = unitPrice))
+                    oldList.add(Pair(matchedProd, qty))
+                }
+            } catch (e: Exception) {
+                Log.e("BillingVM", "Error parsing itemsJson for edit: ${e.localizedMessage}")
+            }
+        }
+
+        // Fallback if itemsJson was empty
+        if (posCartItems.isEmpty() && invoice.itemsSummary.isNotBlank()) {
+            val parts = invoice.itemsSummary.split(", ")
+            for (part in parts) {
+                val cleanPart = part.trim()
+                if (cleanPart.isBlank()) continue
+                val matched = availableProducts.firstOrNull { cleanPart.contains(it.name, ignoreCase = true) }
+                if (matched != null) {
+                    posCartItems.add(POSCartItem(product = matched, quantity = 1.0))
+                    oldList.add(Pair(matched, 1.0))
+                }
+            }
+        }
+
+        originalPurchasedItems = oldList
+    }
+
+    fun cancelEditingBill() {
+        editingInvoice = null
+        originalPurchasedItems = emptyList()
+        clearPOSCart()
+    }
+
+    fun updatePOSInvoice(onSuccess: (InvoiceEntity) -> Unit) {
+        val currentEdit = editingInvoice
+        if (currentEdit == null) {
+            posInvoiceError = "No bill selected for editing"
+            return
+        }
+        if (posCartItems.isEmpty()) {
+            posInvoiceError = "Please add at least one item to the bill"
+            return
+        }
+
+        val name = if (posCustomerName.isBlank()) "Walk-in Customer" else posCustomerName.trim()
+        val mobile = posCustomerMobile.trim()
+
+        if (posPaymentMode.contains("Credit", ignoreCase = true) || posPaymentMode.contains("Udhar", ignoreCase = true)) {
+            if (name == "Walk-in Customer" || name.isBlank()) {
+                posInvoiceError = "Customer Name is required for Credit (Udhar) transactions."
+                return
+            }
+        }
+
+        val doctor = posDoctorName.trim()
+        val patient = posPatientInfo.trim()
+        val userDl = _currentUser.value?.dlNumber?.ifBlank { "DL-20B/10492/2024" } ?: "DL-20B/10492/2024"
+        val userGstin = _currentUser.value?.gstin?.ifBlank { "27ABCDE1234F1Z5" } ?: "27ABCDE1234F1Z5"
+
+        val finalAmount = posFinalTotal
+        val totalItemsCount = posCartItems.size
+
+        val summaryStringBuilder = StringBuilder()
+        val itemsJsonArray = org.json.JSONArray()
+
+        posCartItems.forEachIndexed { idx, item ->
+            val formattedQty = com.example.util.KiranaUnitUtils.formatQuantityWithUnit(item.quantity, item.product.unit, item.product)
+            val isPharm = com.example.util.PharmacyUtils.isPharmacyProduct(item.product) || item.product.unit.equals("Strip", ignoreCase = true) || item.product.packUnitConfig.isNotBlank()
+
+            val itemLineStr = if (isPharm) {
+                val packSize = com.example.util.PharmacyUtils.getPackSize(item.product)
+                val perTab = com.example.util.PharmacyUtils.getPerTabletUnitPrice(item.product)
+                val totalTabs = Math.round(item.quantity * packSize).toInt()
+                val isLooseTab = totalTabs % packSize != 0
+                if (isLooseTab) {
+                    "${item.product.name} — $formattedQty @ ₹${String.format(Locale.US, "%.2f", perTab)}/Tab = ₹${String.format(Locale.US, "%.2f", item.totalAmount)}"
+                } else {
+                    "${item.product.name} — $formattedQty @ ₹${String.format(Locale.US, "%.2f", item.customPrice)}/${item.product.unit} = ₹${String.format(Locale.US, "%.2f", item.totalAmount)}"
+                }
+            } else {
+                "$formattedQty x ${item.product.name}"
+            }
+            val batchInfo = if (item.product.batchNumber.isNotBlank()) " (Batch: ${item.product.batchNumber})" else ""
+            summaryStringBuilder.append("$itemLineStr$batchInfo")
+            if (idx < posCartItems.size - 1) summaryStringBuilder.append(", ")
+
+            val obj = org.json.JSONObject().apply {
+                put("name", item.product.name)
+                put("quantity", item.quantity)
+                put("unit", item.product.unit)
+                put("unitPrice", item.customPrice)
+                put("lineTotal", item.totalAmount)
+            }
+            itemsJsonArray.put(obj)
+        }
+
+        val itemsSummaryStr = summaryStringBuilder.toString()
+        val itemsJsonStr = itemsJsonArray.toString()
+
+        posInvoiceError = null
+        isGeneratingPOSInvoice = true
+
+        viewModelScope.launch {
+            try {
+                val userUid = com.example.data.firebase.FirebaseManager.auth?.currentUser?.uid
+                    ?: currentUser.value?.id?.toString() ?: ""
+
+                val updatedInvoice = currentEdit.copy(
+                    customerName = name,
+                    customerMobile = mobile,
+                    amount = finalAmount,
+                    itemsCount = totalItemsCount,
+                    subtotal = posSubtotal,
+                    discountAmount = posDiscountAmount,
+                    taxAmount = posTaxAmount,
+                    paymentMode = posPaymentMode,
+                    itemsSummary = itemsSummaryStr,
+                    itemsJson = itemsJsonStr,
+                    isEdited = true,
+                    lastEditedTimestamp = System.currentTimeMillis(),
+                    status = "Paid",
+                    doctorName = doctor,
+                    patientInfo = patient,
+                    dlNumber = userDl,
+                    gstin = userGstin,
+                    tableNumber = posTableNumber.trim(),
+                    orderType = posOrderType.trim()
+                )
+
+                val newPurchasedList = posCartItems.map { Pair(it.product, it.quantity) }
+
+                repository.updateInvoiceAndAdjustStock(userUid, updatedInvoice, originalPurchasedItems, newPurchasedList)
+
+                if (posPaymentMode == "Credit / Udhar" || posPaymentMode.contains("Credit") || posPaymentMode.contains("Udhar")) {
+                    repository.recordUdharOrJamaTransaction(
+                        userUid = userUid,
+                        customerName = name,
+                        customerMobile = mobile.ifBlank { "9999999999" },
+                        type = "DEBIT",
+                        amount = finalAmount,
+                        paymentMode = "Credit / Udhar",
+                        note = "Updated POS Bill #${currentEdit.id} ($totalItemsCount items)",
+                        invoiceId = updatedInvoice.firestoreId,
+                        itemsJson = itemsJsonStr
+                    )
+                }
+
+                lastGeneratedInvoice = updatedInvoice
+                isGeneratingPOSInvoice = false
+                _toastMessage.emit("Bill #${currentEdit.id} updated successfully! Stock adjusted.")
+                cancelEditingBill()
+                onSuccess(updatedInvoice)
+            } catch (e: Exception) {
+                isGeneratingPOSInvoice = false
+                Log.e("BillingVM", "Update POS invoice error: ${e.localizedMessage}")
+                posInvoiceError = "Failed to update invoice: ${e.localizedMessage}"
+            }
+        }
+    }
+
     fun generatePOSInvoice(onSuccess: (InvoiceEntity) -> Unit) {
         if (posCartItems.isEmpty()) {
             posInvoiceError = "Please add at least one item to the bill"
@@ -841,10 +1041,12 @@ class BillingViewModel(private val repository: BillingRepository) : ViewModel() 
         val totalItemsCount = posCartItems.size
 
         val summaryStringBuilder = StringBuilder()
+        val itemsJsonArray = org.json.JSONArray()
+
         posCartItems.forEachIndexed { idx, item ->
             val formattedQty = com.example.util.KiranaUnitUtils.formatQuantityWithUnit(item.quantity, item.product.unit, item.product)
             val isPharm = com.example.util.PharmacyUtils.isPharmacyProduct(item.product) || item.product.unit.equals("Strip", ignoreCase = true) || item.product.packUnitConfig.isNotBlank()
-            
+
             val itemLineStr = if (isPharm) {
                 val packSize = com.example.util.PharmacyUtils.getPackSize(item.product)
                 val perTab = com.example.util.PharmacyUtils.getPerTabletUnitPrice(item.product)
@@ -861,8 +1063,18 @@ class BillingViewModel(private val repository: BillingRepository) : ViewModel() 
             val batchInfo = if (item.product.batchNumber.isNotBlank()) " (Batch: ${item.product.batchNumber})" else ""
             summaryStringBuilder.append("$itemLineStr$batchInfo")
             if (idx < posCartItems.size - 1) summaryStringBuilder.append(", ")
+
+            val obj = org.json.JSONObject().apply {
+                put("name", item.product.name)
+                put("quantity", item.quantity)
+                put("unit", item.product.unit)
+                put("unitPrice", item.customPrice)
+                put("lineTotal", item.totalAmount)
+            }
+            itemsJsonArray.put(obj)
         }
         val itemsSummaryStr = summaryStringBuilder.toString()
+        val itemsJsonStr = itemsJsonArray.toString()
 
         posInvoiceError = null
         isGeneratingPOSInvoice = true
@@ -882,6 +1094,7 @@ class BillingViewModel(private val repository: BillingRepository) : ViewModel() 
                     taxAmount = posTaxAmount,
                     paymentMode = posPaymentMode,
                     itemsSummary = itemsSummaryStr,
+                    itemsJson = itemsJsonStr,
                     timestamp = System.currentTimeMillis(),
                     status = "Paid",
                     doctorName = doctor,
@@ -893,20 +1106,6 @@ class BillingViewModel(private val repository: BillingRepository) : ViewModel() 
                 )
 
                 val purchasedList = posCartItems.map { Pair(it.product, it.quantity) }
-
-                // Build JSON array for itemized Udhar breakdown
-                val itemsJsonArray = org.json.JSONArray()
-                posCartItems.forEach { cartItem ->
-                    val obj = org.json.JSONObject().apply {
-                        put("name", cartItem.product.name)
-                        put("quantity", cartItem.quantity)
-                        put("unit", cartItem.product.unit)
-                        put("unitPrice", cartItem.product.salePrice)
-                        put("lineTotal", cartItem.totalAmount)
-                    }
-                    itemsJsonArray.put(obj)
-                }
-                val itemsJsonStr = itemsJsonArray.toString()
 
                 repository.saveInvoiceAndDeductStock(userUid, invoice, purchasedList)
 

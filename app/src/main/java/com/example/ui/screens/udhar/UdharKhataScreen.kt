@@ -833,13 +833,17 @@ private fun LedgerTransactionRow(
                             Spacer(modifier = Modifier.width(6.dp))
                             Surface(
                                 color = Color(0x22FFFFFF),
-                                shape = RoundedCornerShape(4.dp)
+                                shape = RoundedCornerShape(4.dp),
+                                modifier = Modifier.wrapContentWidth()
                             ) {
                                 Text(
                                     text = tx.paymentMode,
                                     color = Color(0xFF94A3B8),
                                     fontSize = 10.sp,
-                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 1,
+                                    softWrap = false,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                                 )
                             }
                         }
@@ -1127,14 +1131,16 @@ private fun UdharBillReceiptModalDialog(
                                 Surface(
                                     color = Color(0x33EF4444),
                                     shape = RoundedCornerShape(4.dp),
-                                    modifier = Modifier.padding(top = 2.dp)
+                                    modifier = Modifier.padding(top = 2.dp).wrapContentWidth()
                                 ) {
                                     Text(
                                         text = transaction.paymentMode,
                                         color = Color(0xFFF87171),
                                         fontSize = 10.sp,
                                         fontWeight = FontWeight.Bold,
-                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                        maxLines = 1,
+                                        softWrap = false,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                                     )
                                 }
                             }

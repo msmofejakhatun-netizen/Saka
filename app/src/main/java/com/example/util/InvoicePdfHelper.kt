@@ -79,6 +79,15 @@ object InvoicePdfHelper {
         titlePaint.textAlign = Paint.Align.RIGHT
         canvas.drawText("PHARMACY INVOICE", 565f, 50f, titlePaint)
 
+        if (invoice.isEdited) {
+            paint.color = Color.parseColor("#FBBF24")
+            paint.textSize = 11f
+            paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+            paint.textAlign = Paint.Align.RIGHT
+            canvas.drawText("(EDITED INVOICE)", 565f, 70f, paint)
+            paint.textAlign = Paint.Align.LEFT
+        }
+
         // Reset text align
         titlePaint.textAlign = Paint.Align.LEFT
 

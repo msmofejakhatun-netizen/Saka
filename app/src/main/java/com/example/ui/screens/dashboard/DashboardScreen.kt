@@ -347,7 +347,8 @@ fun DashboardScreen(
                                 )
                                 BottomTab.HISTORY -> com.example.ui.screens.billing.TransactionHistoryScreen(
                                     viewModel = viewModel,
-                                    onNavigateBack = { currentTab = BottomTab.HOME }
+                                    onNavigateBack = { currentTab = BottomTab.HOME },
+                                    onNavigateToPOS = { currentTab = BottomTab.POS }
                                 )
                                 BottomTab.UDHAR -> com.example.ui.screens.udhar.UdharKhataScreen(
                                     viewModel = viewModel,

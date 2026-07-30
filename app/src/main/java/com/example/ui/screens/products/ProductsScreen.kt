@@ -31,10 +31,20 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.data.db.ProductEntity
 import com.example.ui.components.BarcodeScannerDialog
+import com.example.ui.components.OcrLabelScannerDialog
 import com.example.ui.components.GlassmorphicCard
 import com.example.ui.components.PremiumGradientBackground
 import com.example.ui.components.PremiumLoadingState
 import androidx.compose.material.icons.filled.QrCodeScanner
+import androidx.compose.material.icons.filled.CameraEnhance
+import androidx.compose.material.icons.filled.PhotoCamera
+import androidx.compose.material.icons.filled.DocumentScanner
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.AutoAwesome
+import com.example.util.BarcodeLookupHelper
+import com.example.util.OcrTextParser
+import com.example.util.OcrParsedProduct
+import kotlinx.coroutines.launch
 import com.example.ui.theme.*
 import com.example.ui.viewmodel.BillingViewModel
 import java.util.Locale
@@ -102,6 +112,44 @@ fun ProductsScreen(
     var colorInput by remember { mutableStateOf("") }
 
     var showScannerInDialog by remember { mutableStateOf(false) }
+    var showOcrScannerInDialog by remember { mutableStateOf(false) }
+    var autoFillSourceInfo by remember { mutableStateOf<String?>(null) }
+    var isPerformingBarcodeLookup by remember { mutableStateOf(false) }
+    val coroutineScope = rememberCoroutineScope()
+
+    fun lookupAndAutoFillBarcode(code: String) {
+        val cleanCode = code.trim()
+        if (cleanCode.isBlank()) return
+        isPerformingBarcodeLookup = true
+        coroutineScope.launch {
+            val result = BarcodeLookupHelper.lookupBarcode(cleanCode)
+            isPerformingBarcodeLookup = false
+            if (result != null) {
+                if (itemNameInput.isBlank() || itemNameInput.startsWith("Item")) itemNameInput = result.name
+                if (manufacturerInput.isBlank() && result.brandOrManufacturer.isNotBlank()) manufacturerInput = result.brandOrManufacturer
+                if (result.category.isNotBlank() && (selectedCategory == "General" || selectedCategory == "General Store / Retail")) selectedCategory = result.category
+                if (salePriceInput.isBlank() && result.mrpOrPrice != null) salePriceInput = result.mrpOrPrice.toString()
+                if (saltCompositionInput.isBlank() && result.saltComposition.isNotBlank()) saltCompositionInput = result.saltComposition
+                if (result.unit.isNotBlank()) selectedUnit = result.unit
+                if (result.packUnitConfig.isNotBlank()) packConfigInput = result.packUnitConfig
+                if (result.isRxRequired) isRxRequiredInput = true
+                autoFillSourceInfo = "⚡ Auto-filled from Barcode Database (${result.source})"
+            } else {
+                autoFillSourceInfo = "⚠️ No entry found for Barcode $cleanCode in Master Catalog"
+            }
+        }
+    }
+
+    fun applyOcrParsedProduct(ocr: OcrParsedProduct) {
+        if (ocr.name.isNotBlank()) itemNameInput = ocr.name
+        if (ocr.batchNumber.isNotBlank()) batchNumberInput = ocr.batchNumber
+        if (ocr.expiryDate.isNotBlank()) expiryDateInput = ocr.expiryDate
+        if (ocr.mrp != null) salePriceInput = ocr.mrp.toString()
+        if (ocr.manufacturer.isNotBlank()) manufacturerInput = ocr.manufacturer
+        if (ocr.saltComposition.isNotBlank()) saltCompositionInput = ocr.saltComposition
+        if (ocr.packConfig.isNotBlank()) packConfigInput = ocr.packConfig
+        autoFillSourceInfo = "📷 Auto-filled from OCR Box Label Reader (Editable)"
+    }
 
     var unitDropdownExpanded by remember { mutableStateOf(false) }
     var categoryDropdownExpanded by remember { mutableStateOf(false) }
@@ -110,6 +158,7 @@ fun ProductsScreen(
 
     fun openAddDialog() {
         selectedProductForEdit = null
+        autoFillSourceInfo = null
         itemNameInput = ""
         salePriceInput = ""
         purchasePriceInput = ""
@@ -162,6 +211,7 @@ fun ProductsScreen(
 
     fun openEditDialog(product: ProductEntity) {
         selectedProductForEdit = product
+        autoFillSourceInfo = null
         itemNameInput = product.name
         salePriceInput = product.salePrice.toString()
         purchasePriceInput = if (product.purchasePrice > 0) product.purchasePrice.toString() else ""
@@ -522,11 +572,129 @@ fun ProductsScreen(
                             }
                         }
 
+                        // --- Smart Auto-Fill Assistant Bar ---
+                        Card(
+                            colors = CardDefaults.cardColors(containerColor = Color(0x2210B981)),
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .border(1.dp, Color(0x3310B981), RoundedCornerShape(12.dp))
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(10.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(
+                                            imageVector = Icons.Default.AutoAwesome,
+                                            contentDescription = null,
+                                            tint = EmeraldLight,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text(
+                                            text = "SMART AUTO-FILL ASSISTANT",
+                                            color = EmeraldLight,
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            letterSpacing = 0.5.sp
+                                        )
+                                    }
+                                    if (isPerformingBarcodeLookup) {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.size(14.dp),
+                                            color = EmeraldLight,
+                                            strokeWidth = 2.dp
+                                        )
+                                    }
+                                }
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Button(
+                                        onClick = { showOcrScannerInDialog = true },
+                                        colors = ButtonDefaults.buttonColors(containerColor = EmeraldGreen),
+                                        shape = RoundedCornerShape(10.dp),
+                                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .height(38.dp)
+                                            .testTag("scan_box_label_ocr_button")
+                                    ) {
+                                        Icon(Icons.Default.PhotoCamera, contentDescription = null, modifier = Modifier.size(16.dp))
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text("📷 Scan Box Label (OCR)", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                    }
+
+                                    OutlinedButton(
+                                        onClick = { showScannerInDialog = true },
+                                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
+                                        border = androidx.compose.foundation.BorderStroke(1.dp, EmeraldLight),
+                                        shape = RoundedCornerShape(10.dp),
+                                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .height(38.dp)
+                                            .testTag("scan_barcode_autofill_button")
+                                    ) {
+                                        Icon(Icons.Default.QrCodeScanner, contentDescription = null, tint = EmeraldLight, modifier = Modifier.size(16.dp))
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text("Barcode DB Lookup", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                    }
+                                }
+
+                                // Notification Banner if Auto-Filled
+                                autoFillSourceInfo?.let { info ->
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .background(Color(0x333B82F6), RoundedCornerShape(6.dp))
+                                            .padding(horizontal = 8.dp, vertical = 4.dp),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            text = info,
+                                            color = Color(0xFF93C5FD),
+                                            fontSize = 10.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                            modifier = Modifier.weight(1f)
+                                        )
+                                        IconButton(
+                                            onClick = { autoFillSourceInfo = null },
+                                            modifier = Modifier.size(20.dp)
+                                        ) {
+                                            Icon(Icons.Default.Close, contentDescription = "Clear", tint = Color.White, modifier = Modifier.size(14.dp))
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
                         // Product Name Field
                         OutlinedTextField(
                             value = itemNameInput,
                             onValueChange = { itemNameInput = it },
                             label = { Text("Item / Product Name *", color = Color(0xFF94A3B8)) },
+                            trailingIcon = {
+                                IconButton(
+                                    onClick = { showOcrScannerInDialog = true },
+                                    modifier = Modifier.testTag("product_name_ocr_button")
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.CameraEnhance,
+                                        contentDescription = "Scan Label OCR",
+                                        tint = EmeraldGreen
+                                    )
+                                }
+                            },
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedBorderColor = EmeraldGreen,
                                 unfocusedBorderColor = Color(0x22FFFFFF),
@@ -710,18 +878,30 @@ fun ProductsScreen(
                             }
                         }
 
-                        // Barcode Field with Scan Button
+                        // Barcode Field with Scan & Lookup Buttons
                         OutlinedTextField(
                             value = barcodeInput,
-                            onValueChange = { barcodeInput = it },
+                            onValueChange = { newBarcode ->
+                                barcodeInput = newBarcode
+                                if (newBarcode.length >= 8) {
+                                    lookupAndAutoFillBarcode(newBarcode)
+                                }
+                            },
                             label = { Text("Barcode / SKU (Optional)", color = Color(0xFF94A3B8)) },
                             placeholder = { Text("e.g. 8901234567890") },
                             leadingIcon = {
                                 Icon(Icons.Default.QrCode, contentDescription = null, tint = GoldYellow, modifier = Modifier.size(20.dp))
                             },
                             trailingIcon = {
-                                IconButton(onClick = { showScannerInDialog = true }) {
-                                    Icon(Icons.Default.QrCodeScanner, contentDescription = "Scan Barcode", tint = EmeraldGreen)
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    if (barcodeInput.isNotBlank()) {
+                                        IconButton(onClick = { lookupAndAutoFillBarcode(barcodeInput) }) {
+                                            Icon(Icons.Default.Search, contentDescription = "Lookup Barcode", tint = GoldYellow)
+                                        }
+                                    }
+                                    IconButton(onClick = { showScannerInDialog = true }) {
+                                        Icon(Icons.Default.QrCodeScanner, contentDescription = "Scan Barcode", tint = EmeraldGreen)
+                                    }
                                 }
                             },
                             colors = OutlinedTextFieldDefaults.colors(
@@ -1068,8 +1248,20 @@ fun ProductsScreen(
                 onBarcodeScanned = { scannedCode ->
                     barcodeInput = scannedCode
                     showScannerInDialog = false
+                    lookupAndAutoFillBarcode(scannedCode)
                 },
                 onDismiss = { showScannerInDialog = false }
+            )
+        }
+
+        // --- OCR Packaging Label Scanner Dialog ---
+        if (showOcrScannerInDialog) {
+            OcrLabelScannerDialog(
+                onOcrResultExtracted = { parsed ->
+                    applyOcrParsedProduct(parsed)
+                    showOcrScannerInDialog = false
+                },
+                onDismiss = { showOcrScannerInDialog = false }
             )
         }
     }

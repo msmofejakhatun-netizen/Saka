@@ -200,7 +200,14 @@ fun BarcodeScannerDialog(
                                                     val firstBarcode = barcodes.firstOrNull()?.rawValue
                                                     if (!firstBarcode.isNullOrBlank() && !scannedSuccessfully) {
                                                         scannedSuccessfully = true
+                                                        try {
+                                                            val toneGen = android.media.ToneGenerator(android.media.AudioManager.STREAM_MUSIC, 100)
+                                                            toneGen.startTone(android.media.ToneGenerator.TONE_PROP_BEEP, 150)
+                                                        } catch (e: Exception) {
+                                                            Log.e("BarcodeScanner", "Tone error: ${e.localizedMessage}")
+                                                        }
                                                         onBarcodeScanned(firstBarcode)
+                                                        onDismiss()
                                                     }
                                                 }
                                                 .addOnFailureListener { e ->
@@ -352,7 +359,12 @@ fun BarcodeScannerDialog(
                         keyboardActions = KeyboardActions(
                             onDone = {
                                 if (manualBarcode.isNotBlank()) {
+                                    try {
+                                        val toneGen = android.media.ToneGenerator(android.media.AudioManager.STREAM_MUSIC, 100)
+                                        toneGen.startTone(android.media.ToneGenerator.TONE_PROP_BEEP, 150)
+                                    } catch (e: Exception) {}
                                     onBarcodeScanned(manualBarcode.trim())
+                                    onDismiss()
                                 }
                             }
                         ),
@@ -373,7 +385,12 @@ fun BarcodeScannerDialog(
                     Button(
                         onClick = {
                             if (manualBarcode.isNotBlank()) {
+                                try {
+                                    val toneGen = android.media.ToneGenerator(android.media.AudioManager.STREAM_MUSIC, 100)
+                                    toneGen.startTone(android.media.ToneGenerator.TONE_PROP_BEEP, 150)
+                                } catch (e: Exception) {}
                                 onBarcodeScanned(manualBarcode.trim())
+                                onDismiss()
                             }
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = EmeraldGreen),

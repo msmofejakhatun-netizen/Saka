@@ -825,6 +825,13 @@ class BillingViewModel(private val repository: BillingRepository) : ViewModel() 
 
         val name = if (posCustomerName.isBlank()) "Walk-in Customer" else posCustomerName.trim()
         val mobile = posCustomerMobile.trim()
+
+        if (posPaymentMode.contains("Credit", ignoreCase = true) || posPaymentMode.contains("Udhar", ignoreCase = true)) {
+            if (name == "Walk-in Customer" || name.isBlank()) {
+                posInvoiceError = "Customer Name is required for Credit (Udhar) transactions."
+                return
+            }
+        }
         val doctor = posDoctorName.trim()
         val patient = posPatientInfo.trim()
         val userDl = _currentUser.value?.dlNumber?.ifBlank { "DL-20B/10492/2024" } ?: "DL-20B/10492/2024"

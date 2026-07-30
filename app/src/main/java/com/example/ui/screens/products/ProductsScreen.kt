@@ -545,7 +545,7 @@ fun ProductsScreen(
                             OutlinedTextField(
                                 value = salePriceInput,
                                 onValueChange = { salePriceInput = it },
-                                label = { Text("Sale Price ($) *", color = Color(0xFF94A3B8)) },
+                                label = { Text("Sale Price (₹) *", color = Color(0xFF94A3B8)) },
                                 colors = OutlinedTextFieldDefaults.colors(
                                     focusedBorderColor = EmeraldGreen,
                                     unfocusedBorderColor = Color(0x22FFFFFF),
@@ -563,7 +563,7 @@ fun ProductsScreen(
                             OutlinedTextField(
                                 value = purchasePriceInput,
                                 onValueChange = { purchasePriceInput = it },
-                                label = { Text("Purchase Price ($)", color = Color(0xFF94A3B8)) },
+                                label = { Text("Purchase Price (₹)", color = Color(0xFF94A3B8)) },
                                 colors = OutlinedTextFieldDefaults.colors(
                                     focusedBorderColor = EmeraldGreen,
                                     unfocusedBorderColor = Color(0x22FFFFFF),

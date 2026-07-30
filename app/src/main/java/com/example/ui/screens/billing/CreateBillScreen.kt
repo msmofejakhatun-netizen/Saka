@@ -134,6 +134,7 @@ fun CreateBillScreen(
     var showMerchantUpiSettingsDialog by remember { mutableStateOf(false) }
     var showCustomerPickerModal by remember { mutableStateOf(false) }
     var showAddNewCustomerModal by remember { mutableStateOf(false) }
+    var isCustomerFieldsExpanded by remember { mutableStateOf(false) }
 
     var showCartReviewModal by remember { mutableStateOf(false) }
     var showPaymentModal by remember { mutableStateOf(false) }
@@ -228,6 +229,12 @@ fun CreateBillScreen(
             ) {
                 // 1. Customer Details Section
                 item {
+                    val showCustomerFormFields = isCustomerFieldsExpanded ||
+                            viewModel.posPaymentMode.contains("Credit", ignoreCase = true) ||
+                            viewModel.posPaymentMode.contains("Udhar", ignoreCase = true) ||
+                            (viewModel.posCustomerName.isNotBlank() && viewModel.posCustomerName != "Walk-in Customer") ||
+                            viewModel.posCustomerMobile.isNotBlank()
+
                     Spacer(modifier = Modifier.height(4.dp))
                     Card(
                         colors = CardDefaults.cardColors(containerColor = Color(0x1F1E295D)),
@@ -241,140 +248,88 @@ fun CreateBillScreen(
                             modifier = Modifier.padding(14.dp),
                             verticalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(
-                                    imageVector = Icons.Default.Person,
-                                    contentDescription = "Customer",
-                                    tint = EmeraldGreen,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = "Customer Information",
-                                    color = Color.White,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 14.sp
-                                )
-                                Spacer(modifier = Modifier.weight(1f))
-
-                                Surface(
-                                    onClick = { showCustomerPickerModal = true },
-                                    color = Color(0x3310B981),
-                                    shape = RoundedCornerShape(6.dp),
-                                    modifier = Modifier.testTag("pos_open_customer_search_btn")
-                                ) {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                                    ) {
-                                        Icon(Icons.Default.Search, contentDescription = "Search", tint = EmeraldLight, modifier = Modifier.size(12.dp))
-                                        Spacer(modifier = Modifier.width(4.dp))
-                                        Text("Search / Select", color = EmeraldLight, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        imageVector = Icons.Default.Person,
+                                        contentDescription = "Customer",
+                                        tint = EmeraldGreen,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Column {
+                                        Text(
+                                            text = if (viewModel.posCustomerName.isBlank() || viewModel.posCustomerName == "Walk-in Customer") "Walk-in Cash Sale" else viewModel.posCustomerName,
+                                            color = Color.White,
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 14.sp
+                                        )
+                                        if (viewModel.posCustomerMobile.isNotBlank()) {
+                                            Text(
+                                                text = "Mob: ${viewModel.posCustomerMobile}",
+                                                color = Color(0xFF94A3B8),
+                                                fontSize = 11.sp
+                                            )
+                                        } else if (!showCustomerFormFields) {
+                                            Text(
+                                                text = "Default POS Mode • Fast Checkout",
+                                                color = Color(0xFF94A3B8),
+                                                fontSize = 10.sp
+                                            )
+                                        }
                                     }
                                 }
 
-                                Spacer(modifier = Modifier.width(6.dp))
-
-                                Box(
-                                    modifier = Modifier
-                                        .clip(RoundedCornerShape(6.dp))
-                                        .background(Color(0x22FFFFFF))
-                                        .clickable {
-                                            viewModel.posCustomerName = "Walk-in Customer"
-                                            viewModel.posCustomerMobile = ""
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    if (showCustomerFormFields && viewModel.posPaymentMode != "Credit (Udhar)") {
+                                        TextButton(
+                                            onClick = {
+                                                viewModel.posCustomerName = "Walk-in Customer"
+                                                viewModel.posCustomerMobile = ""
+                                                isCustomerFieldsExpanded = false
+                                            },
+                                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+                                        ) {
+                                            Text("Reset Walk-in", color = AccentPink, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
                                         }
-                                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                                    } else if (!showCustomerFormFields) {
+                                        Surface(
+                                            onClick = {
+                                                showCustomerPickerModal = true
+                                                isCustomerFieldsExpanded = true
+                                            },
+                                            color = Color(0x3310B981),
+                                            shape = RoundedCornerShape(6.dp),
+                                            modifier = Modifier.testTag("pos_open_customer_search_btn")
+                                        ) {
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp)
+                                            ) {
+                                                Icon(Icons.Default.PersonAdd, contentDescription = "Add Customer", tint = EmeraldLight, modifier = Modifier.size(13.dp))
+                                                Spacer(modifier = Modifier.width(4.dp))
+                                                Text("Customer (+)", color = EmeraldLight, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            // Restaurant / Cafe Specific Layout: Table No. & Order Type clean and visible
+                            if (activeBusinessType == com.example.util.BusinessType.RESTAURANT) {
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                    verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Text("Cash Sale", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                                }
-                            }
-
-                            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                                OutlinedTextField(
-                                    value = viewModel.posCustomerName,
-                                    onValueChange = { viewModel.posCustomerName = it },
-                                    label = { Text("Customer Name", color = Color(0xFF94A3B8), fontSize = 12.sp) },
-                                    leadingIcon = { Icon(Icons.Default.Person, contentDescription = null, tint = EmeraldGreen, modifier = Modifier.size(18.dp)) },
-                                    trailingIcon = {
-                                        IconButton(onClick = { showCustomerPickerModal = true }) {
-                                            Icon(Icons.Default.Search, contentDescription = "Search Customer", tint = EmeraldGreen, modifier = Modifier.size(20.dp))
-                                        }
-                                    },
-                                    colors = OutlinedTextFieldDefaults.colors(
-                                        focusedBorderColor = EmeraldGreen,
-                                        unfocusedBorderColor = Color(0x22FFFFFF),
-                                        focusedTextColor = Color.White,
-                                        unfocusedTextColor = Color.White
-                                    ),
-                                    singleLine = true,
-                                    modifier = Modifier
-                                        .weight(1.2f)
-                                        .testTag("pos_customer_name_input")
-                                )
-
-                                OutlinedTextField(
-                                    value = viewModel.posCustomerMobile,
-                                    onValueChange = { viewModel.posCustomerMobile = it },
-                                    label = { Text("Mobile (Opt)", color = Color(0xFF94A3B8), fontSize = 12.sp) },
-                                    leadingIcon = { Icon(Icons.Default.Phone, contentDescription = null, tint = EmeraldGreen, modifier = Modifier.size(18.dp)) },
-                                    colors = OutlinedTextFieldDefaults.colors(
-                                        focusedBorderColor = EmeraldGreen,
-                                        unfocusedBorderColor = Color(0x22FFFFFF),
-                                        focusedTextColor = Color.White,
-                                        unfocusedTextColor = Color.White
-                                    ),
-                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
-                                    singleLine = true,
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .testTag("pos_customer_mobile_input")
-                                )
-                            }
-
-                            // Category-Specific Billing Information
-                            if (activeBusinessType == com.example.util.BusinessType.PHARMACY) {
-                                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                                    OutlinedTextField(
-                                        value = viewModel.posDoctorName,
-                                        onValueChange = { viewModel.posDoctorName = it },
-                                        label = { Text("Doctor Name (Opt)", color = Color(0xFF94A3B8), fontSize = 11.sp) },
-                                        placeholder = { Text("Dr. Sharma") },
-                                        colors = OutlinedTextFieldDefaults.colors(
-                                            focusedBorderColor = EmeraldGreen,
-                                            unfocusedBorderColor = Color(0x22FFFFFF),
-                                            focusedTextColor = Color.White,
-                                            unfocusedTextColor = Color.White
-                                        ),
-                                        singleLine = true,
-                                        modifier = Modifier
-                                            .weight(1f)
-                                            .testTag("pos_doctor_name_input")
-                                    )
-
-                                    OutlinedTextField(
-                                        value = viewModel.posPatientInfo,
-                                        onValueChange = { viewModel.posPatientInfo = it },
-                                        label = { Text("Patient Name/Age (Opt)", color = Color(0xFF94A3B8), fontSize = 11.sp) },
-                                        placeholder = { Text("Rahul / 32Y") },
-                                        colors = OutlinedTextFieldDefaults.colors(
-                                            focusedBorderColor = EmeraldGreen,
-                                            unfocusedBorderColor = Color(0x22FFFFFF),
-                                            focusedTextColor = Color.White,
-                                            unfocusedTextColor = Color.White
-                                        ),
-                                        singleLine = true,
-                                        modifier = Modifier
-                                            .weight(1f)
-                                            .testTag("pos_patient_info_input")
-                                    )
-                                }
-                            } else if (activeBusinessType == com.example.util.BusinessType.RESTAURANT) {
-                                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                                     OutlinedTextField(
                                         value = viewModel.posTableNumber,
                                         onValueChange = { viewModel.posTableNumber = it },
                                         label = { Text("Table No. / Counter", color = Color(0xFF94A3B8), fontSize = 11.sp) },
-                                        placeholder = { Text("Table 4") },
+                                        placeholder = { Text("Table 4", color = Color(0xFF64748B)) },
                                         colors = OutlinedTextFieldDefaults.colors(
                                             focusedBorderColor = EmeraldGreen,
                                             unfocusedBorderColor = Color(0x22FFFFFF),
@@ -387,10 +342,10 @@ fun CreateBillScreen(
                                             .testTag("pos_table_number_input")
                                     )
 
-                                    // Order Type selector (Dine-in / Takeaway / Delivery)
                                     val orderTypes = listOf("Dine-in", "Takeaway", "Delivery")
                                     Column(modifier = Modifier.weight(1.2f)) {
                                         Text("Order Type:", color = Color(0xFF94A3B8), fontSize = 10.sp)
+                                        Spacer(modifier = Modifier.height(2.dp))
                                         Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                                             orderTypes.forEach { type ->
                                                 val isSel = viewModel.posOrderType.equals(type, ignoreCase = true) || (viewModel.posOrderType.isEmpty() && type == "Dine-in")
@@ -414,26 +369,114 @@ fun CreateBillScreen(
                                 }
                             }
 
-                            // Banner button to trigger search/select customer dialog
-                            Surface(
-                                onClick = { showCustomerPickerModal = true },
-                                color = Color(0x11FFFFFF),
-                                shape = RoundedCornerShape(8.dp),
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .testTag("pos_customer_picker_banner")
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.SpaceBetween
-                                ) {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Icon(Icons.Default.PersonAdd, contentDescription = null, tint = EmeraldLight, modifier = Modifier.size(14.dp))
-                                        Spacer(modifier = Modifier.width(6.dp))
-                                        Text("Search Saved Customers or Register New (+)", color = EmeraldLight, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                            // Customer Form Input Fields (Expanded Mode or Udhar Mode)
+                            if (showCustomerFormFields) {
+                                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                    OutlinedTextField(
+                                        value = viewModel.posCustomerName,
+                                        onValueChange = { viewModel.posCustomerName = it },
+                                        label = { Text("Customer Name *", color = Color(0xFF94A3B8), fontSize = 12.sp) },
+                                        leadingIcon = { Icon(Icons.Default.Person, contentDescription = null, tint = EmeraldGreen, modifier = Modifier.size(18.dp)) },
+                                        trailingIcon = {
+                                            IconButton(onClick = {
+                                                showCustomerPickerModal = true
+                                                isCustomerFieldsExpanded = true
+                                            }) {
+                                                Icon(Icons.Default.Search, contentDescription = "Search Customer", tint = EmeraldGreen, modifier = Modifier.size(20.dp))
+                                            }
+                                        },
+                                        colors = OutlinedTextFieldDefaults.colors(
+                                            focusedBorderColor = EmeraldGreen,
+                                            unfocusedBorderColor = Color(0x22FFFFFF),
+                                            focusedTextColor = Color.White,
+                                            unfocusedTextColor = Color.White
+                                        ),
+                                        singleLine = true,
+                                        modifier = Modifier
+                                            .weight(1.2f)
+                                            .testTag("pos_customer_name_input")
+                                    )
+
+                                    OutlinedTextField(
+                                        value = viewModel.posCustomerMobile,
+                                        onValueChange = { viewModel.posCustomerMobile = it },
+                                        label = { Text("Mobile (Opt)", color = Color(0xFF94A3B8), fontSize = 12.sp) },
+                                        leadingIcon = { Icon(Icons.Default.Phone, contentDescription = null, tint = EmeraldGreen, modifier = Modifier.size(18.dp)) },
+                                        colors = OutlinedTextFieldDefaults.colors(
+                                            focusedBorderColor = EmeraldGreen,
+                                            unfocusedBorderColor = Color(0x22FFFFFF),
+                                            focusedTextColor = Color.White,
+                                            unfocusedTextColor = Color.White
+                                        ),
+                                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                                        singleLine = true,
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .testTag("pos_customer_mobile_input")
+                                    )
+                                }
+
+                                if (activeBusinessType == com.example.util.BusinessType.PHARMACY) {
+                                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                        OutlinedTextField(
+                                            value = viewModel.posDoctorName,
+                                            onValueChange = { viewModel.posDoctorName = it },
+                                            label = { Text("Doctor Name (Opt)", color = Color(0xFF94A3B8), fontSize = 11.sp) },
+                                            placeholder = { Text("Dr. Sharma") },
+                                            colors = OutlinedTextFieldDefaults.colors(
+                                                focusedBorderColor = EmeraldGreen,
+                                                unfocusedBorderColor = Color(0x22FFFFFF),
+                                                focusedTextColor = Color.White,
+                                                unfocusedTextColor = Color.White
+                                            ),
+                                            singleLine = true,
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .testTag("pos_doctor_name_input")
+                                        )
+
+                                        OutlinedTextField(
+                                            value = viewModel.posPatientInfo,
+                                            onValueChange = { viewModel.posPatientInfo = it },
+                                            label = { Text("Patient Name/Age (Opt)", color = Color(0xFF94A3B8), fontSize = 11.sp) },
+                                            placeholder = { Text("Rahul / 32Y") },
+                                            colors = OutlinedTextFieldDefaults.colors(
+                                                focusedBorderColor = EmeraldGreen,
+                                                unfocusedBorderColor = Color(0x22FFFFFF),
+                                                focusedTextColor = Color.White,
+                                                unfocusedTextColor = Color.White
+                                            ),
+                                            singleLine = true,
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .testTag("pos_patient_info_input")
+                                        )
                                     }
-                                    Icon(Icons.Default.Search, contentDescription = null, tint = Color(0xFF94A3B8), modifier = Modifier.size(14.dp))
+                                }
+                            } else {
+                                Surface(
+                                    onClick = {
+                                        showCustomerPickerModal = true
+                                        isCustomerFieldsExpanded = true
+                                    },
+                                    color = Color(0x11FFFFFF),
+                                    shape = RoundedCornerShape(8.dp),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .testTag("pos_customer_picker_banner")
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Icon(Icons.Default.PersonAdd, contentDescription = null, tint = EmeraldLight, modifier = Modifier.size(14.dp))
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Text("Search Saved Customers or Register New (+)", color = EmeraldLight, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                                        }
+                                        Icon(Icons.Default.Search, contentDescription = null, tint = Color(0xFF94A3B8), modifier = Modifier.size(14.dp))
+                                    }
                                 }
                             }
                         }
@@ -888,12 +931,14 @@ fun CreateBillScreen(
             onSelectCustomer = { cust ->
                 viewModel.posCustomerName = cust.name
                 viewModel.posCustomerMobile = cust.mobileNumber
+                isCustomerFieldsExpanded = true
                 showCustomerPickerModal = false
                 Toast.makeText(context, "Selected customer: ${cust.name}", Toast.LENGTH_SHORT).show()
             },
             onSelectWalkIn = {
                 viewModel.posCustomerName = "Walk-in Customer"
                 viewModel.posCustomerMobile = ""
+                isCustomerFieldsExpanded = false
                 showCustomerPickerModal = false
                 Toast.makeText(context, "Selected Walk-in Customer", Toast.LENGTH_SHORT).show()
             },
@@ -912,6 +957,7 @@ fun CreateBillScreen(
                 viewModel.addQuickCustomer(name, mobile) { savedCust ->
                     viewModel.posCustomerName = savedCust.name
                     viewModel.posCustomerMobile = savedCust.mobileNumber
+                    isCustomerFieldsExpanded = true
                     showAddNewCustomerModal = false
                 }
             },
@@ -1505,6 +1551,58 @@ private fun PaymentAndCheckoutModalDialog(
                                             ) {
                                                 Text("Show QR", fontSize = 11.sp, fontWeight = FontWeight.Bold)
                                             }
+                                        }
+                                    }
+                                }
+
+                                if (viewModel.posPaymentMode.contains("Credit", ignoreCase = true) || viewModel.posPaymentMode.contains("Udhar", ignoreCase = true)) {
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Column(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .background(Color(0x2210B981), RoundedCornerShape(10.dp))
+                                            .border(1.dp, EmeraldGreen, RoundedCornerShape(10.dp))
+                                            .padding(12.dp),
+                                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Icon(Icons.Default.Person, contentDescription = null, tint = EmeraldGreen, modifier = Modifier.size(18.dp))
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Text("Udhar Sale Customer Details Required", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                        }
+                                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                            OutlinedTextField(
+                                                value = if (viewModel.posCustomerName == "Walk-in Customer") "" else viewModel.posCustomerName,
+                                                onValueChange = { viewModel.posCustomerName = it },
+                                                label = { Text("Customer Name *", color = Color(0xFF94A3B8), fontSize = 11.sp) },
+                                                colors = OutlinedTextFieldDefaults.colors(
+                                                    focusedBorderColor = EmeraldGreen,
+                                                    unfocusedBorderColor = Color(0x33FFFFFF),
+                                                    focusedTextColor = Color.White,
+                                                    unfocusedTextColor = Color.White
+                                                ),
+                                                singleLine = true,
+                                                modifier = Modifier
+                                                    .weight(1.2f)
+                                                    .testTag("udhar_customer_name_input")
+                                            )
+
+                                            OutlinedTextField(
+                                                value = viewModel.posCustomerMobile,
+                                                onValueChange = { viewModel.posCustomerMobile = it },
+                                                label = { Text("Mobile No.", color = Color(0xFF94A3B8), fontSize = 11.sp) },
+                                                colors = OutlinedTextFieldDefaults.colors(
+                                                    focusedBorderColor = EmeraldGreen,
+                                                    unfocusedBorderColor = Color(0x33FFFFFF),
+                                                    focusedTextColor = Color.White,
+                                                    unfocusedTextColor = Color.White
+                                                ),
+                                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                                                singleLine = true,
+                                                modifier = Modifier
+                                                    .weight(1f)
+                                                    .testTag("udhar_customer_mobile_input")
+                                            )
                                         }
                                     }
                                 }

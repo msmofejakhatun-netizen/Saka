@@ -846,6 +846,22 @@ private fun LedgerTransactionRow(
                                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                                 )
                             }
+                            if (tx.isEdited) {
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Surface(
+                                    color = Color(0x33F59E0B),
+                                    shape = RoundedCornerShape(4.dp),
+                                    modifier = Modifier.wrapContentWidth()
+                                ) {
+                                    Text(
+                                        text = "EDITED",
+                                        color = Color(0xFFFBBF24),
+                                        fontSize = 9.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
+                                    )
+                                }
+                            }
                         }
 
                         Spacer(modifier = Modifier.height(2.dp))

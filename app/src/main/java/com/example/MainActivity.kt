@@ -7,6 +7,10 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -23,15 +27,30 @@ import com.example.ui.screens.login.LoginScreen
 import com.example.ui.theme.MyApplicationTheme
 import com.example.ui.viewmodel.BillingViewModel
 import com.example.ui.viewmodel.BillingViewModelFactory
+import com.razorpay.Checkout
+import com.razorpay.PaymentData
+import com.razorpay.PaymentResultWithDataListener
 import kotlinx.coroutines.flow.collectLatest
 
-class MainActivity : ComponentActivity() {
+class MainActivity : ComponentActivity(), com.razorpay.PaymentResultWithDataListener {
+    private var navControllerRef: androidx.navigation.NavHostController? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
+        // Preload Razorpay Checkout SDK
+        try {
+            com.razorpay.Checkout.preload(applicationContext)
+        } catch (e: Exception) {
+            android.util.Log.e("MainActivity", "Razorpay preload failed: ${e.localizedMessage}")
+        }
+
         // Initialize Firebase
         FirebaseManager.initialize(this)
+
+        // Initialize Subscription Manager
+        com.example.data.subscription.SubscriptionManager.init(this)
 
         // Initialize SQLite Room database & repository locally
         val database = AppDatabase.getDatabase(this)
@@ -48,17 +67,52 @@ class MainActivity : ComponentActivity() {
             MyApplicationTheme {
                 val context = LocalContext.current
                 val navController = rememberNavController()
+                navControllerRef = navController
 
                 // Instantiate the unified ViewModel using our Factory
                 val viewModel: BillingViewModel = viewModel(
                     factory = BillingViewModelFactory(repository)
                 )
 
+                // App Update State & Checker
+                var appUpdateInfo by remember { mutableStateOf<com.example.update.AppUpdateInfo?>(null) }
+                var showUpdateDialog by remember { mutableStateOf(false) }
+
+                LaunchedEffect(Unit) {
+                    com.example.update.AppUpdateManagerHelper.checkForAppUpdate(context) { info ->
+                        if (info.isUpdateAvailable) {
+                            appUpdateInfo = info
+                            showUpdateDialog = true
+                        }
+                    }
+                }
+
                 // Reactive notification dispatch (Toasts)
                 LaunchedEffect(key1 = true) {
                     viewModel.toastMessage.collectLatest { message ->
                         Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
                     }
+                }
+
+                val currentUpdateInfo = appUpdateInfo
+                if (showUpdateDialog && currentUpdateInfo != null) {
+                    com.example.ui.components.AppUpdateDialog(
+                        updateInfo = currentUpdateInfo,
+                        onUpdateNow = {
+                            com.example.update.AppUpdateManagerHelper.startInAppUpdate(
+                                context = context,
+                                updateInfo = currentUpdateInfo,
+                                onProgress = { progress -> },
+                                onCompleted = {
+                                    Toast.makeText(context, "Update download completed! Launching installer...", Toast.LENGTH_LONG).show()
+                                    showUpdateDialog = false
+                                }
+                            )
+                        },
+                        onLater = {
+                            showUpdateDialog = false
+                        }
+                    )
                 }
 
                 NavHost(
@@ -197,8 +251,54 @@ class MainActivity : ComponentActivity() {
                             }
                         )
                     }
+
+                    composable(Screen.Paywall.route) {
+                        com.example.ui.screens.paywall.PaywallScreen(
+                            viewModel = viewModel,
+                            onBack = { navController.popBackStack() }
+                        )
+                    }
                 }
             }
         }
+    }
+
+    /**
+     * Razorpay Payment Result Callback on Payment Success.
+     * Updates user Firestore profile (isProUser = true, subscriptionStatus = "ACTIVE"),
+     * persists state locally in SharedPreferences, shows Toast, and navigates to Dashboard.
+     */
+    override fun onPaymentSuccess(razorpayPaymentId: String?, paymentData: PaymentData?) {
+        val paymentId = razorpayPaymentId ?: paymentData?.paymentId ?: "pay_success"
+        val mandateId = paymentData?.orderId
+            ?.takeIf { it.isNotBlank() }
+            ?: "MND-RZP-$paymentId"
+
+        val userUid = FirebaseManager.auth?.currentUser?.uid
+            ?: FirebaseManager.auth?.currentUser?.phoneNumber
+            ?: ""
+
+        com.example.data.subscription.SubscriptionManager.activateTrialMandate(
+            context = this,
+            paymentMethod = "Razorpay Checkout (UPI Autopay)",
+            userUid = userUid,
+            gatewayProvider = "RAZORPAY",
+            subscriptionId = mandateId,
+            onComplete = { _, _ ->
+                Toast.makeText(this, "Trial Activated Successfully! 🎉", Toast.LENGTH_LONG).show()
+                navControllerRef?.navigate(Screen.Dashboard.route) {
+                    popUpTo(Screen.Paywall.route) { inclusive = true }
+                }
+            }
+        )
+    }
+
+    /**
+     * Razorpay Payment Result Callback on Payment Error.
+     * Displays a clear error message Toast allowing the user to retry.
+     */
+    override fun onPaymentError(code: Int, response: String?, paymentData: PaymentData?) {
+        val errorMsg = response ?: "Payment cancelled or authorization failed"
+        Toast.makeText(this, "Payment Error ($code): $errorMsg", Toast.LENGTH_LONG).show()
     }
 }

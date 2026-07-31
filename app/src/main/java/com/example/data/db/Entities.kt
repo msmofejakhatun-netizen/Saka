@@ -96,5 +96,6 @@ data class CustomerTransactionEntity(
     val note: String = "",
     val invoiceId: String = "",
     val itemsJson: String = "",
+    val isEdited: Boolean = false,
     val timestamp: Long = System.currentTimeMillis()
 )

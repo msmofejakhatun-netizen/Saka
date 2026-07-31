@@ -43,6 +43,7 @@ credentials = "1.5.0"
 googleid = "1.1.1"
 
 
+razorpayCheckout = "1.6.33"
 zxingCore = "3.5.3"
 mlkitBarcodeScanning = "17.3.0"
 mlkitTextRecognition = "16.0.1"
@@ -104,6 +105,7 @@ firebase-auth = { group = "com.google.firebase", name = "firebase-auth" }
 androidx-credentials = { group = "androidx.credentials", name = "credentials", version.ref = "credentials" }
 androidx-credentials-play-services = { group = "androidx.credentials", name = "credentials-play-services-auth", version.ref = "credentials" }
 googleid = { group = "com.google.android.libraries.identity.googleid", name = "googleid", version.ref = "googleid" }
+razorpay-checkout = { group = "com.razorpay", name = "checkout", version.ref = "razorpayCheckout" }
 
 
 [plugins]

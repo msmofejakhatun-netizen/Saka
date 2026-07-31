@@ -171,7 +171,9 @@ fun OcrLabelScannerDialog(
         Surface(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(12.dp),
+                .padding(12.dp)
+                .statusBarsPadding()
+                .navigationBarsPadding(),
             color = Color(0xFF0F172A),
             shape = RoundedCornerShape(20.dp),
             tonalElevation = 8.dp
@@ -502,6 +504,8 @@ fun OcrLabelScannerDialog(
                     Spacer(modifier = Modifier.width(8.dp))
                     Text("Auto-Fill Product Fields", fontWeight = FontWeight.Bold, fontSize = 14.sp)
                 }
+
+                Spacer(modifier = Modifier.height(16.dp))
             }
         }
     }

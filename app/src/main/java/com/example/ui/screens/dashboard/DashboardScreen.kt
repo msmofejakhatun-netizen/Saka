@@ -1,5 +1,6 @@
 package com.example.ui.screens.dashboard
 
+import android.widget.Toast
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -20,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -61,6 +63,7 @@ fun DashboardScreen(
     var showAdminScreenOverlay by remember { mutableStateOf(false) }
     var showProfileScreenOverlay by remember { mutableStateOf(false) }
 
+    val context = LocalContext.current
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val coroutineScope = rememberCoroutineScope()
     val currentUser by viewModel.currentUser.collectAsState()
@@ -241,6 +244,56 @@ fun DashboardScreen(
                         modifier = Modifier.padding(horizontal = 12.dp).testTag("drawer_item_profile")
                     )
 
+                    NavigationDrawerItem(
+                        icon = { Icon(Icons.Default.WorkspacePremium, contentDescription = "Paywall Pro", tint = GoldYellow) },
+                        label = {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text("Pro Membership & ₹1 Trial", fontWeight = FontWeight.Bold, color = GoldYellow)
+                                Surface(
+                                    color = GoldYellow,
+                                    shape = RoundedCornerShape(8.dp)
+                                ) {
+                                    Text(
+                                        text = "PRO",
+                                        color = Color.Black,
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                    )
+                                }
+                            }
+                        },
+                        selected = false,
+                        onClick = {
+                            coroutineScope.launch { drawerState.close() }
+                            viewModel.openPaywall()
+                        },
+                        colors = NavigationDrawerItemDefaults.colors(selectedContainerColor = Color(0x33F59E0B)),
+                        modifier = Modifier.padding(horizontal = 12.dp).testTag("drawer_item_paywall")
+                    )
+
+                    NavigationDrawerItem(
+                        icon = { Icon(Icons.Default.SystemUpdate, contentDescription = "Check for Updates", tint = ElectricVioletLight) },
+                        label = { Text("Check App Updates", fontWeight = FontWeight.Bold, color = Color.White) },
+                        selected = false,
+                        onClick = {
+                            coroutineScope.launch { drawerState.close() }
+                            com.example.update.AppUpdateManagerHelper.checkForAppUpdate(context) { info ->
+                                if (info.isUpdateAvailable) {
+                                    Toast.makeText(context, "New Version Available: v${info.latestVersionName}", Toast.LENGTH_SHORT).show()
+                                } else {
+                                    Toast.makeText(context, "You are using the latest version (v${info.currentVersionName})", Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                        },
+                        colors = NavigationDrawerItemDefaults.colors(selectedContainerColor = Color(0x338B5CF6)),
+                        modifier = Modifier.padding(horizontal = 12.dp).testTag("drawer_item_check_update")
+                    )
+
                     Spacer(modifier = Modifier.weight(1f))
 
                     HorizontalDivider(color = Color(0x22FFFFFF), modifier = Modifier.padding(horizontal = 16.dp))
@@ -361,6 +414,13 @@ fun DashboardScreen(
                 }
             }
         }
+
+        if (viewModel.showPaywallDialog) {
+            com.example.ui.screens.paywall.PaywallModalDialog(
+                viewModel = viewModel,
+                onDismiss = { viewModel.closePaywall() }
+            )
+        }
     }
 }
 
@@ -406,6 +466,12 @@ private fun HomeDashboardContent(
                     }
                 },
                 actions = {
+                    IconButton(
+                        onClick = { viewModel.openPaywall() },
+                        modifier = Modifier.testTag("dashboard_pro_paywall_button")
+                    ) {
+                        Icon(imageVector = Icons.Default.WorkspacePremium, contentDescription = "Upgrade Pro", tint = GoldYellow)
+                    }
                     IconButton(
                         onClick = onLogout,
                         modifier = Modifier.testTag("dashboard_logout_button")

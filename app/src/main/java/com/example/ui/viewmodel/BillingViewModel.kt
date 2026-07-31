@@ -83,6 +83,18 @@ class BillingViewModel(private val repository: BillingRepository) : ViewModel() 
     private val _currentUser = MutableStateFlow<UserEntity?>(null)
     val currentUser: StateFlow<UserEntity?> = _currentUser.asStateFlow()
 
+    // --- Subscription & Paywall State ---
+    val subscriptionState = com.example.data.subscription.SubscriptionManager.subscriptionState
+    var showPaywallDialog by mutableStateOf(false)
+
+    fun openPaywall() {
+        showPaywallDialog = true
+    }
+
+    fun closePaywall() {
+        showPaywallDialog = false
+    }
+
     private val _toastMessage = MutableSharedFlow<String>()
     val toastMessage: SharedFlow<String> = _toastMessage.asSharedFlow()
 
@@ -981,6 +993,8 @@ class BillingViewModel(private val repository: BillingRepository) : ViewModel() 
 
                 repository.updateInvoiceAndAdjustStock(userUid, updatedInvoice, originalPurchasedItems, newPurchasedList)
 
+                val targetInvoiceId = updatedInvoice.firestoreId.ifBlank { updatedInvoice.id.toString() }
+
                 if (posPaymentMode == "Credit / Udhar" || posPaymentMode.contains("Credit") || posPaymentMode.contains("Udhar")) {
                     repository.recordUdharOrJamaTransaction(
                         userUid = userUid,
@@ -990,8 +1004,15 @@ class BillingViewModel(private val repository: BillingRepository) : ViewModel() 
                         amount = finalAmount,
                         paymentMode = "Credit / Udhar",
                         note = "Updated POS Bill #${currentEdit.id} ($totalItemsCount items)",
-                        invoiceId = updatedInvoice.firestoreId,
+                        invoiceId = targetInvoiceId,
                         itemsJson = itemsJsonStr
+                    )
+                } else {
+                    // Revert old Udhar transaction if payment mode changed to Cash/Online
+                    repository.removeUdharTransactionForInvoice(
+                        userUid = userUid,
+                        customerMobile = mobile.ifBlank { "9999999999" },
+                        invoiceId = targetInvoiceId
                     )
                 }
 
@@ -1107,9 +1128,10 @@ class BillingViewModel(private val repository: BillingRepository) : ViewModel() 
 
                 val purchasedList = posCartItems.map { Pair(it.product, it.quantity) }
 
-                repository.saveInvoiceAndDeductStock(userUid, invoice, purchasedList)
+                val savedInvoice = repository.saveInvoiceAndDeductStock(userUid, invoice, purchasedList)
 
                 if (posPaymentMode == "Credit / Udhar" || posPaymentMode.contains("Credit") || posPaymentMode.contains("Udhar")) {
+                    val targetInvoiceId = savedInvoice.firestoreId.ifBlank { savedInvoice.id.toString() }
                     repository.recordUdharOrJamaTransaction(
                         userUid = userUid,
                         customerName = name,
@@ -1117,17 +1139,17 @@ class BillingViewModel(private val repository: BillingRepository) : ViewModel() 
                         type = "DEBIT",
                         amount = finalAmount,
                         paymentMode = "Credit / Udhar",
-                        note = "POS Bill Udhari ($totalItemsCount items)",
-                        invoiceId = invoice.firestoreId,
+                        note = "POS Bill #${savedInvoice.id} ($totalItemsCount items)",
+                        invoiceId = targetInvoiceId,
                         itemsJson = itemsJsonStr
                     )
                 }
 
-                lastGeneratedInvoice = invoice
+                lastGeneratedInvoice = savedInvoice
                 isGeneratingPOSInvoice = false
                 _toastMessage.emit("Invoice generated successfully! Stock auto-deducted.")
                 clearPOSCart()
-                onSuccess(invoice)
+                onSuccess(savedInvoice)
             } catch (e: Exception) {
                 isGeneratingPOSInvoice = false
                 Log.e("BillingVM", "Generate POS invoice error: ${e.localizedMessage}")

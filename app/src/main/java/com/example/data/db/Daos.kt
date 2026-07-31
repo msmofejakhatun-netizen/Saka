@@ -119,6 +119,15 @@ interface CustomerTransactionDao {
     @Query("SELECT * FROM customer_transactions WHERE customerMobile = :mobile ORDER BY timestamp DESC")
     fun getTransactionsForCustomer(mobile: String): Flow<List<CustomerTransactionEntity>>
 
+    @Query("SELECT * FROM customer_transactions WHERE customerMobile = :mobile ORDER BY timestamp DESC")
+    suspend fun getTransactionsForCustomerSync(mobile: String): List<CustomerTransactionEntity>
+
+    @Query("SELECT * FROM customer_transactions WHERE (invoiceId IS NOT NULL AND invoiceId != '') AND (invoiceId = :id1 OR invoiceId = :id2 OR invoiceId = :id3 OR invoiceId = :id4) LIMIT 1")
+    suspend fun getTransactionByInvoiceId(id1: String, id2: String = id1, id3: String = id1, id4: String = id1): CustomerTransactionEntity?
+
+    @Query("DELETE FROM customer_transactions WHERE (invoiceId IS NOT NULL AND invoiceId != '') AND (invoiceId = :id1 OR invoiceId = :id2 OR invoiceId = :id3 OR invoiceId = :id4)")
+    suspend fun deleteTransactionByInvoiceId(id1: String, id2: String = id1, id3: String = id1, id4: String = id1)
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertTransaction(transaction: CustomerTransactionEntity): Long
 

@@ -531,7 +531,7 @@ class BillingRepository(
         userUid: String,
         invoice: InvoiceEntity,
         purchasedProducts: List<Pair<ProductEntity, Double>>
-    ) = withContext(Dispatchers.IO) {
+    ): InvoiceEntity = withContext(Dispatchers.IO) {
         var generatedFirestoreId = invoice.firestoreId
 
         if (FirebaseManager.isFirebaseAvailable) {
@@ -606,7 +606,9 @@ class BillingRepository(
 
         // Insert invoice into local Room database
         val localInvoice = invoice.copy(firestoreId = generatedFirestoreId)
-        invoiceDao.insertInvoice(localInvoice)
+        val newLocalId = invoiceDao.insertInvoice(localInvoice)
+        val finalSavedInvoice = localInvoice.copy(id = if (localInvoice.id == 0) newLocalId.toInt() else localInvoice.id)
+        return@withContext finalSavedInvoice
     }
 
     suspend fun updateInvoiceAndAdjustStock(
@@ -973,6 +975,83 @@ class BillingRepository(
         }
     }.flowOn(Dispatchers.IO)
 
+    suspend fun removeUdharTransactionForInvoice(
+        userUid: String,
+        customerMobile: String,
+        invoiceId: String
+    ) = withContext(Dispatchers.IO) {
+        if (invoiceId.isBlank() || customerMobile.isBlank()) return@withContext
+
+        val directMatch = customerTransactionDao.getTransactionByInvoiceId(
+            id1 = invoiceId,
+            id2 = "Bill #$invoiceId",
+            id3 = invoiceId.removePrefix("Bill #"),
+            id4 = if (invoiceId.contains("_") || invoiceId.length > 8) invoiceId else "Bill #$invoiceId"
+        )
+        val existingTx = directMatch ?: customerTransactionDao.getTransactionsForCustomerSync(customerMobile).firstOrNull { tx ->
+            tx.invoiceId == invoiceId ||
+            tx.invoiceId == "Bill #$invoiceId" ||
+            (invoiceId.isNotBlank() && tx.note.contains("Bill #$invoiceId", ignoreCase = true)) ||
+            (invoiceId.isNotBlank() && tx.note.contains("Bill #${invoiceId.removePrefix("Bill #")}", ignoreCase = true))
+        } ?: return@withContext
+
+        val now = System.currentTimeMillis()
+        val docId = customerMobile.replace("+", "").replace(" ", "")
+        val existingLocal = customerDao.getCustomerByMobile(customerMobile)
+        val currentBalance = existingLocal?.totalPendingBalance ?: 0.0
+
+        val newBalance = if (existingTx.type == "DEBIT") {
+            (currentBalance - existingTx.amount).coerceAtLeast(0.0)
+        } else {
+            currentBalance + existingTx.amount
+        }
+
+        val updatedCustomer = com.example.data.db.CustomerEntity(
+            id = existingLocal?.id ?: 0,
+            firestoreId = docId,
+            name = existingLocal?.name ?: "Customer",
+            mobileNumber = customerMobile,
+            totalPendingBalance = newBalance,
+            lastTransactionTimestamp = now
+        )
+
+        customerDao.insertCustomer(updatedCustomer)
+        customerTransactionDao.deleteTransactionByInvoiceId(
+            id1 = existingTx.invoiceId,
+            id2 = invoiceId,
+            id3 = "Bill #$invoiceId",
+            id4 = "Bill #${existingTx.invoiceId}"
+        )
+
+        if (FirebaseManager.isFirebaseAvailable) {
+            val firestore = FirebaseManager.firestore
+            if (firestore != null) {
+                try {
+                    val customerData = hashMapOf(
+                        "name" to updatedCustomer.name,
+                        "mobileNumber" to updatedCustomer.mobileNumber,
+                        "totalPendingBalance" to updatedCustomer.totalPendingBalance,
+                        "lastTransactionTimestamp" to now
+                    )
+                    firestore.collection("customers").document(docId).set(customerData).await()
+                    if (existingTx.firestoreId.isNotBlank()) {
+                        firestore.collection("customers").document(docId)
+                            .collection("transactions").document(existingTx.firestoreId).delete().await()
+                    }
+                    if (userUid.isNotBlank()) {
+                        firestore.collection("users").document(userUid).collection("customers").document(docId).set(customerData).await()
+                        if (existingTx.firestoreId.isNotBlank()) {
+                            firestore.collection("users").document(userUid).collection("customers").document(docId)
+                                .collection("transactions").document(existingTx.firestoreId).delete().await()
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "removeUdharTransactionForInvoice Firestore error: ${e.localizedMessage}")
+                }
+            }
+        }
+    }
+
     suspend fun recordUdharOrJamaTransaction(
         userUid: String,
         customerName: String,
@@ -992,70 +1071,166 @@ class BillingRepository(
         val existingLocal = customerDao.getCustomerByMobile(customerMobile)
         val currentBalance = existingLocal?.totalPendingBalance ?: 0.0
 
-        val newBalance = if (type == "DEBIT") {
-            currentBalance + amount
-        } else {
-            (currentBalance - amount).coerceAtLeast(0.0)
-        }
+        val existingTx = if (invoiceId.isNotBlank()) {
+            val directMatch = customerTransactionDao.getTransactionByInvoiceId(
+                id1 = invoiceId,
+                id2 = "Bill #$invoiceId",
+                id3 = invoiceId.removePrefix("Bill #"),
+                id4 = if (invoiceId.contains("_") || invoiceId.length > 8) invoiceId else "Bill #$invoiceId"
+            )
+            directMatch ?: customerTransactionDao.getTransactionsForCustomerSync(customerMobile).firstOrNull { tx ->
+                tx.invoiceId == invoiceId ||
+                tx.invoiceId == "Bill #$invoiceId" ||
+                (invoiceId.isNotBlank() && tx.note.contains("Bill #$invoiceId", ignoreCase = true)) ||
+                (invoiceId.isNotBlank() && tx.note.contains("Bill #${invoiceId.removePrefix("Bill #")}", ignoreCase = true))
+            }
+        } else null
 
-        val updatedCustomer = com.example.data.db.CustomerEntity(
-            id = existingLocal?.id ?: 0,
-            firestoreId = docId,
-            name = if (customerName.isNotBlank()) customerName else (existingLocal?.name ?: "Customer"),
-            mobileNumber = customerMobile,
-            totalPendingBalance = newBalance,
-            lastTransactionTimestamp = now
-        )
+        if (existingTx != null) {
+            // Revert old transaction amount first, then calculate new balance
+            val balanceWithoutOldTx = if (existingTx.type == "DEBIT") {
+                (currentBalance - existingTx.amount).coerceAtLeast(0.0)
+            } else {
+                currentBalance + existingTx.amount
+            }
 
-        val txEntity = com.example.data.db.CustomerTransactionEntity(
-            customerMobile = customerMobile,
-            customerName = updatedCustomer.name,
-            type = type,
-            amount = amount,
-            paymentMode = paymentMode,
-            note = note,
-            invoiceId = invoiceId,
-            itemsJson = itemsJson,
-            timestamp = now
-        )
+            val newBalance = if (type == "DEBIT") {
+                balanceWithoutOldTx + amount
+            } else {
+                (balanceWithoutOldTx - amount).coerceAtLeast(0.0)
+            }
 
-        if (FirebaseManager.isFirebaseAvailable) {
-            val firestore = FirebaseManager.firestore
-            if (firestore != null) {
-                try {
-                    val customerData = hashMapOf(
-                        "name" to updatedCustomer.name,
-                        "mobileNumber" to updatedCustomer.mobileNumber,
-                        "totalPendingBalance" to updatedCustomer.totalPendingBalance,
-                        "lastTransactionTimestamp" to now
-                    )
+            val updatedCustomer = com.example.data.db.CustomerEntity(
+                id = existingLocal?.id ?: 0,
+                firestoreId = docId,
+                name = if (customerName.isNotBlank()) customerName else (existingLocal?.name ?: "Customer"),
+                mobileNumber = customerMobile,
+                totalPendingBalance = newBalance,
+                lastTransactionTimestamp = now
+            )
 
-                    val txData = hashMapOf(
-                        "customerMobile" to customerMobile,
-                        "customerName" to updatedCustomer.name,
-                        "type" to type,
-                        "amount" to amount,
-                        "paymentMode" to paymentMode,
-                        "note" to note,
-                        "invoiceId" to invoiceId,
-                        "itemsJson" to itemsJson,
-                        "timestamp" to now
-                    )
+            val updatedTx = existingTx.copy(
+                customerMobile = customerMobile,
+                customerName = updatedCustomer.name,
+                type = type,
+                amount = amount,
+                paymentMode = paymentMode,
+                note = note,
+                invoiceId = invoiceId,
+                itemsJson = itemsJson,
+                isEdited = true,
+                timestamp = now
+            )
 
-                    firestore.collection("customers").document(docId).set(customerData).await()
-                    firestore.collection("customers").document(docId).collection("transactions").add(txData).await()
+            if (FirebaseManager.isFirebaseAvailable) {
+                val firestore = FirebaseManager.firestore
+                if (firestore != null) {
+                    try {
+                        val customerData = hashMapOf(
+                            "name" to updatedCustomer.name,
+                            "mobileNumber" to updatedCustomer.mobileNumber,
+                            "totalPendingBalance" to updatedCustomer.totalPendingBalance,
+                            "lastTransactionTimestamp" to now
+                        )
 
-                    if (userUid.isNotBlank()) {
-                        firestore.collection("users").document(userUid).collection("customers").document(docId).set(customerData).await()
-                        firestore.collection("users").document(userUid).collection("customers").document(docId).collection("transactions").add(txData).await()
+                        val txData = hashMapOf(
+                            "customerMobile" to customerMobile,
+                            "customerName" to updatedCustomer.name,
+                            "type" to type,
+                            "amount" to amount,
+                            "paymentMode" to paymentMode,
+                            "note" to note,
+                            "invoiceId" to invoiceId,
+                            "itemsJson" to itemsJson,
+                            "isEdited" to true,
+                            "timestamp" to now
+                        )
+
+                        firestore.collection("customers").document(docId).set(customerData).await()
+                        val txDocId = existingTx.firestoreId.ifBlank { existingTx.id.toString() }
+                        firestore.collection("customers").document(docId).collection("transactions").document(txDocId).set(txData).await()
+
+                        if (userUid.isNotBlank()) {
+                            firestore.collection("users").document(userUid).collection("customers").document(docId).set(customerData).await()
+                            firestore.collection("users").document(userUid).collection("customers").document(docId).collection("transactions").document(txDocId).set(txData).await()
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "recordUdharOrJamaTransaction Firestore update error: ${e.localizedMessage}")
                     }
-                } catch (e: Exception) {
-                    Log.e(TAG, "recordUdharOrJamaTransaction Firestore error: ${e.localizedMessage}")
                 }
             }
-        }
 
-        customerDao.insertCustomer(updatedCustomer)
-        customerTransactionDao.insertTransaction(txEntity)
+            customerDao.insertCustomer(updatedCustomer)
+            customerTransactionDao.insertTransaction(updatedTx)
+        } else {
+            val newBalance = if (type == "DEBIT") {
+                currentBalance + amount
+            } else {
+                (currentBalance - amount).coerceAtLeast(0.0)
+            }
+
+            val updatedCustomer = com.example.data.db.CustomerEntity(
+                id = existingLocal?.id ?: 0,
+                firestoreId = docId,
+                name = if (customerName.isNotBlank()) customerName else (existingLocal?.name ?: "Customer"),
+                mobileNumber = customerMobile,
+                totalPendingBalance = newBalance,
+                lastTransactionTimestamp = now
+            )
+
+            var txEntity = com.example.data.db.CustomerTransactionEntity(
+                customerMobile = customerMobile,
+                customerName = updatedCustomer.name,
+                type = type,
+                amount = amount,
+                paymentMode = paymentMode,
+                note = note,
+                invoiceId = invoiceId,
+                itemsJson = itemsJson,
+                isEdited = false,
+                timestamp = now
+            )
+
+            if (FirebaseManager.isFirebaseAvailable) {
+                val firestore = FirebaseManager.firestore
+                if (firestore != null) {
+                    try {
+                        val customerData = hashMapOf(
+                            "name" to updatedCustomer.name,
+                            "mobileNumber" to updatedCustomer.mobileNumber,
+                            "totalPendingBalance" to updatedCustomer.totalPendingBalance,
+                            "lastTransactionTimestamp" to now
+                        )
+
+                        val txData = hashMapOf(
+                            "customerMobile" to customerMobile,
+                            "customerName" to updatedCustomer.name,
+                            "type" to type,
+                            "amount" to amount,
+                            "paymentMode" to paymentMode,
+                            "note" to note,
+                            "invoiceId" to invoiceId,
+                            "itemsJson" to itemsJson,
+                            "isEdited" to false,
+                            "timestamp" to now
+                        )
+
+                        firestore.collection("customers").document(docId).set(customerData).await()
+                        val addedDoc = firestore.collection("customers").document(docId).collection("transactions").add(txData).await()
+                        txEntity = txEntity.copy(firestoreId = addedDoc.id)
+
+                        if (userUid.isNotBlank()) {
+                            firestore.collection("users").document(userUid).collection("customers").document(docId).set(customerData).await()
+                            firestore.collection("users").document(userUid).collection("customers").document(docId).collection("transactions").document(addedDoc.id).set(txData).await()
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "recordUdharOrJamaTransaction Firestore error: ${e.localizedMessage}")
+                    }
+                }
+            }
+
+            customerDao.insertCustomer(updatedCustomer)
+            customerTransactionDao.insertTransaction(txEntity)
+        }
     }
 }

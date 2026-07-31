@@ -1145,6 +1145,8 @@ fun ProductsScreen(
                                 modifier = Modifier.fillMaxWidth().testTag("product_brand_input")
                             )
                         }
+
+                        Spacer(modifier = Modifier.height(16.dp))
                     }
                 },
                 confirmButton = {
@@ -1203,7 +1205,9 @@ fun ProductsScreen(
                 },
                 containerColor = Color(0xFF131B3E),
                 shape = RoundedCornerShape(20.dp),
-                modifier = Modifier.border(1.dp, Color(0x22FFFFFF), RoundedCornerShape(20.dp))
+                modifier = Modifier
+                    .border(1.dp, Color(0x22FFFFFF), RoundedCornerShape(20.dp))
+                    .navigationBarsPadding()
             )
         }
 

@@ -45,7 +45,20 @@ object SubscriptionManager {
     val subscriptionState: StateFlow<SubscriptionInfo> = _subscriptionState.asStateFlow()
 
     fun init(context: Context, userUid: String = "") {
+        val effectiveUid = userUid.ifBlank { FirebaseManager.auth?.currentUser?.uid ?: "" }
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val lastSavedUid = prefs.getString("last_user_uid", "") ?: ""
+
+        // Clear local state if a different user logged in
+        if (effectiveUid.isNotBlank() && lastSavedUid.isNotBlank() && effectiveUid != lastSavedUid) {
+            prefs.edit().clear().apply()
+            _subscriptionState.value = SubscriptionInfo()
+        }
+
+        if (effectiveUid.isNotBlank()) {
+            prefs.edit().putString("last_user_uid", effectiveUid).apply()
+        }
+
         val isPro = prefs.getBoolean(KEY_IS_PRO, false)
         val tier = prefs.getString(KEY_TIER, "FREE") ?: "FREE"
         val expiry = prefs.getLong(KEY_EXPIRY, 0L)
@@ -60,9 +73,7 @@ object SubscriptionManager {
         val now = System.currentTimeMillis()
         var validPro = isPro
         if (expiry > 0L && now > expiry) {
-            // Check if mandate is active to auto-renew or expire
             if (mandateStatus == "ACTIVE") {
-                // Auto-renew simulation
                 val newExpiry = now + TimeUnit.DAYS.toMillis(30)
                 prefs.edit().putLong(KEY_EXPIRY, newExpiry).apply()
                 validPro = true
@@ -86,9 +97,22 @@ object SubscriptionManager {
         )
         _subscriptionState.value = info
 
-        if (userUid.isNotBlank()) {
-            fetchRemoteSubscription(userUid, context)
+        if (effectiveUid.isNotBlank()) {
+            fetchRemoteSubscription(effectiveUid, context)
         }
+    }
+
+    fun clearLocalSubscriptionState(context: Context? = null) {
+        if (context != null) {
+            try {
+                val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                prefs.edit().clear().apply()
+            } catch (e: Exception) {
+                Log.e(TAG, "Error clearing prefs: ${e.localizedMessage}")
+            }
+        }
+        _subscriptionState.value = SubscriptionInfo()
+        Log.d(TAG, "Cleared local subscription session state on logout")
     }
 
     fun activateTrialMandate(
@@ -244,34 +268,46 @@ object SubscriptionManager {
             .apply()
     }
 
+    private fun resolveUserUid(providedUid: String): String {
+        if (providedUid.isNotBlank()) return providedUid
+        return FirebaseManager.auth?.currentUser?.uid ?: ""
+    }
+
     private fun syncToFirebase(userUid: String, info: SubscriptionInfo) {
-        if (userUid.isBlank() || !FirebaseManager.isFirebaseAvailable) return
+        val targetUid = resolveUserUid(userUid)
+        if (targetUid.isBlank() || !FirebaseManager.isFirebaseAvailable) return
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val firestore = FirebaseManager.firestore
                 if (firestore != null) {
+                    val statusStr = if (info.isProUser) {
+                        if (info.autoPayMandateStatus == "CANCELLED") "CANCELLED" else "ACTIVE"
+                    } else {
+                        "EXPIRED"
+                    }
                     val subMap = hashMapOf(
                         "isProUser" to info.isProUser,
                         "subscriptionTier" to info.subscriptionTier,
-                        "subscriptionExpiryDate" to info.subscriptionExpiryDate,
+                        "status" to statusStr,
+                        "mandateId" to info.autoPayMandateId,
+                        "expiryTimestamp" to info.subscriptionExpiryDate,
+                        "lastUpdated" to System.currentTimeMillis(),
                         "autoPayMandateStatus" to info.autoPayMandateStatus,
-                        "autoPayMandateId" to info.autoPayMandateId,
                         "gatewayProvider" to info.gatewayProvider,
                         "gatewaySubscriptionId" to info.gatewaySubscriptionId,
                         "settlementAccount" to info.settlementAccount,
                         "trialStartDate" to info.trialStartDate,
-                        "paymentMethod" to info.paymentMethod,
-                        "updatedAt" to System.currentTimeMillis()
+                        "paymentMethod" to info.paymentMethod
                     )
-                    firestore.collection("users").document(userUid)
+                    firestore.collection("users").document(targetUid)
                         .collection("subscription").document("current")
                         .set(subMap).await()
-                    firestore.collection("users").document(userUid)
+                    firestore.collection("users").document(targetUid)
                         .set(
                             hashMapOf(
                                 "isProUser" to info.isProUser,
                                 "subscriptionTier" to info.subscriptionTier,
-                                "subscriptionStatus" to if (info.isProUser) "ACTIVE" else "INACTIVE",
+                                "subscriptionStatus" to statusStr,
                                 "updatedAt" to System.currentTimeMillis()
                             ),
                             com.google.firebase.firestore.SetOptions.merge()
@@ -284,19 +320,20 @@ object SubscriptionManager {
     }
 
     private fun fetchRemoteSubscription(userUid: String, context: Context) {
-        if (userUid.isBlank() || !FirebaseManager.isFirebaseAvailable) return
+        val targetUid = resolveUserUid(userUid)
+        if (targetUid.isBlank() || !FirebaseManager.isFirebaseAvailable) return
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val firestore = FirebaseManager.firestore
                 if (firestore != null) {
-                    val doc = firestore.collection("users").document(userUid)
+                    val doc = firestore.collection("users").document(targetUid)
                         .collection("subscription").document("current").get().await()
                     if (doc.exists()) {
                         val isPro = doc.getBoolean("isProUser") ?: false
                         val tier = doc.getString("subscriptionTier") ?: "FREE"
-                        val expiry = doc.getLong("subscriptionExpiryDate") ?: 0L
+                        val expiry = doc.getLong("expiryTimestamp") ?: doc.getLong("subscriptionExpiryDate") ?: 0L
                         val mandateStatus = doc.getString("autoPayMandateStatus") ?: "NONE"
-                        val mandateId = doc.getString("autoPayMandateId") ?: ""
+                        val mandateId = doc.getString("mandateId") ?: doc.getString("autoPayMandateId") ?: ""
                         val provider = doc.getString("gatewayProvider") ?: "RAZORPAY"
                         val subId = doc.getString("gatewaySubscriptionId") ?: ""
                         val settlement = doc.getString("settlementAccount") ?: PaymentGatewayConfig.SETTLEMENT_ACCOUNT_MASKED

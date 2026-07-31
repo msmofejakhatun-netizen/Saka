@@ -613,7 +613,7 @@ class BillingViewModel(private val repository: BillingRepository) : ViewModel() 
         tempVerificationId = ""
     }
 
-    fun logout(onSuccess: () -> Unit) {
+    fun logout(context: android.content.Context? = null, onSuccess: () -> Unit) {
         viewModelScope.launch {
             if (com.example.data.firebase.FirebaseManager.isFirebaseAvailable) {
                 try {
@@ -623,6 +623,7 @@ class BillingViewModel(private val repository: BillingRepository) : ViewModel() 
                 }
             }
             repository.clearLocalCache()
+            com.example.data.subscription.SubscriptionManager.clearLocalSubscriptionState(context)
             _currentUser.value = null
             resetAuthState()
             _toastMessage.emit("Logged out successfully")

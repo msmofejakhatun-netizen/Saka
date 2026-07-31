@@ -13,7 +13,7 @@ object PaymentGatewayConfig {
     var phonePeSaltIndex: Int = 1
 
     // Merchant Profile & Settlement Account Details
-    const val MERCHANT_NAME = "Kirana POS Pro Solutions"
+    const val MERCHANT_NAME = "Smart POS Pro Solutions"
     const val MERCHANT_VPA = "kiranapos@ybl"
     const val SETTLEMENT_BANK = "HDFC Bank Ltd"
     const val SETTLEMENT_ACCOUNT_MASKED = "A/C XX8902"

@@ -246,7 +246,7 @@ fun PaywallScreenContent(
                         Spacer(modifier = Modifier.width(10.dp))
                         Column {
                             Text(
-                                text = "Kirana POS Pro",
+                                text = "Smart POS Pro",
                                 color = Color.White,
                                 fontWeight = FontWeight.ExtraBold,
                                 fontSize = 22.sp
@@ -708,10 +708,11 @@ private fun PaymentGatewayBottomSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(20.dp)
-                .navigationBarsPadding(),
+                .navigationBarsPadding()
+                .padding(horizontal = 20.dp, vertical = 12.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            // Header bar
             Surface(
                 color = Color(0x3310B981),
                 shape = RoundedCornerShape(12.dp)
@@ -731,7 +732,7 @@ private fun PaymentGatewayBottomSheet(
                 }
             }
 
-            Spacer(modifier = Modifier.height(14.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
             Text(
                 text = "Authorize ₹1 Mandate Setup",
@@ -742,183 +743,206 @@ private fun PaymentGatewayBottomSheet(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            Card(
-                colors = CardDefaults.cardColors(containerColor = Color(0x221E293B)),
-                shape = RoundedCornerShape(16.dp),
-                modifier = Modifier.fillMaxWidth()
+            // Scrollable Middle Selection Content
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f, fill = false)
+                    .verticalScroll(rememberScrollState()),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Column(modifier = Modifier.padding(14.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text("Mandate Authorization Fee:", color = Color(0xFF94A3B8), fontSize = 13.sp)
-                        Text("₹1.00", color = EmeraldLight, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                    }
-
-                    Spacer(modifier = Modifier.height(6.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text("Selected Plan:", color = Color(0xFF94A3B8), fontSize = 13.sp)
-                        Text(plan.title, color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
-                    }
-
-                    Spacer(modifier = Modifier.height(6.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text("Recurring Auto-Debit:", color = Color(0xFF94A3B8), fontSize = 13.sp)
-                        Text(
-                            text = if (plan == PaymentGatewayHandler.SubscriptionPlan.TRIAL_3_DAYS_1_INR) "₹79/mo (After 3-Day Trial)" else "${plan.recurringPrice}/${plan.billingCycle}",
-                            color = GoldYellow,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 13.sp
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(6.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text("Direct Merchant Payout:", color = Color(0xFF94A3B8), fontSize = 12.sp)
-                        Text(PaymentGatewayConfig.SETTLEMENT_ACCOUNT_MASKED, color = EmeraldLight, fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Text(
-                text = "1. Select Merchant Payment Gateway",
-                color = Color.White,
-                fontWeight = FontWeight.SemiBold,
-                fontSize = 14.sp,
-                modifier = Modifier.fillMaxWidth(),
-                textAlign = TextAlign.Start
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                FilterChip(
-                    selected = selectedProvider == PaymentGatewayConfig.GatewayProvider.RAZORPAY,
-                    onClick = { selectedProvider = PaymentGatewayConfig.GatewayProvider.RAZORPAY },
-                    label = { Text("Razorpay Subscriptions") },
-                    colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = EmeraldGreen,
-                        selectedLabelColor = Color.White
-                    ),
-                    modifier = Modifier.weight(1f)
-                )
-
-                FilterChip(
-                    selected = selectedProvider == PaymentGatewayConfig.GatewayProvider.PHONEPE,
-                    onClick = { selectedProvider = PaymentGatewayConfig.GatewayProvider.PHONEPE },
-                    label = { Text("PhonePe Autopay") },
-                    colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = EmeraldGreen,
-                        selectedLabelColor = Color.White
-                    ),
-                    modifier = Modifier.weight(1f)
-                )
-            }
-
-            Spacer(modifier = Modifier.height(14.dp))
-
-            Text(
-                text = "2. Select UPI App / One-Tap App",
-                color = Color.White,
-                fontWeight = FontWeight.SemiBold,
-                fontSize = 14.sp,
-                modifier = Modifier.fillMaxWidth(),
-                textAlign = TextAlign.Start
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            val upiApps = listOf("PhonePe", "Google Pay", "Paytm", "BHIM", "Custom VPA Input")
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                upiApps.forEach { app ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(
-                                if (selectedApp == app) Color(0x3310B981) else Color(0x11FFFFFF),
-                                RoundedCornerShape(12.dp)
-                            )
-                            .clickable { selectedApp = app }
-                            .padding(12.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        RadioButton(
-                            selected = selectedApp == app,
-                            onClick = { selectedApp = app },
-                            colors = RadioButtonDefaults.colors(selectedColor = EmeraldGreen)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = app,
-                            color = Color.White,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 14.sp
-                        )
-                    }
-                }
-            }
-
-            if (selectedApp == "Custom VPA Input") {
-                Spacer(modifier = Modifier.height(10.dp))
-                OutlinedTextField(
-                    value = userVpa,
-                    onValueChange = { userVpa = it },
-                    label = { Text("Enter UPI ID (e.g. mobile@ybl / merchant@okaxis)", color = Color(0xFF94A3B8)) },
-                    singleLine = true,
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = EmeraldGreen,
-                        unfocusedBorderColor = Color(0x33FFFFFF),
-                        focusedTextColor = Color.White,
-                        unfocusedTextColor = Color.White
-                    ),
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = Color(0x221E293B)),
+                    shape = RoundedCornerShape(16.dp),
                     modifier = Modifier.fillMaxWidth()
-                )
-            }
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            if (isProcessing) {
-                CircularProgressIndicator(color = EmeraldGreen)
-                Spacer(modifier = Modifier.height(8.dp))
-                Text("Connecting to ${PaymentGatewayConfig.getActiveGatewayName(selectedProvider)}...", color = Color.White, fontSize = 13.sp)
-            } else {
-                Button(
-                    onClick = { onConfirmMandate(selectedProvider, selectedApp, userVpa) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(52.dp)
-                        .testTag("confirm_mandate_button"),
-                    shape = RoundedCornerShape(14.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = EmeraldGreen)
                 ) {
-                    Text(
-                        "Approve ₹1 Mandate via ${if (selectedProvider == PaymentGatewayConfig.GatewayProvider.RAZORPAY) "Razorpay" else "PhonePe"}",
-                        color = Color.White,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 15.sp
+                    Column(modifier = Modifier.padding(14.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text("Mandate Authorization Fee:", color = Color(0xFF94A3B8), fontSize = 13.sp)
+                            Text("₹1.00", color = EmeraldLight, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        }
+
+                        Spacer(modifier = Modifier.height(6.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text("Selected Plan:", color = Color(0xFF94A3B8), fontSize = 13.sp)
+                            Text(plan.title, color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                        }
+
+                        Spacer(modifier = Modifier.height(6.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text("Recurring Auto-Debit:", color = Color(0xFF94A3B8), fontSize = 13.sp)
+                            Text(
+                                text = if (plan == PaymentGatewayHandler.SubscriptionPlan.TRIAL_3_DAYS_1_INR) "₹79/mo (After 3-Day Trial)" else "${plan.recurringPrice}/${plan.billingCycle}",
+                                color = GoldYellow,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 13.sp
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(6.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text("Direct Merchant Payout:", color = Color(0xFF94A3B8), fontSize = 12.sp)
+                            Text(PaymentGatewayConfig.SETTLEMENT_ACCOUNT_MASKED, color = EmeraldLight, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Text(
+                    text = "1. Select Merchant Payment Gateway",
+                    color = Color.White,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 14.sp,
+                    modifier = Modifier.fillMaxWidth(),
+                    textAlign = TextAlign.Start
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    FilterChip(
+                        selected = selectedProvider == PaymentGatewayConfig.GatewayProvider.RAZORPAY,
+                        onClick = { selectedProvider = PaymentGatewayConfig.GatewayProvider.RAZORPAY },
+                        label = { Text("Razorpay Subscriptions") },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = EmeraldGreen,
+                            selectedLabelColor = Color.White
+                        ),
+                        modifier = Modifier.weight(1f)
+                    )
+
+                    FilterChip(
+                        selected = selectedProvider == PaymentGatewayConfig.GatewayProvider.PHONEPE,
+                        onClick = { selectedProvider = PaymentGatewayConfig.GatewayProvider.PHONEPE },
+                        label = { Text("PhonePe Autopay") },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = EmeraldGreen,
+                            selectedLabelColor = Color.White
+                        ),
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                Text(
+                    text = "2. Select UPI App / One-Tap App",
+                    color = Color.White,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 14.sp,
+                    modifier = Modifier.fillMaxWidth(),
+                    textAlign = TextAlign.Start
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                val upiApps = listOf("PhonePe", "Google Pay", "Paytm", "BHIM", "Custom VPA Input")
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    upiApps.forEach { app ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(
+                                    if (selectedApp == app) Color(0x3310B981) else Color(0x11FFFFFF),
+                                    RoundedCornerShape(12.dp)
+                                )
+                                .clickable { selectedApp = app }
+                                .padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(
+                                selected = selectedApp == app,
+                                onClick = { selectedApp = app },
+                                colors = RadioButtonDefaults.colors(selectedColor = EmeraldGreen)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = app,
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.sp
+                            )
+                        }
+                    }
+                }
+
+                if (selectedApp == "Custom VPA Input") {
+                    Spacer(modifier = Modifier.height(10.dp))
+                    OutlinedTextField(
+                        value = userVpa,
+                        onValueChange = { userVpa = it },
+                        label = { Text("Enter UPI ID (e.g. mobile@ybl / merchant@okaxis)", color = Color(0xFF94A3B8)) },
+                        singleLine = true,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = EmeraldGreen,
+                            unfocusedBorderColor = Color(0x33FFFFFF),
+                            focusedTextColor = Color.White,
+                            unfocusedTextColor = Color.White
+                        ),
+                        modifier = Modifier.fillMaxWidth()
                     )
                 }
             }
 
             Spacer(modifier = Modifier.height(16.dp))
+
+            // Bottom Primary Action Button Area - Sits completely above navigation bar
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 16.dp)
+            ) {
+                if (isProcessing) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        CircularProgressIndicator(color = EmeraldGreen)
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            "Connecting to ${PaymentGatewayConfig.getActiveGatewayName(selectedProvider)}...",
+                            color = Color.White,
+                            fontSize = 13.sp
+                        )
+                    }
+                } else {
+                    Button(
+                        onClick = { onConfirmMandate(selectedProvider, selectedApp, userVpa) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(52.dp)
+                            .testTag("confirm_mandate_button"),
+                        shape = RoundedCornerShape(14.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = EmeraldGreen)
+                    ) {
+                        Text(
+                            "Authorize ₹1 Mandate Setup via ${if (selectedProvider == PaymentGatewayConfig.GatewayProvider.RAZORPAY) "Razorpay" else "PhonePe"}",
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 15.sp
+                        )
+                    }
+                }
+            }
         }
     }
 }

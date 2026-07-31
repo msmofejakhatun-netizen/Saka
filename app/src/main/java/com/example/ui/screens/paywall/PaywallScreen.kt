@@ -1,6 +1,7 @@
 package com.example.ui.screens.paywall
 
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -41,8 +42,16 @@ import java.util.*
 @Composable
 fun PaywallScreen(
     viewModel: BillingViewModel,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    isMandatory: Boolean = false,
+    lockReason: String? = null
 ) {
+    if (isMandatory) {
+        BackHandler(enabled = true) {
+            // Intercept and disable back button on mandatory paywall gate
+        }
+    }
+
     Surface(
         modifier = Modifier
             .fillMaxSize()
@@ -52,7 +61,9 @@ fun PaywallScreen(
     ) {
         PaywallScreenContent(
             viewModel = viewModel,
-            onClose = onBack
+            onClose = onBack,
+            isMandatory = isMandatory,
+            lockReason = lockReason
         )
     }
 }
@@ -60,11 +71,20 @@ fun PaywallScreen(
 @Composable
 fun PaywallModalDialog(
     viewModel: BillingViewModel,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    isMandatory: Boolean = false,
+    lockReason: String? = null
 ) {
+    if (isMandatory) {
+        BackHandler(enabled = true) { }
+    }
     Dialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false)
+        onDismissRequest = { if (!isMandatory) onDismiss() },
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            dismissOnBackPress = !isMandatory,
+            dismissOnClickOutside = !isMandatory
+        )
     ) {
         Surface(
             modifier = Modifier
@@ -78,7 +98,9 @@ fun PaywallModalDialog(
         ) {
             PaywallScreenContent(
                 viewModel = viewModel,
-                onClose = onDismiss
+                onClose = onDismiss,
+                isMandatory = isMandatory,
+                lockReason = lockReason
             )
         }
     }
@@ -87,7 +109,9 @@ fun PaywallModalDialog(
 @Composable
 fun PaywallScreenContent(
     viewModel: BillingViewModel,
-    onClose: () -> Unit
+    onClose: () -> Unit,
+    isMandatory: Boolean = false,
+    lockReason: String? = null
 ) {
     val context = LocalContext.current
     val activity = context as? android.app.Activity
@@ -126,13 +150,24 @@ fun PaywallScreenContent(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                IconButton(
-                    onClick = onClose,
-                    modifier = Modifier
-                        .background(Color(0x22FFFFFF), CircleShape)
-                        .testTag("paywall_close_button")
-                ) {
-                    Icon(Icons.Default.Close, contentDescription = "Close", tint = Color.White)
+                if (!isMandatory) {
+                    IconButton(
+                        onClick = onClose,
+                        modifier = Modifier
+                            .background(Color(0x22FFFFFF), CircleShape)
+                            .testTag("paywall_close_button")
+                    ) {
+                        Icon(Icons.Default.Close, contentDescription = "Close", tint = Color.White)
+                    }
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .background(Color(0x33EF4444), CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(Icons.Default.Lock, contentDescription = "Locked", tint = Color(0xFFEF4444))
+                    }
                 }
 
                 Surface(
@@ -147,7 +182,7 @@ fun PaywallScreenContent(
                         Icon(Icons.Default.Star, contentDescription = null, tint = GoldYellow, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            text = if (subscriptionState.isProUser) "VIP PRO ACTIVE" else "KIRANA PRO POS",
+                            text = if (subscriptionState.isProUser) "VIP PRO ACTIVE" else "MANDATORY PRO ACCESS",
                             color = GoldYellow,
                             fontWeight = FontWeight.Bold,
                             fontSize = 12.sp
@@ -157,6 +192,36 @@ fun PaywallScreenContent(
             }
 
             Spacer(modifier = Modifier.height(16.dp))
+
+            if (isMandatory) {
+                Surface(
+                    color = Color(0x33EF4444),
+                    shape = RoundedCornerShape(16.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFEF4444)),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 16.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Default.Lock,
+                            contentDescription = null,
+                            tint = Color(0xFFEF4444),
+                            modifier = Modifier.size(28.dp)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = lockReason ?: "Subscription Expired. Upgrade to Pro to continue using SmartPOS",
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp
+                        )
+                    }
+                }
+            }
 
             // Pro Banner Header
             Box(

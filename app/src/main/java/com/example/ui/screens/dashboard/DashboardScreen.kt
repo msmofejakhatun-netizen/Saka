@@ -219,19 +219,6 @@ fun DashboardScreen(
                     )
 
                     NavigationDrawerItem(
-                        icon = { Icon(Icons.Default.AdminPanelSettings, contentDescription = "Admin", tint = ElectricVioletLight) },
-                        label = { Text("Admin Panel / Categories", fontWeight = FontWeight.SemiBold) },
-                        selected = showAdminScreenOverlay,
-                        onClick = {
-                            showAdminScreenOverlay = true
-                            showProfileScreenOverlay = false
-                            coroutineScope.launch { drawerState.close() }
-                        },
-                        colors = NavigationDrawerItemDefaults.colors(selectedContainerColor = Color(0x336366F1)),
-                        modifier = Modifier.padding(horizontal = 12.dp).testTag("drawer_item_admin")
-                    )
-
-                    NavigationDrawerItem(
                         icon = { Icon(Icons.Default.Person, contentDescription = "Profile", tint = GoldYellow) },
                         label = { Text("Business Profile Settings", fontWeight = FontWeight.SemiBold) },
                         selected = showProfileScreenOverlay,

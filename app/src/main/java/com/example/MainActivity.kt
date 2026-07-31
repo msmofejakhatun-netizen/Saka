@@ -6,13 +6,18 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -20,6 +25,8 @@ import androidx.navigation.compose.rememberNavController
 import com.example.data.db.AppDatabase
 import com.example.data.firebase.FirebaseManager
 import com.example.data.repository.BillingRepository
+import com.example.data.subscription.AppSessionManager
+import com.example.data.subscription.SessionAccessState
 import com.example.ui.navigation.Screen
 import com.example.ui.screens.admin.AdminScreen
 import com.example.ui.screens.dashboard.DashboardScreen
@@ -74,6 +81,39 @@ class MainActivity : ComponentActivity(), com.razorpay.PaymentResultWithDataList
                     factory = BillingViewModelFactory(repository)
                 )
 
+                val currentUser by viewModel.currentUser.collectAsState()
+                val lifecycleOwner = LocalLifecycleOwner.current
+                var sessionAccessState by remember {
+                    mutableStateOf<SessionAccessState>(SessionAccessState.Granted)
+                }
+
+                // Subscription State Verification & Auto-Lock on App Launch and Foreground Resume
+                DisposableEffect(lifecycleOwner, currentUser) {
+                    val observer = LifecycleEventObserver { _, event ->
+                        if (event == Lifecycle.Event.ON_RESUME || event == Lifecycle.Event.ON_START) {
+                            if (currentUser != null) {
+                                val state = AppSessionManager.verifyAndEnforceSubscriptionLock(
+                                    context = context,
+                                    userUid = currentUser?.mobileNumber ?: ""
+                                )
+                                sessionAccessState = state
+                                if (state is SessionAccessState.Locked) {
+                                    val currentRoute = navController.currentBackStackEntry?.destination?.route
+                                    if (currentRoute != Screen.Paywall.route && currentRoute != Screen.Login.route && currentRoute != Screen.ProfileSetup.route) {
+                                        navController.navigate(Screen.Paywall.route) {
+                                            popUpTo(Screen.Dashboard.route) { inclusive = true }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    lifecycleOwner.lifecycle.addObserver(observer)
+                    onDispose {
+                        lifecycleOwner.lifecycle.removeObserver(observer)
+                    }
+                }
+
                 // App Update State & Checker
                 var appUpdateInfo by remember { mutableStateOf<com.example.update.AppUpdateInfo?>(null) }
                 var showUpdateDialog by remember { mutableStateOf(false) }
@@ -124,13 +164,33 @@ class MainActivity : ComponentActivity(), com.razorpay.PaymentResultWithDataList
                         LoginScreen(
                             viewModel = viewModel,
                             onNavigateToDashboard = {
-                                navController.navigate(Screen.Dashboard.route) {
-                                    popUpTo(Screen.Login.route) { inclusive = true }
+                                val userUid = viewModel.currentUser.value?.mobileNumber ?: ""
+                                val state = AppSessionManager.verifyAndEnforceSubscriptionLock(
+                                    context = context,
+                                    userUid = userUid
+                                )
+                                if (state is SessionAccessState.Locked) {
+                                    navController.navigate(Screen.Paywall.route) {
+                                        popUpTo(Screen.Login.route) { inclusive = true }
+                                    }
+                                } else {
+                                    navController.navigate(Screen.Dashboard.route) {
+                                        popUpTo(Screen.Login.route) { inclusive = true }
+                                    }
                                 }
                             },
                             onNavigate = { route ->
-                                navController.navigate(route) {
-                                    if (route == Screen.Dashboard.route || route == Screen.ProfileSetup.route) {
+                                val userUid = viewModel.currentUser.value?.mobileNumber ?: ""
+                                val targetRoute = if (route == Screen.Dashboard.route) {
+                                    val state = AppSessionManager.verifyAndEnforceSubscriptionLock(
+                                        context = context,
+                                        userUid = userUid
+                                    )
+                                    if (state is SessionAccessState.Locked) Screen.Paywall.route else Screen.Dashboard.route
+                                } else route
+
+                                navController.navigate(targetRoute) {
+                                    if (targetRoute == Screen.Dashboard.route || targetRoute == Screen.Paywall.route || targetRoute == Screen.ProfileSetup.route) {
                                         popUpTo(Screen.Login.route) { inclusive = true }
                                     }
                                 }
@@ -143,13 +203,33 @@ class MainActivity : ComponentActivity(), com.razorpay.PaymentResultWithDataList
                         LoginScreen(
                             viewModel = viewModel,
                             onNavigateToDashboard = {
-                                navController.navigate(Screen.Dashboard.route) {
-                                    popUpTo(Screen.Login.route) { inclusive = true }
+                                val userUid = viewModel.currentUser.value?.mobileNumber ?: ""
+                                val state = AppSessionManager.verifyAndEnforceSubscriptionLock(
+                                    context = context,
+                                    userUid = userUid
+                                )
+                                if (state is SessionAccessState.Locked) {
+                                    navController.navigate(Screen.Paywall.route) {
+                                        popUpTo(Screen.Login.route) { inclusive = true }
+                                    }
+                                } else {
+                                    navController.navigate(Screen.Dashboard.route) {
+                                        popUpTo(Screen.Login.route) { inclusive = true }
+                                    }
                                 }
                             },
                             onNavigate = { route ->
-                                navController.navigate(route) {
-                                    if (route == Screen.Dashboard.route || route == Screen.ProfileSetup.route) {
+                                val userUid = viewModel.currentUser.value?.mobileNumber ?: ""
+                                val targetRoute = if (route == Screen.Dashboard.route) {
+                                    val state = AppSessionManager.verifyAndEnforceSubscriptionLock(
+                                        context = context,
+                                        userUid = userUid
+                                    )
+                                    if (state is SessionAccessState.Locked) Screen.Paywall.route else Screen.Dashboard.route
+                                } else route
+
+                                navController.navigate(targetRoute) {
+                                    if (targetRoute == Screen.Dashboard.route || targetRoute == Screen.Paywall.route || targetRoute == Screen.ProfileSetup.route) {
                                         popUpTo(Screen.Login.route) { inclusive = true }
                                     }
                                 }
@@ -161,7 +241,7 @@ class MainActivity : ComponentActivity(), com.razorpay.PaymentResultWithDataList
                         com.example.ui.screens.profile.ProfileSetupScreen(
                             viewModel = viewModel,
                             onSetupSuccess = {
-                                navController.navigate(Screen.Dashboard.route) {
+                                navController.navigate(Screen.Paywall.route) {
                                     popUpTo(Screen.ProfileSetup.route) { inclusive = true }
                                 }
                             }
@@ -253,9 +333,25 @@ class MainActivity : ComponentActivity(), com.razorpay.PaymentResultWithDataList
                     }
 
                     composable(Screen.Paywall.route) {
+                        val userUid = currentUser?.mobileNumber ?: ""
+                        val accessState = AppSessionManager.verifyAndEnforceSubscriptionLock(
+                            context = context,
+                            userUid = userUid
+                        )
+                        val isLocked = accessState is SessionAccessState.Locked
+                        val isMandatory = isLocked || (navController.previousBackStackEntry?.destination?.route == Screen.ProfileSetup.route)
+                        val lockReason = (accessState as? SessionAccessState.Locked)?.reason
+                            ?: "Mandatory Autopay ₹1 Trial Setup required to activate SmartPOS features."
+
                         com.example.ui.screens.paywall.PaywallScreen(
                             viewModel = viewModel,
-                            onBack = { navController.popBackStack() }
+                            onBack = {
+                                if (!isMandatory) {
+                                    navController.popBackStack()
+                                }
+                            },
+                            isMandatory = isMandatory,
+                            lockReason = lockReason
                         )
                     }
                 }
@@ -286,6 +382,7 @@ class MainActivity : ComponentActivity(), com.razorpay.PaymentResultWithDataList
             subscriptionId = mandateId,
             onComplete = { _, _ ->
                 Toast.makeText(this, "Trial Activated Successfully! 🎉", Toast.LENGTH_LONG).show()
+                AppSessionManager.verifyAndEnforceSubscriptionLock(this, userUid)
                 navControllerRef?.navigate(Screen.Dashboard.route) {
                     popUpTo(Screen.Paywall.route) { inclusive = true }
                 }

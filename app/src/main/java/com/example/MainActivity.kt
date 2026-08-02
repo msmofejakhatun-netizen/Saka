@@ -116,13 +116,16 @@ class MainActivity : ComponentActivity(), com.razorpay.PaymentResultWithDataList
 
                 // App Update State & Checker
                 var appUpdateInfo by remember { mutableStateOf<com.example.update.AppUpdateInfo?>(null) }
-                var showUpdateDialog by remember { mutableStateOf(false) }
+                var showUpdateDialog by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
 
                 LaunchedEffect(Unit) {
                     com.example.update.AppUpdateManagerHelper.checkForAppUpdate(context) { info ->
-                        if (info.isUpdateAvailable) {
+                        if (info.isUpdateAvailable && info.latestVersionCode > com.example.BuildConfig.VERSION_CODE) {
                             appUpdateInfo = info
                             showUpdateDialog = true
+                        } else {
+                            appUpdateInfo = info
+                            showUpdateDialog = false
                         }
                     }
                 }

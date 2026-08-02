@@ -64,8 +64,8 @@ object AppUpdateManagerHelper {
                     if (firestore != null) {
                         val doc = firestore.collection("config").document("app_update").get().await()
                         if (doc.exists()) {
-                            val latestCode = (doc.getLong("latestVersionCode") ?: (currentCode + 1).toLong()).toInt()
-                            val latestName = doc.getString("latestVersionName") ?: "1.1.0"
+                            val latestCode = (doc.getLong("latestVersionCode") ?: currentCode.toLong()).toInt()
+                            val latestName = doc.getString("latestVersionName") ?: "1.0.0"
                             val forceUpdate = doc.getBoolean("isForceUpdate") ?: false
                             val minSupported = (doc.getLong("minSupportedVersionCode") ?: 1L).toInt()
                             val notes = (doc.get("releaseNotes") as? List<*>)?.mapNotNull { it?.toString() }
@@ -79,6 +79,7 @@ object AppUpdateManagerHelper {
                             val url = doc.getString("downloadUrl") ?: ("https://play.google.com/store/apps/details?id=" + context.packageName)
                             val size = doc.getString("fileSizeMb") ?: "12.8 MB"
 
+                            // STRICT VERSION CODE CHECK: trigger update ONLY IF latestVersionCode > currentCode
                             val isAvailable = latestCode > currentCode || currentCode < minSupported
                             val isForce = forceUpdate || currentCode < minSupported
 
@@ -103,7 +104,7 @@ object AppUpdateManagerHelper {
                     Log.e(TAG, "Error fetching remote update config: ${e.localizedMessage}")
                 }
 
-                // Fallback demo update trigger
+                // Fallback on error or missing config document: Bypass update check silently
                 provideDefaultUpdateInfo(currentCode, context, onResult)
             }
         } else {
@@ -118,21 +119,15 @@ object AppUpdateManagerHelper {
     ) {
         Handler(Looper.getMainLooper()).post {
             val defaultInfo = AppUpdateInfo(
-                isUpdateAvailable = true,
-                latestVersionCode = currentCode + 1,
-                latestVersionName = "1.1.0",
+                isUpdateAvailable = false, // STRICT DEFAULT: Do not trigger update if remote check fails or unavailable
+                latestVersionCode = currentCode,
+                latestVersionName = "1.0.0",
                 currentVersionCode = currentCode,
                 currentVersionName = "1.0.0",
-                isForceUpdate = false, // Flexible update by default for smooth UX
-                releaseNotes = listOf(
-                    "Added Pharmacy Loose Tablet & Strip Billing Module 💊",
-                    "Integrated Direct Razorpay & PhonePe UPI Autopay Mandates 💳",
-                    "Instant WhatsApp Payment Receipt & Udhar Khata Reminders 📲",
-                    "Bluetooth Thermal Printer ESC/POS Auto-Format Support 🖨️",
-                    "Critical Security Patches & Speed Improvements ⚡"
-                ),
+                isForceUpdate = false,
+                releaseNotes = emptyList(),
                 downloadUrl = "https://play.google.com/store/apps/details?id=" + context.packageName,
-                fileSizeMb = "14.5 MB"
+                fileSizeMb = "12.8 MB"
             )
             onResult(defaultInfo)
         }

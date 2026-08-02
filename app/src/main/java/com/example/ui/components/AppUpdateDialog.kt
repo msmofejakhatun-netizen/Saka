@@ -136,7 +136,7 @@ fun AppUpdateDialog(
                 Spacer(modifier = Modifier.height(14.dp))
 
                 Text(
-                    text = "Kirana POS v${updateInfo.latestVersionName}",
+                    text = "Smart POS v${updateInfo.latestVersionName}",
                     color = Color.White,
                     fontWeight = FontWeight.ExtraBold,
                     fontSize = 22.sp,
@@ -308,7 +308,7 @@ fun AppUpdateDialog(
                             }
                         } else {
                             Text(
-                                text = "⚠️ This version includes critical security & database updates required to continue using Kirana POS.",
+                                text = "⚠️ This version includes critical security & database updates required to continue using Smart POS.",
                                 color = RoseRed,
                                 fontSize = 11.sp,
                                 textAlign = TextAlign.Center,

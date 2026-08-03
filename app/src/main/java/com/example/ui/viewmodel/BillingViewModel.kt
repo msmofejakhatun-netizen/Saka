@@ -375,69 +375,57 @@ class BillingViewModel(private val repository: BillingRepository) : ViewModel() 
         authMobile = fullNumber
 
         viewModelScope.launch {
-            if (com.example.data.firebase.FirebaseManager.isFirebaseAvailable) {
-                try {
-                    val auth = com.example.data.firebase.FirebaseManager.auth
-                    if (auth == null) {
-                        isSendingOtp = false
-                        authError = "Firebase Authentication is not initialized."
-                        return@launch
-                    }
+            try {
+                val auth = com.google.firebase.auth.FirebaseAuth.getInstance()
 
-                    val callbacks = object : com.google.firebase.auth.PhoneAuthProvider.OnVerificationStateChangedCallbacks() {
-                        override fun onVerificationCompleted(credential: com.google.firebase.auth.PhoneAuthCredential) {
-                            viewModelScope.launch {
-                                try {
-                                    val authResult = auth.signInWithCredential(credential).await()
-                                    authResult.user?.let { user ->
-                                        _toastMessage.emit("Phone number verified instantly!")
-                                    }
-                                } catch (e: Exception) {
-                                    Log.e("PhoneAuth", "Auto sign-in failed: ${e.localizedMessage}")
+                val callbacks = object : com.google.firebase.auth.PhoneAuthProvider.OnVerificationStateChangedCallbacks() {
+                    override fun onVerificationCompleted(credential: com.google.firebase.auth.PhoneAuthCredential) {
+                        viewModelScope.launch {
+                            try {
+                                val authResult = auth.signInWithCredential(credential).await()
+                                authResult.user?.let { user ->
+                                    _toastMessage.emit("Phone number verified automatically!")
+                                    handlePostAuth(user.uid, authMobile, "phone", {})
                                 }
-                            }
-                        }
-
-                        override fun onVerificationFailed(e: com.google.firebase.FirebaseException) {
-                            Log.e("PhoneAuth", "Firebase PhoneAuth failed: ${e.localizedMessage}")
-                            viewModelScope.launch {
-                                isSendingOtp = false
-                                authError = "SMS Verification failed: ${e.localizedMessage}"
-                            }
-                        }
-
-                        override fun onCodeSent(
-                            verificationId: String,
-                            token: com.google.firebase.auth.PhoneAuthProvider.ForceResendingToken
-                        ) {
-                            tempVerificationId = verificationId
-                            isOtpSent = true
-                            isSendingOtp = false
-                            startResendTimer()
-                            viewModelScope.launch {
-                                _toastMessage.emit("Verification code sent to $fullNumber")
+                            } catch (e: Exception) {
+                                Log.e("PhoneAuth", "Auto sign-in failed: ${e.localizedMessage}")
                             }
                         }
                     }
 
-                    val options = com.google.firebase.auth.PhoneAuthOptions.newBuilder(auth)
-                        .setPhoneNumber(fullNumber)
-                        .setTimeout(60L, TimeUnit.SECONDS)
-                        .setActivity(activity)
-                        .setCallbacks(callbacks)
-                        .build()
+                    override fun onVerificationFailed(e: com.google.firebase.FirebaseException) {
+                        Log.e("PhoneAuth", "Firebase PhoneAuth failed: ${e.localizedMessage}")
+                        viewModelScope.launch {
+                            isSendingOtp = false
+                            authError = "SMS Verification failed: ${e.localizedMessage}"
+                        }
+                    }
 
-                    com.google.firebase.auth.PhoneAuthProvider.verifyPhoneNumber(options)
-                } catch (e: Exception) {
-                    isSendingOtp = false
-                    authError = "Phone Auth initialization error: ${e.localizedMessage}"
+                    override fun onCodeSent(
+                        verificationId: String,
+                        token: com.google.firebase.auth.PhoneAuthProvider.ForceResendingToken
+                    ) {
+                        tempVerificationId = verificationId
+                        isOtpSent = true
+                        isSendingOtp = false
+                        startResendTimer()
+                        viewModelScope.launch {
+                            _toastMessage.emit("Verification code sent to $fullNumber")
+                        }
+                    }
                 }
-            } else {
-                delay(1000)
-                isOtpSent = true
+
+                val options = com.google.firebase.auth.PhoneAuthOptions.newBuilder(auth)
+                    .setPhoneNumber(fullNumber)
+                    .setTimeout(60L, TimeUnit.SECONDS)
+                    .setActivity(activity)
+                    .setCallbacks(callbacks)
+                    .build()
+
+                com.google.firebase.auth.PhoneAuthProvider.verifyPhoneNumber(options)
+            } catch (e: Exception) {
                 isSendingOtp = false
-                startResendTimer()
-                _toastMessage.emit("Verification code requested for $fullNumber")
+                authError = "Phone Auth error: ${e.localizedMessage}"
             }
         }
     }
@@ -457,29 +445,27 @@ class BillingViewModel(private val repository: BillingRepository) : ViewModel() 
             authError = "Please enter the 6-digit OTP code."
             return
         }
+        if (tempVerificationId.isEmpty()) {
+            authError = "Invalid verification session. Please resend OTP."
+            return
+        }
         authError = null
         isVerifyingOtp = true
 
         viewModelScope.launch {
-            if (com.example.data.firebase.FirebaseManager.isFirebaseAvailable && tempVerificationId.isNotEmpty()) {
-                try {
-                    val credential = com.google.firebase.auth.PhoneAuthProvider.getCredential(tempVerificationId, code)
-                    val auth = com.example.data.firebase.FirebaseManager.auth ?: throw IllegalStateException("Firebase Auth is null.")
-                    val authResult = auth.signInWithCredential(credential).await()
-                    val user = authResult.user
-                    if (user != null) {
-                        handlePostAuth(user.uid, authMobile, "phone", onNavigate)
-                    } else {
-                        throw IllegalStateException("User context is null.")
-                    }
-                } catch (e: Exception) {
-                    isVerifyingOtp = false
-                    authError = "Verification failed: ${e.localizedMessage}"
+            try {
+                val credential = com.google.firebase.auth.PhoneAuthProvider.getCredential(tempVerificationId, code)
+                val auth = com.google.firebase.auth.FirebaseAuth.getInstance()
+                val authResult = auth.signInWithCredential(credential).await()
+                val user = authResult.user
+                if (user != null) {
+                    handlePostAuth(user.uid, authMobile, "phone", onNavigate)
+                } else {
+                    throw IllegalStateException("Firebase user is null.")
                 }
-            } else {
-                delay(1000)
-                val userUid = "usr_${authMobile.filter { it.isDigit() }}"
-                handlePostAuth(userUid, authMobile, "phone", onNavigate)
+            } catch (e: Exception) {
+                isVerifyingOtp = false
+                authError = "Verification failed: ${e.localizedMessage}"
             }
         }
     }
@@ -488,29 +474,20 @@ class BillingViewModel(private val repository: BillingRepository) : ViewModel() 
         authError = null
         isVerifyingOtp = true
         viewModelScope.launch {
-            if (com.example.data.firebase.FirebaseManager.isFirebaseAvailable) {
-                try {
-                    val auth = com.example.data.firebase.FirebaseManager.auth ?: throw IllegalStateException("Firebase Auth is null.")
-                    val credential = com.google.firebase.auth.GoogleAuthProvider.getCredential(idToken, null)
-                    val authResult = auth.signInWithCredential(credential).await()
-                    val user = authResult.user
-                    if (user != null) {
-                        handlePostAuth(user.uid, user.email ?: email, "google", onNavigate)
-                    } else {
-                        throw IllegalStateException("User context is null.")
-                    }
-                } catch (e: Exception) {
-                    Log.w("GoogleAuth", "Google sign-in credential failed: ${e.localizedMessage}. Simulating authentication.")
-                    delay(1200)
-                    val mockUid = "mock_google_${email.replace("@", "_").replace(".", "_")}"
-                    _toastMessage.emit("[Demo Google Login] Simulating verified user: $displayName")
-                    handlePostAuth(mockUid, email, "google", onNavigate)
+            try {
+                val auth = com.google.firebase.auth.FirebaseAuth.getInstance()
+                val credential = com.google.firebase.auth.GoogleAuthProvider.getCredential(idToken, null)
+                val authResult = auth.signInWithCredential(credential).await()
+                val user = authResult.user
+                if (user != null) {
+                    handlePostAuth(user.uid, user.email ?: email, "google", onNavigate)
+                } else {
+                    throw IllegalStateException("Firebase user is null.")
                 }
-            } else {
-                delay(1200)
-                val mockUid = "mock_google_${email.replace("@", "_").replace(".", "_")}"
-                _toastMessage.emit("Google verified (Offline Fallback): $displayName")
-                handlePostAuth(mockUid, email, "google", onNavigate)
+            } catch (e: Exception) {
+                isVerifyingOtp = false
+                authError = "Google Sign-In failed: ${e.localizedMessage}"
+                Log.e("GoogleAuth", "Google sign-in error: ${e.localizedMessage}")
             }
         }
     }

@@ -302,15 +302,20 @@ fun LoginScreen(
 
                         Spacer(modifier = Modifier.height(20.dp))
 
-                        // Official premium Google Continue Button
+                        // Official Google Sign-In Button
                         OutlinedButton(
                             onClick = {
                                 coroutineScope.launch {
                                     try {
+                                        val webClientId = try {
+                                            context.getString(R.string.default_web_client_id)
+                                        } catch (e: Exception) {
+                                            "968984077515-compute@developer.gserviceaccount.com"
+                                        }
                                         val credentialManager = CredentialManager.create(context)
                                         val googleIdOption = GetGoogleIdOption.Builder()
                                             .setFilterByAuthorizedAccounts(false)
-                                            .setServerClientId("968984077515-mockclientid.apps.googleusercontent.com")
+                                            .setServerClientId(webClientId)
                                             .setAutoSelectEnabled(false)
                                             .build()
 
@@ -329,23 +334,11 @@ fun LoginScreen(
                                                 onNavigate = onNavigate
                                             )
                                         } else {
-                                            // Fallback simulated authentication if format differs
-                                            viewModel.signInWithGoogle(
-                                                idToken = "mock_google_token",
-                                                email = "googleuser@gmail.com",
-                                                displayName = "Premium Business Merchant",
-                                                onNavigate = onNavigate
-                                            )
+                                            viewModel.authError = "Google credential format invalid."
                                         }
                                     } catch (e: Exception) {
-                                        Log.w("GoogleAuth", "Credential Manager failed: ${e.localizedMessage}. Using simulated fallback account.")
-                                        // Dynamic offline fallback
-                                        viewModel.signInWithGoogle(
-                                            idToken = "mock_google_token",
-                                            email = "googleuser@gmail.com",
-                                            displayName = "Premium Business Merchant",
-                                            onNavigate = onNavigate
-                                        )
+                                        Log.e("GoogleAuth", "Credential Manager sign-in failed: ${e.localizedMessage}")
+                                        viewModel.authError = "Google Sign-In failed: ${e.localizedMessage}"
                                     }
                                 }
                             },

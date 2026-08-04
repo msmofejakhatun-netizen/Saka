@@ -27,6 +27,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
@@ -37,6 +39,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.credentials.CredentialManager
 import androidx.credentials.GetCredentialRequest
+import androidx.credentials.exceptions.GetCredentialCustomException
+import androidx.credentials.exceptions.GetCredentialException
+import androidx.credentials.exceptions.NoCredentialException
 import com.example.R
 import com.example.ui.components.GlassmorphicCard
 import com.example.ui.components.PremiumGradientBackground
@@ -44,6 +49,9 @@ import com.example.ui.components.PremiumLoadingState
 import com.example.ui.theme.EmeraldGreen
 import com.example.ui.theme.EmeraldLight
 import com.example.ui.viewmodel.BillingViewModel
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.google.android.gms.common.api.ApiException
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import kotlinx.coroutines.launch
@@ -60,6 +68,46 @@ fun LoginScreen(
 
     var mobileNumberInput by remember { mutableStateOf("") }
     var otpInput by remember { mutableStateOf("") }
+
+    val webClientId = remember(context) {
+        try {
+            context.getString(R.string.default_web_client_id)
+        } catch (e: Exception) {
+            "968984077515-smartposclientid.apps.googleusercontent.com"
+        }
+    }
+
+    val googleSignInLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
+            try {
+                val account = task.getResult(ApiException::class.java)
+                val idToken = account?.idToken
+                if (!idToken.isNullOrEmpty()) {
+                    viewModel.signInWithGoogle(
+                        idToken = idToken,
+                        email = account.email ?: "googleuser@gmail.com",
+                        displayName = account.displayName ?: "Google User",
+                        onNavigate = onNavigate
+                    )
+                } else {
+                    viewModel.authError = "Unable to retrieve Google account credentials."
+                }
+            } catch (e: ApiException) {
+                Log.e("GoogleAuth", "Legacy Google Sign-In failed code ${e.statusCode}: ${e.message}")
+                if (e.statusCode == 12500 || e.statusCode == 12501) {
+                    viewModel.authError = "Google Sign-In cancelled by user."
+                } else {
+                    viewModel.authError = "Google Sign-In error (${e.statusCode}): Please verify Google account settings on device."
+                }
+            }
+        } else {
+            Log.w("GoogleAuth", "Legacy Google Sign-In cancelled with result code: ${result.resultCode}")
+            viewModel.authError = "Google Sign-In was cancelled or no account selected."
+        }
+    }
 
     PremiumGradientBackground {
         Column(
@@ -306,23 +354,19 @@ fun LoginScreen(
                         OutlinedButton(
                             onClick = {
                                 coroutineScope.launch {
+                                    viewModel.authError = null
+                                    val credentialManager = CredentialManager.create(context)
+                                    val googleIdOption = GetGoogleIdOption.Builder()
+                                        .setFilterByAuthorizedAccounts(false)
+                                        .setServerClientId(webClientId)
+                                        .setAutoSelectEnabled(false)
+                                        .build()
+
+                                    val request = GetCredentialRequest.Builder()
+                                        .addCredentialOption(googleIdOption)
+                                        .build()
+
                                     try {
-                                        val webClientId = try {
-                                            context.getString(R.string.default_web_client_id)
-                                        } catch (e: Exception) {
-                                            "968984077515-compute@developer.gserviceaccount.com"
-                                        }
-                                        val credentialManager = CredentialManager.create(context)
-                                        val googleIdOption = GetGoogleIdOption.Builder()
-                                            .setFilterByAuthorizedAccounts(false)
-                                            .setServerClientId(webClientId)
-                                            .setAutoSelectEnabled(false)
-                                            .build()
-
-                                        val request = GetCredentialRequest.Builder()
-                                            .addCredentialOption(googleIdOption)
-                                            .build()
-
                                         val result = credentialManager.getCredential(context, request)
                                         val credential = result.credential
                                         
@@ -334,11 +378,44 @@ fun LoginScreen(
                                                 onNavigate = onNavigate
                                             )
                                         } else {
-                                            viewModel.authError = "Google credential format invalid."
+                                            Log.w("GoogleAuth", "Credential format unrecognized. Triggering legacy Google Sign-In client.")
+                                            val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+                                                .requestIdToken(webClientId)
+                                                .requestEmail()
+                                                .build()
+                                            val client = GoogleSignIn.getClient(context, gso)
+                                            googleSignInLauncher.launch(client.signInIntent)
                                         }
                                     } catch (e: Exception) {
-                                        Log.e("GoogleAuth", "Credential Manager sign-in failed: ${e.localizedMessage}")
-                                        viewModel.authError = "Google Sign-In failed: ${e.localizedMessage}"
+                                        Log.w("GoogleAuth", "CredentialManager exception (${e.javaClass.simpleName}): ${e.localizedMessage}. Launching Legacy GoogleSignIn fallback.")
+                                        when (e) {
+                                            is NoCredentialException, is GetCredentialException, is GetCredentialCustomException -> {
+                                                try {
+                                                    val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+                                                        .requestIdToken(webClientId)
+                                                        .requestEmail()
+                                                        .build()
+                                                    val client = GoogleSignIn.getClient(context, gso)
+                                                    googleSignInLauncher.launch(client.signInIntent)
+                                                } catch (fallbackEx: Exception) {
+                                                    Log.e("GoogleAuth", "Legacy GoogleSignIn fallback failed: ${fallbackEx.localizedMessage}")
+                                                    viewModel.authError = "No Google accounts found on this device. Please add a Google account in system settings or sign in using Phone OTP."
+                                                }
+                                            }
+                                            else -> {
+                                                try {
+                                                    val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+                                                        .requestIdToken(webClientId)
+                                                        .requestEmail()
+                                                        .build()
+                                                    val client = GoogleSignIn.getClient(context, gso)
+                                                    googleSignInLauncher.launch(client.signInIntent)
+                                                } catch (fallbackEx: Exception) {
+                                                    Log.e("GoogleAuth", "Fallback failed: ${fallbackEx.localizedMessage}")
+                                                    viewModel.authError = "Google Sign-In failed: No credentials available on device."
+                                                }
+                                            }
+                                        }
                                     }
                                 }
                             },

@@ -1,7 +1,12 @@
 package com.example.data.repository
 
 import android.app.Activity
+import android.content.Context
 import android.util.Log
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInAccount
+import com.google.android.gms.auth.api.signin.GoogleSignInClient
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.firebase.auth.AuthResult
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
@@ -88,6 +93,28 @@ class AuthRepository(
             Log.e(TAG, "Google Sign-In error: ${e.localizedMessage}")
             Result.failure(e)
         }
+    }
+
+    /**
+     * Gets a configured GoogleSignInClient for legacy fallback sign-in.
+     */
+    fun getLegacyGoogleSignInClient(context: Context, webClientId: String): GoogleSignInClient {
+        val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+            .requestIdToken(webClientId)
+            .requestEmail()
+            .build()
+        return GoogleSignIn.getClient(context, gso)
+    }
+
+    /**
+     * Authenticates with Firebase using a legacy GoogleSignInAccount.
+     */
+    suspend fun signInWithGoogleAccount(account: GoogleSignInAccount): Result<AuthResult> {
+        val idToken = account.idToken
+        if (idToken.isNullOrEmpty()) {
+            return Result.failure(Exception("Google ID Token is null or empty from GoogleSignInAccount."))
+        }
+        return signInWithGoogle(idToken)
     }
 
     /**

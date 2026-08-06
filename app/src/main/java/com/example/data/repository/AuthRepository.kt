@@ -150,6 +150,9 @@ class AuthRepository(
                 userRef.set(updateData, SetOptions.merge()).await()
             }
 
+            // Sync FCM Token to Firestore under users/{userId} as fcmToken
+            com.example.service.MyFirebaseMessagingService.syncFcmTokenToFirestore(user.uid)
+
             // Check / Initialize users/{userId}/subscription/current path for subscription gating
             val subRef = firestore.collection("users")
                 .document(user.uid)

@@ -40,7 +40,7 @@ data class POSCartItem(
     val totalAmount: Double get() = quantity * customPrice
 }
 
-class BillingViewModel(private val repository: BillingRepository) : ViewModel() {
+class BillingViewModel(val repository: BillingRepository) : ViewModel() {
 
     // --- Authentication State (Phone OTP & Google Sign-In) ---
     var authMobile by mutableStateOf("")
@@ -691,6 +691,7 @@ class BillingViewModel(private val repository: BillingRepository) : ViewModel() 
     var posDiscountType by mutableStateOf("Fixed") // Fixed or Percentage
     var posDiscountInput by mutableStateOf("")
     var posTaxPercentageInput by mutableStateOf("0")
+    var isGstInvoiceMode by mutableStateOf(true) // GST Invoice vs Simple Estimate
     val posCartItems = mutableStateListOf<POSCartItem>()
     var isGeneratingPOSInvoice by mutableStateOf(false)
     var posInvoiceError by mutableStateOf<String?>(null)
@@ -929,6 +930,7 @@ class BillingViewModel(private val repository: BillingRepository) : ViewModel() 
                 put("quantity", item.quantity)
                 put("unit", item.product.unit)
                 put("unitPrice", item.customPrice)
+                put("purchasePrice", item.product.purchasePrice)
                 put("lineTotal", item.totalAmount)
             }
             itemsJsonArray.put(obj)
@@ -1068,6 +1070,7 @@ class BillingViewModel(private val repository: BillingRepository) : ViewModel() 
                 put("quantity", item.quantity)
                 put("unit", item.product.unit)
                 put("unitPrice", item.customPrice)
+                put("purchasePrice", item.product.purchasePrice)
                 put("lineTotal", item.totalAmount)
             }
             itemsJsonArray.put(obj)
@@ -1178,7 +1181,8 @@ class BillingViewModel(private val repository: BillingRepository) : ViewModel() 
         isRxRequired: Boolean = false,
         size: String = "",
         color: String = "",
-        onSuccess: () -> Unit
+        minStockThreshold: Double = 5.0,
+        onSuccess: (() -> Unit)? = null
     ) {
         if (name.isBlank()) {
             productFormError = "Product name is required"
@@ -1218,13 +1222,14 @@ class BillingViewModel(private val repository: BillingRepository) : ViewModel() 
                     packUnitConfig = packUnitConfig.trim(),
                     isRxRequired = isRxRequired,
                     size = size.trim(),
-                    color = color.trim()
+                    color = color.trim(),
+                    minStockThreshold = minStockThreshold
                 )
 
                 repository.saveProduct(userUid, product)
                 isSavingProduct = false
                 _toastMessage.emit(if (id == 0 && firestoreId.isEmpty()) "Product '${name.trim()}' added successfully!" else "Product '${name.trim()}' updated successfully!")
-                onSuccess()
+                onSuccess?.invoke()
             } catch (e: Exception) {
                 isSavingProduct = false
                 Log.e("ProductVM", "Save product error: ${e.localizedMessage}")

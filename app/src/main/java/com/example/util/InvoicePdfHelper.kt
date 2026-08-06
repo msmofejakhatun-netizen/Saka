@@ -69,15 +69,17 @@ object InvoicePdfHelper {
         paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
         val dlStr = invoice.dlNumber.ifBlank { "DL-20B/10492/2024" }
         val gstinStr = invoice.gstin.ifBlank { "27ABCDE1234F1Z5" }
-        val contactText = "DL No: $dlStr | GSTIN: $gstinStr"
-        val phoneText = if (!merchantMobile.isNull_or_blank()) "Contact: $merchantMobile" else "Pharmacy Tax Invoice"
+        val isGst = invoice.taxAmount > 0 || invoice.gstin.isNotBlank()
+        val contactText = if (isGst) "DL No: $dlStr | GSTIN: $gstinStr" else "DL No: $dlStr | Simple Bill"
+        val phoneText = if (!merchantMobile.isNullOrEmpty()) "Contact: $merchantMobile" else "Smart POS Invoice"
         canvas.drawText(phoneText, 30f, 62f, paint)
         canvas.drawText(contactText, 30f, 75f, paint)
 
         // INVOICE text on right
-        titlePaint.textSize = 20f
+        titlePaint.textSize = 18f
         titlePaint.textAlign = Paint.Align.RIGHT
-        canvas.drawText("PHARMACY INVOICE", 565f, 50f, titlePaint)
+        val invTitle = if (isGst) "TAX INVOICE" else "ESTIMATE / CASH MEMO"
+        canvas.drawText(invTitle, 565f, 50f, titlePaint)
 
         if (invoice.isEdited) {
             paint.color = Color.parseColor("#FBBF24")
@@ -222,13 +224,20 @@ object InvoicePdfHelper {
             canvas.drawText("-₹${String.format(Locale.US, "%.2f", invoice.discountAmount)}", 550f, sumY, paint)
         }
 
-        // Tax
+        // Tax Breakdown
         if (invoice.taxAmount > 0) {
-            sumY += 18f
+            val halfTax = invoice.taxAmount / 2.0
+            sumY += 16f
             paint.textAlign = Paint.Align.LEFT
-            canvas.drawText("Tax / GST:", summaryStartX + 15f, sumY, paint)
+            canvas.drawText("CGST:", summaryStartX + 15f, sumY, paint)
             paint.textAlign = Paint.Align.RIGHT
-            canvas.drawText("+₹${String.format(Locale.US, "%.2f", invoice.taxAmount)}", 550f, sumY, paint)
+            canvas.drawText("+₹${String.format(Locale.US, "%.2f", halfTax)}", 550f, sumY, paint)
+
+            sumY += 16f
+            paint.textAlign = Paint.Align.LEFT
+            canvas.drawText("SGST:", summaryStartX + 15f, sumY, paint)
+            paint.textAlign = Paint.Align.RIGHT
+            canvas.drawText("+₹${String.format(Locale.US, "%.2f", halfTax)}", 550f, sumY, paint)
         }
 
         // Grand Total Line
@@ -277,9 +286,9 @@ object InvoicePdfHelper {
 
     private fun String?.isNull_or_blank(): Boolean = this == null || this.isBlank()
 
-    private data class PdfItemRow(val name: String, val qtyStr: String, val priceStr: String, val price: Double, val total: Double)
+    data class PdfItemRow(val name: String, val qtyStr: String, val priceStr: String, val price: Double, val total: Double)
 
-    private fun parseItemsSummary(summary: String): List<PdfItemRow> {
+    fun parseItemsSummary(summary: String): List<PdfItemRow> {
         if (summary.isBlank()) {
             return listOf(PdfItemRow("Billed Products", "1", "-", 0.0, 0.0))
         }

@@ -1,10 +1,15 @@
 package com.example
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -15,6 +20,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -80,6 +86,17 @@ class MainActivity : ComponentActivity(), com.razorpay.PaymentResultWithDataList
                 val viewModel: BillingViewModel = viewModel(
                     factory = BillingViewModelFactory(repository)
                 )
+
+                // Notification Permission Launcher (Android 13+)
+                val notificationPermissionLauncher = rememberLauncherForActivityResult(
+                    contract = ActivityResultContracts.RequestPermission()
+                ) { isGranted ->
+                    if (isGranted) {
+                        android.util.Log.d("MainActivity", "Notification permission granted")
+                    } else {
+                        android.util.Log.w("MainActivity", "Notification permission denied")
+                    }
+                }
 
                 val currentUser by viewModel.currentUser.collectAsState()
                 val lifecycleOwner = LocalLifecycleOwner.current
@@ -252,6 +269,17 @@ class MainActivity : ComponentActivity(), com.razorpay.PaymentResultWithDataList
                     }
 
                     composable(Screen.Dashboard.route) {
+                        LaunchedEffect(Unit) {
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                if (ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                                    notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                }
+                            }
+                            val uid = viewModel.currentUser.value?.mobileNumber
+                                ?: com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid
+                            com.example.service.MyFirebaseMessagingService.syncFcmTokenToFirestore(uid)
+                        }
+
                         DashboardScreen(
                             viewModel = viewModel,
                             initialTab = com.example.ui.screens.dashboard.BottomTab.HOME,

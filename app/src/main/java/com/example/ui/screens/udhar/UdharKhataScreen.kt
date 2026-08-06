@@ -55,6 +55,37 @@ fun UdharKhataScreen(
     var showJamaDialog by remember { mutableStateOf(false) }
     var showAddUdharDialog by remember { mutableStateOf(false) }
 
+    // Voice Entry States
+    var showVoiceUdharDialog by remember { mutableStateOf(false) }
+    var voiceSpeechInputText by remember { mutableStateOf("") }
+
+    val context = LocalContext.current
+    val speechLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        contract = androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == android.app.Activity.RESULT_OK) {
+            val spokenText = result.data?.getStringArrayListExtra(android.speech.RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()
+            if (!spokenText.isNullOrBlank()) {
+                voiceSpeechInputText = spokenText
+                showVoiceUdharDialog = true
+            }
+        }
+    }
+
+    val triggerSpeechToText: () -> Unit = {
+        try {
+            val intent = android.content.Intent(android.speech.RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                putExtra(android.speech.RecognizerIntent.EXTRA_LANGUAGE_MODEL, android.speech.RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+                putExtra(android.speech.RecognizerIntent.EXTRA_LANGUAGE, "hi-IN")
+                putExtra(android.speech.RecognizerIntent.EXTRA_PROMPT, "Speak Udhar Entry (e.g. 'Ramesh ko 2 kilo chini 100 rupaye ka udhar diya')")
+            }
+            speechLauncher.launch(intent)
+        } catch (e: Exception) {
+            voiceSpeechInputText = ""
+            showVoiceUdharDialog = true
+        }
+    }
+
     // WhatsApp Reminder Modal States
     var showWhatsAppReminderModal by remember { mutableStateOf(false) }
     var reminderTargetCustomer by remember { mutableStateOf<CustomerEntity?>(null) }
@@ -95,6 +126,13 @@ fun UdharKhataScreen(
                 },
                 actions = {
                     IconButton(
+                        onClick = triggerSpeechToText,
+                        modifier = Modifier.testTag("udhar_khata_voice_action")
+                    ) {
+                        Icon(imageVector = Icons.Default.Mic, contentDescription = "Voice Entry", tint = GoldYellow)
+                    }
+
+                    IconButton(
                         onClick = { showAddUdharDialog = true },
                         modifier = Modifier.testTag("udhar_khata_add_customer_action")
                     ) {
@@ -106,14 +144,35 @@ fun UdharKhataScreen(
             )
         },
         floatingActionButton = {
-            ExtendedFloatingActionButton(
-                onClick = { showAddUdharDialog = true },
-                containerColor = RoseRed,
-                contentColor = Color.White,
-                icon = { Icon(imageVector = Icons.Default.Add, contentDescription = "Add Udhar") },
-                text = { Text("New Udhar Entry", fontWeight = FontWeight.Bold) },
-                modifier = Modifier.testTag("udhar_khata_add_entry_fab")
-            )
+            Column(
+                horizontalAlignment = Alignment.End,
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                FloatingActionButton(
+                    onClick = triggerSpeechToText,
+                    containerColor = GoldYellow,
+                    contentColor = Color.Black,
+                    modifier = Modifier.testTag("udhar_khata_voice_entry_fab")
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(imageVector = Icons.Default.Mic, contentDescription = "Voice Entry")
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Voice Entry", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    }
+                }
+
+                ExtendedFloatingActionButton(
+                    onClick = { showAddUdharDialog = true },
+                    containerColor = RoseRed,
+                    contentColor = Color.White,
+                    icon = { Icon(imageVector = Icons.Default.Add, contentDescription = "Add Udhar") },
+                    text = { Text("New Udhar Entry", fontWeight = FontWeight.Bold) },
+                    modifier = Modifier.testTag("udhar_khata_add_entry_fab")
+                )
+            }
         },
         containerColor = Color.Transparent
     ) { innerPadding ->
@@ -354,11 +413,40 @@ fun UdharKhataScreen(
                 WhatsAppReminderModalDialog(
                     customer = reminderTargetCustomer!!,
                     businessName = currentUser?.businessName ?: "Kirana Store",
+                    upiId = currentUser?.upiId ?: "merchant@upi",
                     initialType = selectedReminderTypeForModal,
                     transactions = transactions,
                     onDismiss = {
                         showWhatsAppReminderModal = false
                         reminderTargetCustomer = null
+                    }
+                )
+            }
+
+            // Voice-Controlled Udhar Khata Entry Modal Dialog
+            if (showVoiceUdharDialog) {
+                VoiceUdharEntryDialog(
+                    allCustomers = allCustomers,
+                    initialSpeechText = voiceSpeechInputText,
+                    onDismiss = { showVoiceUdharDialog = false },
+                    onTriggerMic = triggerSpeechToText,
+                    onSaveUdhar = { name, mobile, amount, note ->
+                        viewModel.recordUdharEntry(name, mobile, amount, note) {
+                            showVoiceUdharDialog = false
+                            val updatedCustomer = allCustomers.find { it.mobileNumber == mobile }
+                            if (updatedCustomer != null) {
+                                selectedCustomerForLedger = updatedCustomer
+                            }
+                        }
+                    },
+                    onSaveJama = { name, mobile, amount, mode, note ->
+                        viewModel.recordJamaPayment(name, mobile, amount, mode, note) {
+                            showVoiceUdharDialog = false
+                            val updatedCustomer = allCustomers.find { it.mobileNumber == mobile }
+                            if (updatedCustomer != null) {
+                                selectedCustomerForLedger = updatedCustomer
+                            }
+                        }
                     }
                 )
             }
@@ -1314,6 +1402,7 @@ private fun UdharBillReceiptModalDialog(
 private fun WhatsAppReminderModalDialog(
     customer: CustomerEntity,
     businessName: String,
+    upiId: String = "merchant@upi",
     initialType: ReminderType,
     transactions: List<CustomerTransactionEntity>,
     onDismiss: () -> Unit
@@ -1321,7 +1410,7 @@ private fun WhatsAppReminderModalDialog(
     val context = LocalContext.current
     var selectedType by remember { mutableStateOf(initialType) }
 
-    var messageText by remember(selectedType, customer, businessName) {
+    var messageText by remember(selectedType, customer, businessName, upiId) {
         mutableStateOf(
             WhatsAppReminderUtils.buildReminderMessage(
                 customerName = customer.name,
@@ -1329,7 +1418,8 @@ private fun WhatsAppReminderModalDialog(
                 pendingAmount = customer.totalPendingBalance,
                 lastTransactionTimestamp = customer.lastTransactionTimestamp,
                 reminderType = selectedType,
-                transactions = transactions
+                transactions = transactions,
+                upiId = upiId
             )
         )
     }
@@ -1384,6 +1474,57 @@ private fun WhatsAppReminderModalDialog(
                             fontWeight = FontWeight.Bold,
                             fontSize = 15.sp
                         )
+                    }
+                }
+
+                // Interactive UPI Link Banner Card
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = Color(0x2210B981)),
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .border(1.dp, Color(0x4410B981), RoundedCornerShape(10.dp))
+                ) {
+                    Column(modifier = Modifier.padding(10.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(imageVector = Icons.Default.QrCode, contentDescription = "UPI", tint = EmeraldLight, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("Embedded Interactive UPI Link", color = EmeraldLight, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                            }
+                            Text(text = upiId, color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                        }
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "Customers can tap the upi:// link in WhatsApp to pay instantly via GPay/PhonePe.",
+                            color = Color(0xFF94A3B8),
+                            fontSize = 10.sp
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Button(
+                            onClick = {
+                                com.example.util.WhatsAppReminderHelper.launchUpiPaymentIntent(
+                                    context = context,
+                                    upiId = upiId,
+                                    merchantName = businessName,
+                                    amount = customer.totalPendingBalance,
+                                    note = "Udhar Clearance (${customer.name})"
+                                )
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = EmeraldGreen),
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
+                            modifier = Modifier
+                                .height(28.dp)
+                                .testTag("whatsapp_modal_test_pay_upi_button")
+                        ) {
+                            Icon(imageVector = Icons.Default.Payment, contentDescription = "Test Pay", modifier = Modifier.size(12.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Test Pay via UPI App", fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                        }
                     }
                 }
 
@@ -1688,5 +1829,246 @@ private fun AddUdharEntryDialog(
         },
         containerColor = Color(0xFF0F172A),
         shape = RoundedCornerShape(16.dp)
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun VoiceUdharEntryDialog(
+    allCustomers: List<CustomerEntity>,
+    initialSpeechText: String,
+    onDismiss: () -> Unit,
+    onTriggerMic: () -> Unit,
+    onSaveUdhar: (name: String, mobile: String, amount: Double, note: String) -> Unit,
+    onSaveJama: (name: String, mobile: String, amount: Double, mode: String, note: String) -> Unit
+) {
+    var rawSpeechText by remember { mutableStateOf(initialSpeechText.ifBlank { "Ramesh ko 2 kilo chini 100 rupaye ka udhar diya" }) }
+
+    val parsedResult = remember(rawSpeechText, allCustomers) {
+        com.example.util.VoiceHelper.parseVoiceUdharEntry(rawSpeechText, allCustomers)
+    }
+
+    var customerNameInput by remember(parsedResult) {
+        mutableStateOf(parsedResult.customerName ?: "")
+    }
+    var customerMobileInput by remember(parsedResult) {
+        mutableStateOf(parsedResult.matchedCustomer?.mobileNumber ?: "")
+    }
+    var amountInput by remember(parsedResult) {
+        mutableStateOf(parsedResult.amount?.let { if (it % 1.0 == 0.0) it.toInt().toString() else it.toString() } ?: "")
+    }
+    var noteInput by remember(parsedResult) {
+        mutableStateOf(parsedResult.itemsOrNote ?: "")
+    }
+    var isJama by remember(parsedResult) {
+        mutableStateOf(parsedResult.isJama)
+    }
+
+    var errorMsg by remember { mutableStateOf<String?>(null) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .background(GoldYellow, CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(imageVector = Icons.Default.Mic, contentDescription = "Voice", tint = Color.Black, modifier = Modifier.size(20.dp))
+                    }
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Column {
+                        Text("Voice Udhar Entry", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                        Text("Speak in Hindi / English", color = Color(0xFF94A3B8), fontSize = 11.sp)
+                    }
+                }
+
+                IconButton(
+                    onClick = onTriggerMic,
+                    modifier = Modifier
+                        .background(GoldYellow, CircleShape)
+                        .size(36.dp)
+                        .testTag("voice_dialog_mic_button")
+                ) {
+                    Icon(imageVector = Icons.Default.Mic, contentDescription = "Tap to speak", tint = Color.Black, modifier = Modifier.size(20.dp))
+                }
+            }
+        },
+        text = {
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                // Spoken Transcript Input Field
+                OutlinedTextField(
+                    value = rawSpeechText,
+                    onValueChange = { rawSpeechText = it },
+                    label = { Text("Spoken Phrase (or type below)") },
+                    trailingIcon = {
+                        IconButton(onClick = onTriggerMic) {
+                            Icon(imageVector = Icons.Default.Mic, contentDescription = "Mic", tint = GoldYellow)
+                        }
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("voice_dialog_transcript_input"),
+                    textStyle = MaterialTheme.typography.bodySmall.copy(color = Color.White, fontSize = 13.sp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = GoldYellow,
+                        unfocusedBorderColor = Color(0x44FFFFFF)
+                    )
+                )
+
+                // Entry Type Toggle: Udhar (+) vs Jama (-)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    FilterChip(
+                        selected = !isJama,
+                        onClick = { isJama = false },
+                        label = { Text("🔴 Udhar (Credit)", fontWeight = FontWeight.Bold) },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = RoseRed,
+                            selectedLabelColor = Color.White
+                        ),
+                        modifier = Modifier.weight(1f).testTag("voice_dialog_type_udhar")
+                    )
+
+                    FilterChip(
+                        selected = isJama,
+                        onClick = { isJama = true },
+                        label = { Text("🟢 Jama (Received)", fontWeight = FontWeight.Bold) },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = EmeraldGreen,
+                            selectedLabelColor = Color.White
+                        ),
+                        modifier = Modifier.weight(1f).testTag("voice_dialog_type_jama")
+                    )
+                }
+
+                // Parsed Summary Badge
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = Color(0x2210B981)),
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier.fillMaxWidth().border(1.dp, Color(0x3310B981), RoundedCornerShape(10.dp))
+                ) {
+                    Column(modifier = Modifier.padding(10.dp)) {
+                        Text("✨ SMART EXTRACTED DETAILS", color = EmeraldLight, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = if (parsedResult.matchedCustomer != null)
+                                "Matched Customer: ${parsedResult.matchedCustomer.name} (${parsedResult.matchedCustomer.mobileNumber})"
+                            else "Extracted Customer Name: ${parsedResult.customerName ?: "Not detected"}",
+                            color = Color.White,
+                            fontSize = 12.sp
+                        )
+                        Text(
+                            text = "Extracted Amount: ₹${parsedResult.amount ?: 0.0} | Items: ${parsedResult.itemsOrNote}",
+                            color = Color(0xFF94A3B8),
+                            fontSize = 11.sp
+                        )
+                    }
+                }
+
+                // Customer Name Input
+                OutlinedTextField(
+                    value = customerNameInput,
+                    onValueChange = { name ->
+                        customerNameInput = name
+                        val matched = allCustomers.find { it.name.equals(name, ignoreCase = true) || it.mobileNumber == name }
+                        if (matched != null) {
+                            customerMobileInput = matched.mobileNumber
+                        }
+                    },
+                    label = { Text("Customer Name") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth().testTag("voice_dialog_name_input")
+                )
+
+                // Mobile Number Input
+                OutlinedTextField(
+                    value = customerMobileInput,
+                    onValueChange = { customerMobileInput = it },
+                    label = { Text("Mobile Number (10 digits)") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                    modifier = Modifier.fillMaxWidth().testTag("voice_dialog_mobile_input")
+                )
+
+                // Amount Input
+                OutlinedTextField(
+                    value = amountInput,
+                    onValueChange = { amountInput = it },
+                    label = { Text("Amount (₹)") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.fillMaxWidth().testTag("voice_dialog_amount_input")
+                )
+
+                // Note / Items Input
+                OutlinedTextField(
+                    value = noteInput,
+                    onValueChange = { noteInput = it },
+                    label = { Text("Items / Description") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth().testTag("voice_dialog_note_input")
+                )
+
+                errorMsg?.let {
+                    Text(text = it, color = Color(0xFFEF4444), fontSize = 12.sp)
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    val amt = amountInput.toDoubleOrNull() ?: 0.0
+                    val cleanMobile = customerMobileInput.trim()
+                    val cleanName = customerNameInput.ifBlank { "Customer" }
+
+                    if (cleanMobile.isBlank() || amt <= 0.0) {
+                        errorMsg = "Please enter a valid mobile number and positive amount"
+                    } else {
+                        if (isJama) {
+                            onSaveJama(cleanName, cleanMobile, amt, "Cash", noteInput)
+                        } else {
+                            onSaveUdhar(cleanName, cleanMobile, amt, noteInput)
+                        }
+                    }
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = if (isJama) EmeraldGreen else RoseRed),
+                modifier = Modifier.fillMaxWidth().testTag("voice_dialog_save_button")
+            ) {
+                Icon(
+                    imageVector = if (isJama) Icons.Default.CheckCircle else Icons.Default.Add,
+                    contentDescription = "Save",
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = if (isJama) "Save Jama (₹${amountInput.ifBlank { "0" }})" else "Save Udhar (₹${amountInput.ifBlank { "0" }})",
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        },
+        dismissButton = {
+            TextButton(
+                onClick = onDismiss,
+                modifier = Modifier.testTag("voice_dialog_cancel_button")
+            ) {
+                Text("Cancel", color = Color(0xFF94A3B8))
+            }
+        },
+        containerColor = Color(0xFF0F172A),
+        shape = RoundedCornerShape(18.dp)
     )
 }

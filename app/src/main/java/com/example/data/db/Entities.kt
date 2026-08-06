@@ -71,7 +71,8 @@ data class ProductEntity(
     val packUnitConfig: String = "", // e.g. "1 Strip = 10 Tablets"
     val isRxRequired: Boolean = false,
     val size: String = "", // Garments e.g. "S", "M", "L", "XL", "32"
-    val color: String = "" // Garments e.g. "Red", "Blue", "Black"
+    val color: String = "", // Garments e.g. "Red", "Blue", "Black"
+    val minStockThreshold: Double = 5.0
 )
 
 @Entity(tableName = "customers")

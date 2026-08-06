@@ -101,7 +101,7 @@ object AppUpdateManagerHelper {
                         }
                     }
                 } catch (e: Exception) {
-                    Log.e(TAG, "Error fetching remote update config: ${e.localizedMessage}")
+                    Log.d(TAG, "Remote update config check skipped: ${e.localizedMessage}")
                 }
 
                 // Fallback on error or missing config document: Bypass update check silently

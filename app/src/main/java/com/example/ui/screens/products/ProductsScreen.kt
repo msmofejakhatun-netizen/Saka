@@ -63,7 +63,9 @@ fun ProductsScreen(
     var selectedProductForEdit by remember { mutableStateOf<ProductEntity?>(null) }
     var productToDelete by remember { mutableStateOf<ProductEntity?>(null) }
 
-    var selectedTab by remember { mutableStateOf(0) } // 0: All, 1: Expiry Tracker, 2: Low Stock
+    var selectedTab by remember { mutableStateOf(0) } // 0: All, 1: Expiry Guardian, 2: Smart Reorder List
+
+    val now = remember { System.currentTimeMillis() }
 
     val expiredProducts = remember(filteredProducts) {
         filteredProducts.filter {
@@ -71,19 +73,42 @@ fun ProductsScreen(
         }
     }
 
-    val nearExpiryProducts = remember(filteredProducts) {
-        filteredProducts.filter {
-            com.example.util.PharmacyUtils.getExpiryStatus(it.expiryDate) is com.example.util.ExpiryStatus.NearExpiry
+    val criticalExpiryProducts = remember(filteredProducts, now) {
+        filteredProducts.filter { product ->
+            val status = com.example.util.PharmacyUtils.getExpiryStatus(product.expiryDate)
+            if (status is com.example.util.ExpiryStatus.Expired) return@filter true
+            val time = com.example.util.PharmacyUtils.parseExpiryDate(product.expiryDate)
+            if (time != null) {
+                val days = ((time - now) / (1000 * 60 * 60 * 24)).toInt()
+                days < 15
+            } else false
         }
     }
 
-    val lowStockProducts = remember(filteredProducts) {
-        filteredProducts.filter { it.stockQuantity <= 5.0 }
+    val warningExpiryProducts = remember(filteredProducts, now) {
+        filteredProducts.filter { product ->
+            val time = com.example.util.PharmacyUtils.parseExpiryDate(product.expiryDate)
+            if (time != null) {
+                val days = ((time - now) / (1000 * 60 * 60 * 24)).toInt()
+                days in 15..30
+            } else false
+        }
     }
 
-    val activeDisplayList = remember(selectedTab, filteredProducts, expiredProducts, nearExpiryProducts, lowStockProducts) {
+    val allExpiryRiskProducts = remember(criticalExpiryProducts, warningExpiryProducts) {
+        (criticalExpiryProducts + warningExpiryProducts).distinctBy { it.id }
+    }
+
+    val lowStockProducts = remember(filteredProducts) {
+        filteredProducts.filter { product ->
+            val threshold = if (product.minStockThreshold > 0.0) product.minStockThreshold else 5.0
+            product.stockQuantity < threshold
+        }
+    }
+
+    val activeDisplayList = remember(selectedTab, filteredProducts, allExpiryRiskProducts, lowStockProducts) {
         when (selectedTab) {
-            1 -> (expiredProducts + nearExpiryProducts).distinctBy { it.id }
+            1 -> allExpiryRiskProducts
             2 -> lowStockProducts
             else -> filteredProducts
         }
@@ -97,6 +122,7 @@ fun ProductsScreen(
     var salePriceInput by remember { mutableStateOf("") }
     var purchasePriceInput by remember { mutableStateOf("") }
     var stockInput by remember { mutableStateOf("") }
+    var minStockInput by remember { mutableStateOf("5") }
     var barcodeInput by remember { mutableStateOf("") }
     var selectedUnit by remember { mutableStateOf("Pcs") }
     var selectedCategory by remember { mutableStateOf("General") }
@@ -163,6 +189,7 @@ fun ProductsScreen(
         salePriceInput = ""
         purchasePriceInput = ""
         stockInput = "10"
+        minStockInput = "5"
         barcodeInput = ""
         batchNumberInput = ""
         expiryDateInput = ""
@@ -216,6 +243,7 @@ fun ProductsScreen(
         salePriceInput = product.salePrice.toString()
         purchasePriceInput = if (product.purchasePrice > 0) product.purchasePrice.toString() else ""
         stockInput = product.stockQuantity.toString()
+        minStockInput = if (product.minStockThreshold > 0.0) product.minStockThreshold.toInt().toString() else "5"
         barcodeInput = product.barcode
         selectedUnit = product.unit
         selectedCategory = product.category
@@ -393,7 +421,7 @@ fun ProductsScreen(
                             modifier = Modifier.padding(end = 8.dp, bottom = 8.dp)
                         ) {
                             Text(
-                                text = "⚡ Expiry Tracker (${expiredProducts.size + nearExpiryProducts.size})",
+                                text = "⚡ Expiry Guardian (${allExpiryRiskProducts.size})",
                                 color = Color.White,
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
@@ -413,7 +441,7 @@ fun ProductsScreen(
                             modifier = Modifier.padding(end = 8.dp, bottom = 8.dp)
                         ) {
                             Text(
-                                text = "⚠️ Low Stock (${lowStockProducts.size})",
+                                text = "📦 Smart Reorder List (${lowStockProducts.size})",
                                 color = if (selectedTab == 2) Color.Black else Color.White,
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
@@ -425,7 +453,7 @@ fun ProductsScreen(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // Summary Stats Banner for Expiry Tracker Tab
+                // Summary Stats Banner for Expiry Guardian Tab
                 if (selectedTab == 1) {
                     Card(
                         colors = CardDefaults.cardColors(containerColor = Color(0x22131B3E)),
@@ -442,13 +470,124 @@ fun ProductsScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text("Expired Items", color = Color(0xFFF87171), fontSize = 11.sp)
-                                Text("${expiredProducts.size}", color = Color(0xFFEF4444), fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                                Text("🚨 Critical (<15 Days)", color = Color(0xFFF87171), fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                                Text("${criticalExpiryProducts.size}", color = Color(0xFFEF4444), fontSize = 18.sp, fontWeight = FontWeight.Bold)
                             }
-                            Box(modifier = Modifier.height(24.dp).width(1.dp).background(Color(0x22FFFFFF)))
+                            Box(modifier = Modifier.height(28.dp).width(1.dp).background(Color(0x22FFFFFF)))
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text("Near Expiry (60 Days)", color = Color(0xFFFBBF24), fontSize = 11.sp)
-                                Text("${nearExpiryProducts.size}", color = Color(0xFFF59E0B), fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                                Text("⚠️ Warning (15-30 Days)", color = Color(0xFFFBBF24), fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                                Text("${warningExpiryProducts.size}", color = Color(0xFFF59E0B), fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                            }
+                            Box(modifier = Modifier.height(28.dp).width(1.dp).background(Color(0x22FFFFFF)))
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text("Total Risk Items", color = Color(0xFF93C5FD), fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                                Text("${allExpiryRiskProducts.size}", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
+
+                // Summary Stats & Actions Banner for Smart Reorder List Tab
+                if (selectedTab == 2) {
+                    val totalReorderCost = remember(lowStockProducts) {
+                        lowStockProducts.sumOf { p ->
+                            val th = if (p.minStockThreshold > 0.0) p.minStockThreshold else 5.0
+                            val target = maxOf(th * 2, 10.0)
+                            val suggestedQty = maxOf(1.0, target - p.stockQuantity)
+                            val unitP = if (p.purchasePrice > 0.0) p.purchasePrice else p.salePrice
+                            suggestedQty * unitP
+                        }
+                    }
+                    val context = androidx.compose.ui.platform.LocalContext.current
+
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = Color(0x22131B3E)),
+                        shape = RoundedCornerShape(16.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .border(1.dp, Color(0x33F59E0B), RoundedCornerShape(16.dp))
+                    ) {
+                        Column(modifier = Modifier.padding(14.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column {
+                                    Text("📦 AUTOMATED PURCHASE ORDER", color = GoldYellow, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.5.sp)
+                                    Text("${lowStockProducts.size} Items Need Stock Replenishment", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                                }
+                                Surface(
+                                    color = Color(0x22F59E0B),
+                                    shape = RoundedCornerShape(10.dp)
+                                ) {
+                                    Text(
+                                        text = "Est. PO: ₹${String.format(Locale.US, "%.2f", totalReorderCost)}",
+                                        color = GoldYellow,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Button(
+                                    onClick = {
+                                        val sb = StringBuilder()
+                                        sb.append("📦 SMART POS REORDER PURCHASE ORDER\n")
+                                        sb.append("Store: ${currentUser?.businessName ?: "Kirana & Retail Store"}\n\n")
+                                        lowStockProducts.forEachIndexed { idx, p ->
+                                            val th = if (p.minStockThreshold > 0.0) p.minStockThreshold else 5.0
+                                            val target = maxOf(th * 2, 10.0)
+                                            val suggestedQty = maxOf(1.0, target - p.stockQuantity)
+                                            val cost = suggestedQty * (if (p.purchasePrice > 0.0) p.purchasePrice else p.salePrice)
+                                            sb.append("${idx + 1}. ${p.name} - Order Qty: ${suggestedQty.toInt()} ${p.unit} (Stock: ${p.stockQuantity.toInt()}, Min: ${th.toInt()}) [Est: ₹${String.format(Locale.US, "%.2f", cost)}]\n")
+                                        }
+                                        sb.append("\nTotal Estimated Purchase Order Value: ₹${String.format(Locale.US, "%.2f", totalReorderCost)}\n")
+                                        sb.append("Please confirm delivery timeline. Thank you!")
+
+                                        com.example.util.WhatsAppReminderUtils.sendWhatsAppReminder(context, "", sb.toString())
+                                    },
+                                    colors = ButtonDefaults.buttonColors(containerColor = EmeraldGreen),
+                                    shape = RoundedCornerShape(10.dp),
+                                    modifier = Modifier.weight(1f).testTag("reorder_share_whatsapp")
+                                ) {
+                                    Icon(Icons.Default.Share, contentDescription = "Share", modifier = Modifier.size(16.dp))
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("WhatsApp PO", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                }
+
+                                OutlinedButton(
+                                    onClick = {
+                                        val sb = StringBuilder()
+                                        sb.append("📦 SMART POS REORDER PURCHASE ORDER\n")
+                                        sb.append("Store: ${currentUser?.businessName ?: "Retail Store"}\n\n")
+                                        lowStockProducts.forEachIndexed { idx, p ->
+                                            val th = if (p.minStockThreshold > 0.0) p.minStockThreshold else 5.0
+                                            val target = maxOf(th * 2, 10.0)
+                                            val suggestedQty = maxOf(1.0, target - p.stockQuantity)
+                                            sb.append("${idx + 1}. ${p.name} - Qty: ${suggestedQty.toInt()} ${p.unit} (Stock: ${p.stockQuantity.toInt()})\n")
+                                        }
+                                        sb.append("\nTotal Estimated PO: ₹${String.format(Locale.US, "%.2f", totalReorderCost)}")
+
+                                        com.example.util.WhatsAppReminderUtils.shareTextViaStandardChooser(context, sb.toString())
+                                    },
+                                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0x44FFFFFF)),
+                                    shape = RoundedCornerShape(10.dp),
+                                    modifier = Modifier.weight(1f).testTag("reorder_export_text")
+                                ) {
+                                    Icon(Icons.Default.Download, contentDescription = "Export", modifier = Modifier.size(16.dp))
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("Export PO Text", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                }
                             }
                         }
                     }
@@ -528,7 +667,29 @@ fun ProductsScreen(
                             ProductItemCard(
                                 product = product,
                                 onEdit = { openEditDialog(product) },
-                                onDelete = { productToDelete = product }
+                                onDelete = { productToDelete = product },
+                                onQuickReplenishStock = { prod, qty ->
+                                    viewModel.saveProduct(
+                                        id = prod.id,
+                                        firestoreId = prod.firestoreId,
+                                        name = prod.name,
+                                        salePrice = prod.salePrice,
+                                        purchasePrice = prod.purchasePrice,
+                                        stockQuantity = prod.stockQuantity + qty,
+                                        minStockThreshold = prod.minStockThreshold,
+                                        unit = prod.unit,
+                                        category = prod.category,
+                                        barcode = prod.barcode,
+                                        batchNumber = prod.batchNumber,
+                                        expiryDate = prod.expiryDate,
+                                        manufacturer = prod.manufacturer,
+                                        saltComposition = prod.saltComposition,
+                                        packUnitConfig = prod.packUnitConfig,
+                                        isRxRequired = prod.isRxRequired,
+                                        size = prod.size,
+                                        color = prod.color
+                                    )
+                                }
                             )
                         }
                     }
@@ -747,7 +908,7 @@ fun ProductsScreen(
                             )
                         }
 
-                        // Stock Quantity & Unit Dropdown
+                        // Stock Quantity & Reorder Alert Threshold
                         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                             OutlinedTextField(
                                 value = stockInput,
@@ -767,53 +928,72 @@ fun ProductsScreen(
                                     .testTag("product_stock_input")
                             )
 
-                            // Unit Dropdown Box
-                            ExposedDropdownMenuBox(
-                                expanded = unitDropdownExpanded,
-                                onExpandedChange = { unitDropdownExpanded = !unitDropdownExpanded },
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                OutlinedTextField(
-                                    value = selectedUnit,
-                                    onValueChange = {},
-                                    readOnly = true,
-                                    label = { Text("Unit", color = Color(0xFF94A3B8)) },
-                                    trailingIcon = {
-                                        Icon(
-                                            imageVector = Icons.Default.ArrowDropDown,
-                                            contentDescription = "Dropdown",
-                                            tint = EmeraldLight,
-                                            modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable)
-                                        )
-                                    },
-                                    colors = OutlinedTextFieldDefaults.colors(
-                                        focusedBorderColor = EmeraldGreen,
-                                        unfocusedBorderColor = Color(0x22FFFFFF),
-                                        focusedTextColor = Color.White,
-                                        unfocusedTextColor = Color.White
-                                    ),
-                                    singleLine = true,
-                                    shape = RoundedCornerShape(12.dp),
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .menuAnchor(MenuAnchorType.PrimaryNotEditable)
-                                        .testTag("product_unit_select")
-                                )
+                            OutlinedTextField(
+                                value = minStockInput,
+                                onValueChange = { minStockInput = it },
+                                label = { Text("Min Reorder Alert *", color = Color(0xFF94A3B8)) },
+                                placeholder = { Text("e.g. 5") },
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = GoldYellow,
+                                    unfocusedBorderColor = Color(0x22FFFFFF),
+                                    focusedTextColor = Color.White,
+                                    unfocusedTextColor = Color.White
+                                ),
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                singleLine = true,
+                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .testTag("product_min_stock_input")
+                            )
+                        }
 
-                                ExposedDropdownMenu(
-                                    expanded = unitDropdownExpanded,
-                                    onDismissRequest = { unitDropdownExpanded = false },
-                                    modifier = Modifier.background(Color(0xFF0F172A))
-                                ) {
-                                    units.forEach { unit ->
-                                        DropdownMenuItem(
-                                            text = { Text(unit, color = Color.White) },
-                                            onClick = {
-                                                selectedUnit = unit
-                                                unitDropdownExpanded = false
-                                            }
-                                        )
-                                    }
+                        // Unit Dropdown Box
+                        ExposedDropdownMenuBox(
+                            expanded = unitDropdownExpanded,
+                            onExpandedChange = { unitDropdownExpanded = !unitDropdownExpanded },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            OutlinedTextField(
+                                value = selectedUnit,
+                                onValueChange = {},
+                                readOnly = true,
+                                label = { Text("Unit", color = Color(0xFF94A3B8)) },
+                                trailingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Default.ArrowDropDown,
+                                        contentDescription = "Dropdown",
+                                        tint = EmeraldLight,
+                                        modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                                    )
+                                },
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = EmeraldGreen,
+                                    unfocusedBorderColor = Color(0x22FFFFFF),
+                                    focusedTextColor = Color.White,
+                                    unfocusedTextColor = Color.White
+                                ),
+                                singleLine = true,
+                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                                    .testTag("product_unit_select")
+                            )
+
+                            ExposedDropdownMenu(
+                                expanded = unitDropdownExpanded,
+                                onDismissRequest = { unitDropdownExpanded = false },
+                                modifier = Modifier.background(Color(0xFF0F172A))
+                            ) {
+                                units.forEach { unit ->
+                                    DropdownMenuItem(
+                                        text = { Text(unit, color = Color.White) },
+                                        onClick = {
+                                            selectedUnit = unit
+                                            unitDropdownExpanded = false
+                                        }
+                                    )
                                 }
                             }
                         }
@@ -1155,6 +1335,7 @@ fun ProductsScreen(
                             val saleP = salePriceInput.toDoubleOrNull() ?: -1.0
                             val purP = purchasePriceInput.toDoubleOrNull() ?: 0.0
                             val stk = stockInput.toDoubleOrNull() ?: -1.0
+                            val minTh = minStockInput.toDoubleOrNull() ?: 5.0
 
                             viewModel.saveProduct(
                                 id = selectedProductForEdit?.id ?: 0,
@@ -1163,6 +1344,7 @@ fun ProductsScreen(
                                 salePrice = saleP,
                                 purchasePrice = purP,
                                 stockQuantity = stk,
+                                minStockThreshold = minTh,
                                 unit = selectedUnit,
                                 category = selectedCategory,
                                 barcode = barcodeInput,
@@ -1275,9 +1457,18 @@ fun ProductsScreen(
 fun ProductItemCard(
     product: ProductEntity,
     onEdit: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    onQuickReplenishStock: ((ProductEntity, Double) -> Unit)? = null
 ) {
-    val isLowStock = product.stockQuantity <= 5.0
+    val minThreshold = if (product.minStockThreshold > 0.0) product.minStockThreshold else 5.0
+    val isLowStock = product.stockQuantity < minThreshold
+
+    val now = remember { System.currentTimeMillis() }
+    val time = remember(product.expiryDate) { com.example.util.PharmacyUtils.parseExpiryDate(product.expiryDate) }
+    val daysRemaining = remember(time, now) {
+        if (time != null) ((time - now) / (1000 * 60 * 60 * 24)).toInt() else null
+    }
+
     val expiryStatus = com.example.util.PharmacyUtils.getExpiryStatus(product.expiryDate)
 
     Card(
@@ -1285,7 +1476,16 @@ fun ProductItemCard(
         shape = RoundedCornerShape(16.dp),
         modifier = Modifier
             .fillMaxWidth()
-            .border(1.dp, Color(0x18FFFFFF), RoundedCornerShape(16.dp))
+            .border(
+                width = 1.dp,
+                color = when {
+                    expiryStatus is com.example.util.ExpiryStatus.Expired || (daysRemaining != null && daysRemaining < 15) -> Color(0x66EF4444)
+                    daysRemaining != null && daysRemaining in 15..30 -> Color(0x66F59E0B)
+                    isLowStock -> Color(0x66F59E0B)
+                    else -> Color(0x18FFFFFF)
+                },
+                shape = RoundedCornerShape(16.dp)
+            )
             .testTag("product_card_${product.id}")
     ) {
         Column(
@@ -1381,29 +1581,14 @@ fun ProductItemCard(
                             }
                         }
 
-                        if (product.isRxRequired) {
-                            Box(
-                                modifier = Modifier
-                                    .background(Color(0x33EC4899), RoundedCornerShape(6.dp))
-                                    .padding(horizontal = 6.dp, vertical = 2.dp)
-                            ) {
-                                Text(
-                                    text = "Rx Required",
-                                    color = Color(0xFFF472B6),
-                                    fontSize = 9.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
-                        }
-
                         if (isLowStock) {
                             Box(
                                 modifier = Modifier
-                                    .background(Color(0x22EF4444), RoundedCornerShape(6.dp))
+                                    .background(Color(0x33EF4444), RoundedCornerShape(6.dp))
                                     .padding(horizontal = 6.dp, vertical = 2.dp)
                             ) {
                                 Text(
-                                    text = "LOW STOCK",
+                                    text = "LOW STOCK (<${minThreshold.toInt()})",
                                     color = Color(0xFFF87171),
                                     fontSize = 9.sp,
                                     fontWeight = FontWeight.Bold
@@ -1412,12 +1597,13 @@ fun ProductItemCard(
                         }
                     }
 
-                    // Expiry status indicator badge
+                    // Expiry status indicator badge with explicit Critical (<15d) & Warning (15-30d) categorization
                     if (product.expiryDate.isNotBlank()) {
                         Spacer(modifier = Modifier.height(4.dp))
-                        val (bgColor, textColor, label) = when (expiryStatus) {
-                            is com.example.util.ExpiryStatus.Expired -> Triple(Color(0x33EF4444), Color(0xFFEF4444), "EXPIRED (${product.expiryDate})")
-                            is com.example.util.ExpiryStatus.NearExpiry -> Triple(Color(0x33F59E0B), Color(0xFFF59E0B), "EXPIRING SOON (${product.expiryDate})")
+                        val (bgColor, textColor, label) = when {
+                            expiryStatus is com.example.util.ExpiryStatus.Expired -> Triple(Color(0x33EF4444), Color(0xFFEF4444), "🚨 EXPIRED (${product.expiryDate})")
+                            daysRemaining != null && daysRemaining < 15 -> Triple(Color(0x33EF4444), Color(0xFFEF4444), "🚨 CRITICAL EXPIRY (${daysRemaining}d left)")
+                            daysRemaining != null && daysRemaining in 15..30 -> Triple(Color(0x33F59E0B), Color(0xFFFBBF24), "⚠️ WARNING NEAR EXPIRY (${daysRemaining}d left)")
                             else -> Triple(Color(0x2210B981), Color(0xFF34D399), "Exp: ${product.expiryDate}")
                         }
                         Box(
@@ -1471,7 +1657,7 @@ fun ProductItemCard(
             HorizontalDivider(color = Color(0x11FFFFFF))
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Pricing & Stock Info Row
+            // Pricing & Stock Info Row with Quick Replenish Option
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -1511,15 +1697,36 @@ fun ProductItemCard(
                     }
                 }
 
-                // Stock Quantity
-                Column(horizontalAlignment = Alignment.End) {
-                    Text("In Stock", color = Color(0xFF94A3B8), fontSize = 11.sp)
-                    Text(
-                        text = com.example.util.KiranaUnitUtils.formatQuantityWithUnit(product.stockQuantity, product.unit),
-                        color = if (isLowStock) Color(0xFFF87171) else Color.White,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 15.sp
-                    )
+                // Stock Quantity & Quick Replenish Button
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text("In Stock (Min: ${minThreshold.toInt()})", color = Color(0xFF94A3B8), fontSize = 10.sp)
+                        Text(
+                            text = com.example.util.KiranaUnitUtils.formatQuantityWithUnit(product.stockQuantity, product.unit),
+                            color = if (isLowStock) Color(0xFFF87171) else Color.White,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 15.sp
+                        )
+                    }
+
+                    if (isLowStock && onQuickReplenishStock != null) {
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Surface(
+                            onClick = { onQuickReplenishStock(product, 10.0) },
+                            color = Color(0x3310B981),
+                            shape = RoundedCornerShape(8.dp),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, EmeraldGreen),
+                            modifier = Modifier.testTag("quick_replenish_${product.id}")
+                        ) {
+                            Text(
+                                text = "+10 Stock",
+                                color = EmeraldLight,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)
+                            )
+                        }
+                    }
                 }
             }
         }

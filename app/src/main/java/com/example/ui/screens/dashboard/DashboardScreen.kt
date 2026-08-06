@@ -425,8 +425,41 @@ private fun HomeDashboardContent(
     val invoicesCount by viewModel.invoicesCount.collectAsState()
     val products by viewModel.products.collectAsState()
 
+    val analyticsViewModel: com.example.ui.viewmodel.AnalyticsViewModel = androidx.lifecycle.viewmodel.compose.viewModel(
+        factory = com.example.ui.viewmodel.AnalyticsViewModelFactory(viewModel.repository)
+    )
+    val profitAnalytics by analyticsViewModel.profitAnalytics.collectAsState()
+    val peakHoursAnalytics by analyticsViewModel.peakHoursAnalytics.collectAsState()
+    val weeklySalesTrends by analyticsViewModel.weeklySalesTrends.collectAsState()
+
+    val now = remember { System.currentTimeMillis() }
+    val criticalExpiryCount = remember(products, now) {
+        products.count { product ->
+            val time = com.example.util.PharmacyUtils.parseExpiryDate(product.expiryDate)
+            if (time != null) {
+                val days = ((time - now) / (1000 * 60 * 60 * 24)).toInt()
+                days < 15
+            } else false
+        }
+    }
+
+    val warningExpiryCount = remember(products, now) {
+        products.count { product ->
+            val time = com.example.util.PharmacyUtils.parseExpiryDate(product.expiryDate)
+            if (time != null) {
+                val days = ((time - now) / (1000 * 60 * 60 * 24)).toInt()
+                days in 15..30
+            } else false
+        }
+    }
+
+    val totalExpiryRiskCount = criticalExpiryCount + warningExpiryCount
+
     val lowStockCount = remember(products) {
-        products.count { it.stockQuantity <= 5.0 }
+        products.count { p ->
+            val threshold = if (p.minStockThreshold > 0.0) p.minStockThreshold else 5.0
+            p.stockQuantity < threshold
+        }
     }
 
     Scaffold(
@@ -547,68 +580,214 @@ private fun HomeDashboardContent(
 
             Spacer(modifier = Modifier.height(14.dp))
 
+            // Near Expiry Risk & Smart Reorder Warning Banner
+            if (totalExpiryRiskCount > 0 || lowStockCount > 0) {
+                Card(
+                    onClick = { onSelectTab(BottomTab.INVENTORY) },
+                    colors = CardDefaults.cardColors(
+                        containerColor = if (criticalExpiryCount > 0) Color(0x22EF4444) else Color(0x22F59E0B)
+                    ),
+                    shape = RoundedCornerShape(14.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .border(
+                            width = 1.dp,
+                            color = if (criticalExpiryCount > 0) Color(0x66EF4444) else Color(0x66F59E0B),
+                            shape = RoundedCornerShape(14.dp)
+                        )
+                        .testTag("dashboard_expiry_risk_warning_banner")
+                ) {
+                    Column(modifier = Modifier.padding(14.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = Icons.Default.Warning,
+                                    contentDescription = "Expiry Risk Alert",
+                                    tint = if (criticalExpiryCount > 0) Color(0xFFEF4444) else Color(0xFFF59E0B),
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "NEAR EXPIRY & REORDER RISK",
+                                    color = Color.White,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    letterSpacing = 0.5.sp
+                                )
+                            }
+
+                            Surface(
+                                color = Color(0x33FFFFFF),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Text(
+                                    text = "Inspect Risk ➔",
+                                    color = Color.White,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            if (criticalExpiryCount > 0) {
+                                Surface(
+                                    color = Color(0x33EF4444),
+                                    shape = RoundedCornerShape(8.dp),
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.Center
+                                    ) {
+                                        Text("🚨 Critical (<15d): ", color = Color(0xFFF87171), fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                                        Text("$criticalExpiryCount", color = Color(0xFFEF4444), fontSize = 12.sp, fontWeight = FontWeight.ExtraBold)
+                                    }
+                                }
+                            }
+
+                            if (warningExpiryCount > 0) {
+                                Surface(
+                                    color = Color(0x33F59E0B),
+                                    shape = RoundedCornerShape(8.dp),
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.Center
+                                    ) {
+                                        Text("⚠️ Warning (15-30d): ", color = Color(0xFFFCD34D), fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                                        Text("$warningExpiryCount", color = Color(0xFFF59E0B), fontSize = 12.sp, fontWeight = FontWeight.ExtraBold)
+                                    }
+                                }
+                            }
+
+                            if (lowStockCount > 0) {
+                                Surface(
+                                    color = Color(0x333B82F6),
+                                    shape = RoundedCornerShape(8.dp),
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.Center
+                                    ) {
+                                        Text("📦 Reorder: ", color = Color(0xFF93C5FD), fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                                        Text("$lowStockCount", color = Color(0xFF60A5FA), fontSize = 12.sp, fontWeight = FontWeight.ExtraBold)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
+            }
+
             // High-Level KPI Summary Card
             GlassmorphicCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .testTag("dashboard_stats_card")
             ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    horizontalArrangement = Arrangement.SpaceEvenly,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    // KPI 1: Total Revenue Today
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(imageVector = Icons.Default.MonetizationOn, contentDescription = "Sales", tint = EmeraldGreen, modifier = Modifier.size(22.dp))
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text("Today's Revenue", color = Color(0xFF94A3B8), fontSize = 10.sp, fontWeight = FontWeight.Medium)
-                        Text(
-                            text = "₹${String.format(Locale.US, "%.2f", totalSales ?: 0.0)}",
-                            color = Color.White,
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.testTag("dashboard_total_sales_value")
-                        )
-                    }
-
-                    Box(modifier = Modifier.width(1.dp).height(36.dp).background(Color(0x22FFFFFF)))
-
-                    // KPI 2: Total Invoices
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(imageVector = Icons.Default.ReceiptLong, contentDescription = "Receipts", tint = ElectricVioletLight, modifier = Modifier.size(22.dp))
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text("Invoices", color = Color(0xFF94A3B8), fontSize = 10.sp, fontWeight = FontWeight.Medium)
-                        Text(
-                            text = "$invoicesCount",
-                            color = Color.White,
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.testTag("dashboard_invoices_count_value")
-                        )
-                    }
-
-                    Box(modifier = Modifier.width(1.dp).height(36.dp).background(Color(0x22FFFFFF)))
-
-                    // KPI 3: Total Inventory Items
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier = Modifier
-                            .testTag("dashboard_products_cta")
-                            .clickable { onSelectTab(BottomTab.INVENTORY) }
+                Column(modifier = Modifier.padding(12.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(imageVector = Icons.Default.Inventory2, contentDescription = "Inventory", tint = GoldYellow, modifier = Modifier.size(22.dp))
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text("Inventory", color = Color(0xFF94A3B8), fontSize = 10.sp, fontWeight = FontWeight.Medium)
-                        Text(
-                            text = "${products.size} items",
-                            color = Color.White,
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.testTag("dashboard_products_count_value")
-                        )
+                        // KPI 1: Revenue
+                        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
+                            Icon(imageVector = Icons.Default.MonetizationOn, contentDescription = "Sales", tint = EmeraldGreen, modifier = Modifier.size(20.dp))
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text("Revenue", color = Color(0xFF94A3B8), fontSize = 10.sp, fontWeight = FontWeight.Medium)
+                            Text(
+                                text = "₹${String.format(Locale.US, "%.2f", totalSales ?: 0.0)}",
+                                color = Color.White,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.testTag("dashboard_total_sales_value")
+                            )
+                        }
+
+                        Box(modifier = Modifier.width(1.dp).height(32.dp).background(Color(0x22FFFFFF)))
+
+                        // KPI 2: Net Profit & Profit Margin
+                        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1.2f)) {
+                            Icon(imageVector = Icons.Default.TrendingUp, contentDescription = "Profit", tint = EmeraldLight, modifier = Modifier.size(20.dp))
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text("Net Profit", color = Color(0xFF94A3B8), fontSize = 10.sp, fontWeight = FontWeight.Medium)
+                            Text(
+                                text = "₹${String.format(Locale.US, "%.2f", profitAnalytics.todayNetProfit)}",
+                                color = EmeraldLight,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.testTag("dashboard_net_profit_value")
+                            )
+                            Surface(
+                                color = Color(0x3310B981),
+                                shape = RoundedCornerShape(4.dp)
+                            ) {
+                                Text(
+                                    text = "${String.format(Locale.US, "%.1f", profitAnalytics.todayProfitMarginPercentage)}% Margin",
+                                    color = EmeraldLight,
+                                    fontSize = 8.sp,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp).testTag("dashboard_profit_margin_tag")
+                                )
+                            }
+                        }
+
+                        Box(modifier = Modifier.width(1.dp).height(32.dp).background(Color(0x22FFFFFF)))
+
+                        // KPI 3: Total Invoices
+                        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(0.9f)) {
+                            Icon(imageVector = Icons.Default.ReceiptLong, contentDescription = "Receipts", tint = ElectricVioletLight, modifier = Modifier.size(20.dp))
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text("Invoices", color = Color(0xFF94A3B8), fontSize = 10.sp, fontWeight = FontWeight.Medium)
+                            Text(
+                                text = "$invoicesCount",
+                                color = Color.White,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.testTag("dashboard_invoices_count_value")
+                            )
+                        }
+
+                        Box(modifier = Modifier.width(1.dp).height(32.dp).background(Color(0x22FFFFFF)))
+
+                        // KPI 4: Total Inventory Items
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier
+                                .weight(0.9f)
+                                .testTag("dashboard_products_cta")
+                                .clickable { onSelectTab(BottomTab.INVENTORY) }
+                        ) {
+                            Icon(imageVector = Icons.Default.Inventory2, contentDescription = "Inventory", tint = GoldYellow, modifier = Modifier.size(20.dp))
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text("Items", color = Color(0xFF94A3B8), fontSize = 10.sp, fontWeight = FontWeight.Medium)
+                            Text(
+                                text = "${products.size}",
+                                color = Color.White,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.testTag("dashboard_products_count_value")
+                            )
+                        }
                     }
                 }
             }
@@ -706,6 +885,15 @@ private fun HomeDashboardContent(
 
             // Invisible/Compact trigger tag for admin testTag
             Box(modifier = Modifier.size(1.dp).testTag("dashboard_admin_cta"))
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            // Peak Hours & Smart Business Insights Analytics Card
+            PeakHoursAnalyticsSection(
+                profitAnalytics = profitAnalytics,
+                peakHoursAnalytics = peakHoursAnalytics,
+                weeklySalesTrends = weeklySalesTrends
+            )
 
             Spacer(modifier = Modifier.height(18.dp))
 
@@ -843,6 +1031,294 @@ fun InvoiceItemRow(invoice: InvoiceEntity) {
                         fontSize = 9.sp,
                         fontWeight = FontWeight.SemiBold
                     )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PeakHoursAnalyticsSection(
+    profitAnalytics: com.example.ui.viewmodel.ProfitAnalytics,
+    peakHoursAnalytics: com.example.ui.viewmodel.PeakHoursAnalytics,
+    weeklySalesTrends: List<com.example.ui.viewmodel.DailySalesTrend>
+) {
+    var selectedTrendTab by remember { mutableStateOf("Hourly Peak") }
+
+    Card(
+        colors = CardDefaults.cardColors(containerColor = Color(0x220F172A)),
+        shape = RoundedCornerShape(16.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(1.dp, Color(0x3310B981), RoundedCornerShape(16.dp))
+            .testTag("dashboard_peak_hours_analytics_card")
+    ) {
+        Column(modifier = Modifier.padding(14.dp)) {
+            // Header Row
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(32.dp)
+                            .background(Color(0x33F59E0B), CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.BarChart,
+                            contentDescription = "Analytics",
+                            tint = GoldYellow,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Column {
+                        Text(
+                            text = "SMART BUSINESS INSIGHTS",
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.sp,
+                            letterSpacing = 0.5.sp
+                        )
+                        Text(
+                            text = "Live Profit Margin & Peak Hour Trends",
+                            color = Color(0xFF94A3B8),
+                            fontSize = 10.sp
+                        )
+                    }
+                }
+
+                Row(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(Color(0x22FFFFFF))
+                        .padding(2.dp)
+                ) {
+                    listOf("Hourly Peak", "7-Day Trend").forEach { tab ->
+                        val isSelected = selectedTrendTab == tab
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(if (isSelected) EmeraldGreen else Color.Transparent)
+                                .clickable { selectedTrendTab = tab }
+                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                        ) {
+                            Text(
+                                text = tab,
+                                color = if (isSelected) Color.White else Color(0xFF94A3B8),
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Peak Sales Time Hero Banner
+            Surface(
+                color = Color(0x1AF59E0B),
+                shape = RoundedCornerShape(12.dp),
+                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0x33F59E0B)),
+                modifier = Modifier.fillMaxWidth().testTag("dashboard_peak_time_hero_banner")
+            ) {
+                Row(
+                    modifier = Modifier.padding(10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.Schedule,
+                            contentDescription = "Peak Time",
+                            tint = GoldYellow,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Column {
+                            Text(
+                                text = peakHoursAnalytics.peakWindowFormatted,
+                                color = GoldYellow,
+                                fontWeight = FontWeight.ExtraBold,
+                                fontSize = 12.sp
+                            )
+                            Text(
+                                text = "Highest volume window (${String.format(Locale.US, "%.1f", peakHoursAnalytics.peakPercentage)}% of total daily traffic)",
+                                color = Color(0xFFE2E8F0),
+                                fontSize = 10.sp
+                            )
+                        }
+                    }
+
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text(
+                            text = "₹${String.format(Locale.US, "%.0f", peakHoursAnalytics.peakSlotSales)}",
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 12.sp
+                        )
+                        Text(
+                            text = "${peakHoursAnalytics.peakSlotTransactions} bills",
+                            color = Color(0xFF94A3B8),
+                            fontSize = 9.sp
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            if (selectedTrendTab == "Hourly Peak") {
+                Text(
+                    text = "HOURLY TRANSACTION BREAKDOWN",
+                    color = Color(0xFF64748B),
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 0.5.sp
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+
+                val maxSlotSales = remember(peakHoursAnalytics) {
+                    peakHoursAnalytics.hourlySlots.maxOfOrNull { it.totalSales }?.coerceAtLeast(1.0) ?: 1.0
+                }
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(100.dp)
+                        .testTag("dashboard_hourly_bar_chart"),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.Bottom
+                ) {
+                    peakHoursAnalytics.hourlySlots.forEach { slot ->
+                        val isPeak = slot.totalSales > 0 && slot.totalSales == peakHoursAnalytics.peakSlotSales
+                        val heightFraction = (slot.totalSales / maxSlotSales).toFloat().coerceIn(0.08f, 1.0f)
+
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Bottom,
+                            modifier = Modifier.weight(1f).fillMaxHeight()
+                        ) {
+                            if (slot.totalSales > 0) {
+                                Text(
+                                    text = "₹${String.format(Locale.US, "%.0f", slot.totalSales)}",
+                                    color = if (isPeak) GoldYellow else EmeraldLight,
+                                    fontSize = 8.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            } else {
+                                Text(text = "-", color = Color(0xFF64748B), fontSize = 8.sp)
+                            }
+                            Spacer(modifier = Modifier.height(2.dp))
+
+                            Box(
+                                modifier = Modifier
+                                    .width(20.dp)
+                                    .fillMaxHeight(heightFraction)
+                                    .clip(RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp))
+                                    .background(
+                                        if (isPeak) GoldYellow else if (slot.totalSales > 0) EmeraldGreen else Color(0x33FFFFFF)
+                                    )
+                            )
+
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = slot.slotLabel.replace(" AM", "A").replace(" PM", "P"),
+                                color = Color(0xFF94A3B8),
+                                fontSize = 8.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    }
+                }
+            } else {
+                Text(
+                    text = "LAST 7 DAYS REVENUE & NET PROFIT TREND",
+                    color = Color(0xFF64748B),
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 0.5.sp
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+
+                val maxDaySales = remember(weeklySalesTrends) {
+                    weeklySalesTrends.maxOfOrNull { it.totalSales }?.coerceAtLeast(1.0) ?: 1.0
+                }
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(100.dp)
+                        .testTag("dashboard_weekly_trend_chart"),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.Bottom
+                ) {
+                    weeklySalesTrends.forEach { dayTrend ->
+                        val salesFraction = (dayTrend.totalSales / maxDaySales).toFloat().coerceIn(0.08f, 1.0f)
+                        val profitFraction = (dayTrend.totalProfit / maxDaySales).toFloat().coerceIn(0.05f, salesFraction)
+
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Bottom,
+                            modifier = Modifier.weight(1f).fillMaxHeight()
+                        ) {
+                            if (dayTrend.totalSales > 0) {
+                                Text(
+                                    text = "₹${String.format(Locale.US, "%.0f", dayTrend.totalSales)}",
+                                    color = Color.White,
+                                    fontSize = 8.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            } else {
+                                Text(text = "₹0", color = Color(0xFF64748B), fontSize = 8.sp)
+                            }
+                            Spacer(modifier = Modifier.height(2.dp))
+
+                            Box(
+                                modifier = Modifier
+                                    .width(22.dp)
+                                    .fillMaxHeight(salesFraction)
+                                    .clip(RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp))
+                                    .background(Color(0x3310B981)),
+                                contentAlignment = Alignment.BottomCenter
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .fillMaxHeight(if (salesFraction > 0) profitFraction / salesFraction else 0f)
+                                        .clip(RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp))
+                                        .background(EmeraldGreen)
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = dayTrend.dayLabel,
+                                color = Color(0xFF94A3B8),
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(6.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(modifier = Modifier.size(8.dp).background(Color(0x3310B981), CircleShape))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Total Revenue", color = Color(0xFF94A3B8), fontSize = 9.sp)
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Box(modifier = Modifier.size(8.dp).background(EmeraldGreen, CircleShape))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Net Profit", color = EmeraldLight, fontSize = 9.sp, fontWeight = FontWeight.Bold)
                 }
             }
         }

@@ -139,6 +139,7 @@ fun CreateBillScreen(
 
     var showCartReviewModal by remember { mutableStateOf(false) }
     var showPaymentModal by remember { mutableStateOf(false) }
+    var showBluetoothPrinterDialog by remember { mutableStateOf(false) }
 
     val categoriesList = remember(products) {
         val set = products.map { it.category }.filter { it.isNotBlank() }.toSet()
@@ -190,6 +191,12 @@ fun CreateBillScreen(
                     }
                 },
                 actions = {
+                    IconButton(
+                        onClick = { showBluetoothPrinterDialog = true },
+                        modifier = Modifier.testTag("pos_bluetooth_printer_topbar_btn")
+                    ) {
+                        Icon(Icons.Default.Print, contentDescription = "Thermal Printer", tint = EmeraldGreen)
+                    }
                     if (viewModel.posCartItems.isNotEmpty()) {
                         TextButton(
                             onClick = { viewModel.clearPOSCart() },
@@ -822,9 +829,19 @@ fun CreateBillScreen(
 
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    // PDF Action Engine (Print, WhatsApp Share, Share PDF)
+                    // PDF & Thermal Printer Action Engine
                     val localContext = androidx.compose.ui.platform.LocalContext.current
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(
+                            onClick = { showBluetoothPrinterDialog = true },
+                            colors = ButtonDefaults.buttonColors(containerColor = EmeraldGreen),
+                            modifier = Modifier.fillMaxWidth().height(42.dp).testTag("receipt_print_thermal_button")
+                        ) {
+                            Icon(Icons.Default.Print, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Print Bluetooth Thermal Receipt", fontWeight = FontWeight.Bold)
+                        }
+
                         Button(
                             onClick = {
                                 val pdf = com.example.util.InvoicePdfHelper.generateInvoicePdf(
@@ -835,12 +852,12 @@ fun CreateBillScreen(
                                 )
                                 com.example.util.InvoicePdfHelper.printInvoicePdf(localContext, pdf)
                             },
-                            colors = ButtonDefaults.buttonColors(containerColor = EmeraldGreen),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0x33FFFFFF)),
                             modifier = Modifier.fillMaxWidth().height(42.dp).testTag("receipt_print_pdf_button")
                         ) {
-                            Icon(Icons.Default.Print, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Icon(Icons.Default.ReceiptLong, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Print Invoice PDF", fontWeight = FontWeight.Bold)
+                            Text("Print Invoice PDF (A4)", fontWeight = FontWeight.Bold)
                         }
 
                         Button(
@@ -1067,6 +1084,17 @@ fun CreateBillScreen(
                 showCartReviewModal = true
             },
             onDismiss = { showPaymentModal = false }
+        )
+    }
+
+    if (showBluetoothPrinterDialog) {
+        com.example.ui.components.BluetoothPrinterDialog(
+            invoice = generatedInvoiceForReceipt ?: viewModel.lastGeneratedInvoice,
+            businessName = currentUser?.businessName ?: "Kirana Store",
+            upiId = currentUser?.upiId ?: "merchant@upi",
+            isGstModeInitial = viewModel.isGstInvoiceMode,
+            onGstModeToggle = { viewModel.isGstInvoiceMode = it },
+            onDismiss = { showBluetoothPrinterDialog = false }
         )
     }
 }
@@ -1303,44 +1331,98 @@ private fun CartReviewModalDialog(
                                     )
                                 }
 
-                                // Tax / GST Row
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                // Tax / GST & Invoice Mode Settings Card
+                                Card(
+                                    colors = CardDefaults.cardColors(containerColor = Color(0x1F1E295D)),
+                                    shape = RoundedCornerShape(10.dp),
+                                    modifier = Modifier.fillMaxWidth().border(1.dp, Color(0x22FFFFFF), RoundedCornerShape(10.dp))
                                 ) {
-                                    Icon(Icons.Default.ReceiptLong, contentDescription = "Tax", tint = GoldYellow, modifier = Modifier.size(18.dp))
-                                    Text("Tax / GST", color = Color(0xFF94A3B8), fontSize = 12.sp, modifier = Modifier.width(60.dp))
-
-                                    Row(
-                                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                                        modifier = Modifier.weight(1f)
+                                    Column(
+                                        modifier = Modifier.padding(10.dp),
+                                        verticalArrangement = Arrangement.spacedBy(8.dp)
                                     ) {
-                                        listOf("0", "5", "12", "18").forEach { taxRate ->
-                                            val isSelected = viewModel.posTaxPercentageInput == taxRate
-                                            Box(
-                                                modifier = Modifier
-                                                    .clip(RoundedCornerShape(6.dp))
-                                                    .background(if (isSelected) GoldYellow else Color(0x22FFFFFF))
-                                                    .clickable { viewModel.posTaxPercentageInput = taxRate }
-                                                    .padding(horizontal = 8.dp, vertical = 6.dp)
-                                            ) {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                                Icon(Icons.Default.ReceiptLong, contentDescription = null, tint = GoldYellow, modifier = Modifier.size(18.dp))
+                                                Spacer(modifier = Modifier.width(6.dp))
                                                 Text(
-                                                    text = "$taxRate%",
-                                                    color = if (isSelected) Color.Black else Color.White,
-                                                    fontSize = 11.sp,
-                                                    fontWeight = FontWeight.Bold
+                                                    text = if (viewModel.isGstInvoiceMode) "GST Invoice Mode" else "Simple Estimate (Non-GST)",
+                                                    color = Color.White,
+                                                    fontWeight = FontWeight.Bold,
+                                                    fontSize = 12.sp
                                                 )
                                             }
+                                            androidx.compose.material3.Switch(
+                                                checked = viewModel.isGstInvoiceMode,
+                                                onCheckedChange = {
+                                                    viewModel.isGstInvoiceMode = it
+                                                    if (!it) viewModel.posTaxPercentageInput = "0"
+                                                },
+                                                colors = androidx.compose.material3.SwitchDefaults.colors(
+                                                    checkedThumbColor = EmeraldGreen,
+                                                    checkedTrackColor = Color(0x4410B981)
+                                                ),
+                                                modifier = Modifier.testTag("pos_gst_toggle_switch")
+                                            )
+                                        }
+
+                                        if (viewModel.isGstInvoiceMode) {
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                            ) {
+                                                Text("GST Rate:", color = Color(0xFF94A3B8), fontSize = 11.sp, modifier = Modifier.width(60.dp))
+                                                Row(
+                                                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                                    modifier = Modifier.weight(1f)
+                                                ) {
+                                                    listOf("0", "5", "12", "18").forEach { taxRate ->
+                                                        val isSelected = viewModel.posTaxPercentageInput == taxRate
+                                                        Box(
+                                                            modifier = Modifier
+                                                                .clip(RoundedCornerShape(6.dp))
+                                                                .background(if (isSelected) GoldYellow else Color(0x22FFFFFF))
+                                                                .clickable { viewModel.posTaxPercentageInput = taxRate }
+                                                                .padding(horizontal = 8.dp, vertical = 6.dp)
+                                                        ) {
+                                                            Text(
+                                                                text = "$taxRate%",
+                                                                color = if (isSelected) Color.Black else Color.White,
+                                                                fontSize = 11.sp,
+                                                                fontWeight = FontWeight.Bold
+                                                            )
+                                                        }
+                                                    }
+                                                }
+                                                Text(
+                                                    text = "+₹${String.format(Locale.US, "%.2f", viewModel.posTaxAmount)}",
+                                                    color = GoldYellow,
+                                                    fontWeight = FontWeight.Bold,
+                                                    fontSize = 12.sp
+                                                )
+                                            }
+                                            if (viewModel.posTaxAmount > 0) {
+                                                val halfTax = viewModel.posTaxAmount / 2.0
+                                                Text(
+                                                    text = "CGST (Intra-state): ₹${String.format(Locale.US, "%.2f", halfTax)} | SGST: ₹${String.format(Locale.US, "%.2f", halfTax)}",
+                                                    color = EmeraldLight,
+                                                    fontSize = 10.sp,
+                                                    fontWeight = FontWeight.SemiBold
+                                                )
+                                            }
+                                        } else {
+                                            Text(
+                                                text = "⚡ Simple Estimate Mode active — Tax lines & GSTIN omitted on receipt.",
+                                                color = Color(0xFF94A3B8),
+                                                fontSize = 10.sp
+                                            )
                                         }
                                     }
-
-                                    Text(
-                                        text = "+₹${String.format(Locale.US, "%.2f", viewModel.posTaxAmount)}",
-                                        color = GoldYellow,
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 12.sp
-                                    )
                                 }
                             }
                         }

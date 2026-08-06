@@ -364,7 +364,7 @@ class BillingRepository(
                     }
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "Firestore prepopulate error: ${e.localizedMessage}")
+                Log.d(TAG, "Firestore prepopulate skipped or not permitted: ${e.localizedMessage}")
             }
         }
     }
@@ -745,7 +745,8 @@ class BillingRepository(
                                 manufacturer = doc.getString("manufacturer") ?: "",
                                 saltComposition = doc.getString("saltComposition") ?: "",
                                 packUnitConfig = doc.getString("packUnitConfig") ?: "",
-                                isRxRequired = doc.getBoolean("isRxRequired") ?: false
+                                isRxRequired = doc.getBoolean("isRxRequired") ?: false,
+                                minStockThreshold = doc.getDouble("minStockThreshold") ?: 5.0
                             )
                         }
                         trySend(productList)
@@ -797,7 +798,8 @@ class BillingRepository(
                         "manufacturer" to product.manufacturer,
                         "saltComposition" to product.saltComposition,
                         "packUnitConfig" to product.packUnitConfig,
-                        "isRxRequired" to product.isRxRequired
+                        "isRxRequired" to product.isRxRequired,
+                        "minStockThreshold" to product.minStockThreshold
                     )
                     docRef.set(data).await()
                 } catch (e: Exception) {

@@ -25,14 +25,15 @@ object WhatsAppReminderUtils {
         pendingAmount: Double,
         lastTransactionTimestamp: Long,
         reminderType: ReminderType,
-        transactions: List<CustomerTransactionEntity> = emptyList()
+        transactions: List<CustomerTransactionEntity> = emptyList(),
+        upiId: String = "merchant@upi"
     ): String {
         val dateFormat = SimpleDateFormat("dd MMM, yyyy", Locale.getDefault())
         val dateStr = if (lastTransactionTimestamp > 0) dateFormat.format(Date(lastTransactionTimestamp)) else "Recent"
         val formattedAmount = String.format(Locale.US, "%.2f", pendingAmount)
         val bizName = if (businessName.isNotBlank()) businessName else "Kirana Store"
 
-        return when (reminderType) {
+        val baseMsg = when (reminderType) {
             ReminderType.POLITE -> {
                 "Dear $customerName,\n" +
                 "This is a polite reminder from $bizName regarding your pending udhar balance of ₹$formattedAmount.\n\n" +
@@ -74,6 +75,14 @@ object WhatsAppReminderUtils {
                 sb.toString()
             }
         }
+
+        return WhatsAppReminderHelper.appendInteractiveUpiPaymentLink(
+            originalMessage = baseMsg,
+            upiId = upiId,
+            merchantName = bizName,
+            amount = pendingAmount,
+            note = "Udhar Payment ($customerName)"
+        )
     }
 
     fun sendWhatsAppReminder(context: Context, mobile: String, message: String) {

@@ -372,20 +372,23 @@ class BillingRepository(
     // --- Invoices ---
 
     fun getInvoicesStream(userUid: String): Flow<List<InvoiceEntity>> = callbackFlow {
+        val activeUid = if (userUid.isNotBlank()) userUid else (FirebaseManager.auth?.currentUser?.uid ?: "")
+        if (activeUid.isBlank()) {
+            trySend(emptyList())
+            awaitClose()
+            return@callbackFlow
+        }
+
         if (FirebaseManager.isFirebaseAvailable) {
             val firestore = FirebaseManager.firestore
             if (firestore != null) {
-                val collectionRef = if (userUid.isNotBlank()) {
-                    firestore.collection("users").document(userUid).collection("invoices")
-                } else {
-                    firestore.collection("invoices")
-                }
+                val collectionRef = firestore.collection("users").document(activeUid).collection("invoices")
 
                 val listenerRegistration = collectionRef
                     .orderBy("timestamp", com.google.firebase.firestore.Query.Direction.DESCENDING)
                     .addSnapshotListener { snapshot, error ->
                         if (error != null) {
-                            Log.e(TAG, "Firestore invoices listener error: ${error.localizedMessage}")
+                            Log.e(TAG, "Firestore invoices listener error for $activeUid: ${error.localizedMessage}")
                             CoroutineScope(Dispatchers.IO).launch {
                                 invoiceDao.getAllInvoices().collect { list ->
                                     trySend(list)
@@ -436,14 +439,17 @@ class BillingRepository(
     }.flowOn(Dispatchers.IO)
 
     fun getTotalSalesStream(userUid: String): Flow<Double?> = callbackFlow {
+        val activeUid = if (userUid.isNotBlank()) userUid else (FirebaseManager.auth?.currentUser?.uid ?: "")
+        if (activeUid.isBlank()) {
+            trySend(0.0)
+            awaitClose()
+            return@callbackFlow
+        }
+
         if (FirebaseManager.isFirebaseAvailable) {
             val firestore = FirebaseManager.firestore
             if (firestore != null) {
-                val collectionRef = if (userUid.isNotBlank()) {
-                    firestore.collection("users").document(userUid).collection("invoices")
-                } else {
-                    firestore.collection("invoices")
-                }
+                val collectionRef = firestore.collection("users").document(activeUid).collection("invoices")
 
                 val listenerRegistration = collectionRef
                     .addSnapshotListener { snapshot, error ->
@@ -470,14 +476,17 @@ class BillingRepository(
     }.flowOn(Dispatchers.IO)
 
     fun getInvoicesCountStream(userUid: String): Flow<Int> = callbackFlow {
+        val activeUid = if (userUid.isNotBlank()) userUid else (FirebaseManager.auth?.currentUser?.uid ?: "")
+        if (activeUid.isBlank()) {
+            trySend(0)
+            awaitClose()
+            return@callbackFlow
+        }
+
         if (FirebaseManager.isFirebaseAvailable) {
             val firestore = FirebaseManager.firestore
             if (firestore != null) {
-                val collectionRef = if (userUid.isNotBlank()) {
-                    firestore.collection("users").document(userUid).collection("invoices")
-                } else {
-                    firestore.collection("invoices")
-                }
+                val collectionRef = firestore.collection("users").document(activeUid).collection("invoices")
 
                 val listenerRegistration = collectionRef
                     .addSnapshotListener { snapshot, error ->
@@ -499,11 +508,12 @@ class BillingRepository(
     }.flowOn(Dispatchers.IO)
 
     suspend fun insertInvoice(invoice: InvoiceEntity): Long = withContext(Dispatchers.IO) {
-        if (FirebaseManager.isFirebaseAvailable) {
+        val activeUid = FirebaseManager.auth?.currentUser?.uid ?: ""
+        if (FirebaseManager.isFirebaseAvailable && activeUid.isNotBlank()) {
             try {
                 val firestore = FirebaseManager.firestore
                 if (firestore != null) {
-                    val docRef = firestore.collection("invoices").document()
+                    val docRef = firestore.collection("users").document(activeUid).collection("invoices").document()
                     val data = hashMapOf(
                         "customerName" to invoice.customerName,
                         "customerMobile" to invoice.customerMobile,
@@ -517,7 +527,7 @@ class BillingRepository(
                         "timestamp" to invoice.timestamp,
                         "status" to invoice.status
                     )
-                    docRef.set(data).await()
+                    docRef.set(data, com.google.firebase.firestore.SetOptions.merge()).await()
                     return@withContext docRef.id.hashCode().toLong()
                 }
             } catch (e: Exception) {
@@ -532,15 +542,16 @@ class BillingRepository(
         invoice: InvoiceEntity,
         purchasedProducts: List<Pair<ProductEntity, Double>>
     ): InvoiceEntity = withContext(Dispatchers.IO) {
+        val activeUid = if (userUid.isNotBlank()) userUid else (FirebaseManager.auth?.currentUser?.uid ?: "")
         var generatedFirestoreId = invoice.firestoreId
 
-        if (FirebaseManager.isFirebaseAvailable) {
+        if (FirebaseManager.isFirebaseAvailable && activeUid.isNotBlank()) {
             val firestore = FirebaseManager.firestore
             if (firestore != null) {
                 try {
-                    // Save to user subcollection if userUid is non-blank, and save to root collection
-                    val rootDocRef = firestore.collection("invoices").document()
-                    generatedFirestoreId = rootDocRef.id
+                    val userInvoicesRef = firestore.collection("users").document(activeUid).collection("invoices")
+                    val docRef = if (generatedFirestoreId.isNotBlank()) userInvoicesRef.document(generatedFirestoreId) else userInvoicesRef.document()
+                    generatedFirestoreId = docRef.id
 
                     val invoiceData = hashMapOf(
                         "customerName" to invoice.customerName,
@@ -565,15 +576,9 @@ class BillingRepository(
                         "itemsJson" to invoice.itemsJson
                     )
 
-                    rootDocRef.set(invoiceData).await()
+                    docRef.set(invoiceData, com.google.firebase.firestore.SetOptions.merge()).await()
 
-                    if (userUid.isNotBlank()) {
-                        firestore.collection("users").document(userUid)
-                            .collection("invoices").document(generatedFirestoreId)
-                            .set(invoiceData).await()
-                    }
-
-                    // Auto-Deduct Stock for each purchased item
+                    // Auto-Deduct Stock for each purchased item under user subcollections
                     for ((prod, purchasedQty) in purchasedProducts) {
                         val newStock = (prod.stockQuantity - purchasedQty).coerceAtLeast(0.0)
                         val prodData = hashMapOf<String, Any>(
@@ -582,13 +587,13 @@ class BillingRepository(
                         )
 
                         if (prod.firestoreId.isNotBlank()) {
-                            if (userUid.isNotBlank()) {
-                                firestore.collection("users").document(userUid)
-                                    .collection("products").document(prod.firestoreId)
-                                    .update(prodData)
-                            }
-                            firestore.collection("products").document(prod.firestoreId)
-                                .update(prodData)
+                            firestore.collection("users").document(activeUid)
+                                .collection("products").document(prod.firestoreId)
+                                .set(prodData, com.google.firebase.firestore.SetOptions.merge())
+
+                            firestore.collection("users").document(activeUid)
+                                .collection("inventory").document(prod.firestoreId)
+                                .set(prodData, com.google.firebase.firestore.SetOptions.merge())
                         }
                     }
                 } catch (e: Exception) {
@@ -617,6 +622,8 @@ class BillingRepository(
         oldPurchasedList: List<Pair<ProductEntity, Double>>,
         newPurchasedList: List<Pair<ProductEntity, Double>>
     ) = withContext(Dispatchers.IO) {
+        val activeUid = if (userUid.isNotBlank()) userUid else (FirebaseManager.auth?.currentUser?.uid ?: "")
+
         // 1. Revert old stock
         for ((prod, oldQty) in oldPurchasedList) {
             val currentProd = productDao.getProductById(prod.id) ?: prod
@@ -624,15 +631,13 @@ class BillingRepository(
             val updatedProd = currentProd.copy(stockQuantity = revertedStock, updatedAt = System.currentTimeMillis())
             productDao.insertProduct(updatedProd)
 
-            if (FirebaseManager.isFirebaseAvailable && prod.firestoreId.isNotBlank()) {
+            if (FirebaseManager.isFirebaseAvailable && prod.firestoreId.isNotBlank() && activeUid.isNotBlank()) {
                 val firestore = FirebaseManager.firestore
                 if (firestore != null) {
                     try {
                         val prodData = hashMapOf<String, Any>("stockQuantity" to revertedStock, "updatedAt" to System.currentTimeMillis())
-                        if (userUid.isNotBlank()) {
-                            firestore.collection("users").document(userUid).collection("products").document(prod.firestoreId).update(prodData)
-                        }
-                        firestore.collection("products").document(prod.firestoreId).update(prodData)
+                        firestore.collection("users").document(activeUid).collection("products").document(prod.firestoreId).set(prodData, com.google.firebase.firestore.SetOptions.merge())
+                        firestore.collection("users").document(activeUid).collection("inventory").document(prod.firestoreId).set(prodData, com.google.firebase.firestore.SetOptions.merge())
                     } catch (e: Exception) {
                         Log.e(TAG, "Revert stock firestore error: ${e.localizedMessage}")
                     }
@@ -647,15 +652,13 @@ class BillingRepository(
             val updatedProd = currentProd.copy(stockQuantity = finalStock, updatedAt = System.currentTimeMillis())
             productDao.insertProduct(updatedProd)
 
-            if (FirebaseManager.isFirebaseAvailable && prod.firestoreId.isNotBlank()) {
+            if (FirebaseManager.isFirebaseAvailable && prod.firestoreId.isNotBlank() && activeUid.isNotBlank()) {
                 val firestore = FirebaseManager.firestore
                 if (firestore != null) {
                     try {
                         val prodData = hashMapOf<String, Any>("stockQuantity" to finalStock, "updatedAt" to System.currentTimeMillis())
-                        if (userUid.isNotBlank()) {
-                            firestore.collection("users").document(userUid).collection("products").document(prod.firestoreId).update(prodData)
-                        }
-                        firestore.collection("products").document(prod.firestoreId).update(prodData)
+                        firestore.collection("users").document(activeUid).collection("products").document(prod.firestoreId).set(prodData, com.google.firebase.firestore.SetOptions.merge())
+                        firestore.collection("users").document(activeUid).collection("inventory").document(prod.firestoreId).set(prodData, com.google.firebase.firestore.SetOptions.merge())
                     } catch (e: Exception) {
                         Log.e(TAG, "Deduct new stock firestore error: ${e.localizedMessage}")
                     }
@@ -666,8 +669,8 @@ class BillingRepository(
         // 3. Save updated invoice in local Room DB
         invoiceDao.insertInvoice(updatedInvoice)
 
-        // 4. Update Firestore invoice
-        if (FirebaseManager.isFirebaseAvailable && updatedInvoice.firestoreId.isNotBlank()) {
+        // 4. Update Firestore invoice under user subcollection
+        if (FirebaseManager.isFirebaseAvailable && updatedInvoice.firestoreId.isNotBlank() && activeUid.isNotBlank()) {
             val firestore = FirebaseManager.firestore
             if (firestore != null) {
                 try {
@@ -693,10 +696,7 @@ class BillingRepository(
                         "lastEditedTimestamp" to updatedInvoice.lastEditedTimestamp,
                         "itemsJson" to updatedInvoice.itemsJson
                     )
-                    firestore.collection("invoices").document(updatedInvoice.firestoreId).set(invoiceData).await()
-                    if (userUid.isNotBlank()) {
-                        firestore.collection("users").document(userUid).collection("invoices").document(updatedInvoice.firestoreId).set(invoiceData).await()
-                    }
+                    firestore.collection("users").document(activeUid).collection("invoices").document(updatedInvoice.firestoreId).set(invoiceData, com.google.firebase.firestore.SetOptions.merge()).await()
                 } catch (e: Exception) {
                     Log.e(TAG, "updateInvoiceAndAdjustStock firestore error: ${e.localizedMessage}")
                 }
@@ -707,19 +707,21 @@ class BillingRepository(
     // --- Product & Inventory Management ---
 
     fun getProductsStream(userUid: String): Flow<List<ProductEntity>> = callbackFlow {
+        val activeUid = if (userUid.isNotBlank()) userUid else (FirebaseManager.auth?.currentUser?.uid ?: "")
+        if (activeUid.isBlank()) {
+            trySend(emptyList())
+            awaitClose()
+            return@callbackFlow
+        }
+
         if (FirebaseManager.isFirebaseAvailable) {
             val firestore = FirebaseManager.firestore
             if (firestore != null) {
-                val collectionRef = if (userUid.isNotBlank()) {
-                    firestore.collection("users").document(userUid).collection("products")
-                } else {
-                    firestore.collection("products")
-                }
+                val collectionRef = firestore.collection("users").document(activeUid).collection("products")
 
                 val listenerRegistration = collectionRef.addSnapshotListener { snapshot, error ->
                     if (error != null) {
-                        Log.e(TAG, "Products Firestore snapshot listener error: ${error.localizedMessage}")
-                        // Fall back to Room SQLite
+                        Log.e(TAG, "Products Firestore snapshot listener error for $activeUid: ${error.localizedMessage}")
                         CoroutineScope(Dispatchers.IO).launch {
                             productDao.getAllProducts().collect { list ->
                                 trySend(list)
@@ -765,22 +767,20 @@ class BillingRepository(
     }.flowOn(Dispatchers.IO)
 
     suspend fun saveProduct(userUid: String, product: ProductEntity) = withContext(Dispatchers.IO) {
+        val activeUid = if (userUid.isNotBlank()) userUid else (FirebaseManager.auth?.currentUser?.uid ?: "")
         var generatedFirestoreId = product.firestoreId
 
-        if (FirebaseManager.isFirebaseAvailable) {
+        if (FirebaseManager.isFirebaseAvailable && activeUid.isNotBlank()) {
             val firestore = FirebaseManager.firestore
             if (firestore != null) {
                 try {
-                    val collectionRef = if (userUid.isNotBlank()) {
-                        firestore.collection("users").document(userUid).collection("products")
-                    } else {
-                        firestore.collection("products")
-                    }
+                    val userProdsRef = firestore.collection("users").document(activeUid).collection("products")
+                    val userInvRef = firestore.collection("users").document(activeUid).collection("inventory")
 
                     val docRef = if (generatedFirestoreId.isNotBlank()) {
-                        collectionRef.document(generatedFirestoreId)
+                        userProdsRef.document(generatedFirestoreId)
                     } else {
-                        collectionRef.document()
+                        userProdsRef.document()
                     }
                     generatedFirestoreId = docRef.id
 
@@ -801,14 +801,14 @@ class BillingRepository(
                         "isRxRequired" to product.isRxRequired,
                         "minStockThreshold" to product.minStockThreshold
                     )
-                    docRef.set(data).await()
+                    docRef.set(data, com.google.firebase.firestore.SetOptions.merge()).await()
+                    userInvRef.document(generatedFirestoreId).set(data, com.google.firebase.firestore.SetOptions.merge()).await()
                 } catch (e: Exception) {
                     Log.e(TAG, "Firestore saveProduct exception: ${e.localizedMessage}")
                 }
             }
         }
 
-        // Always save locally to Room SQLite so local offline fallback is fully available
         val productToSave = product.copy(
             firestoreId = generatedFirestoreId,
             updatedAt = System.currentTimeMillis()
@@ -817,16 +817,14 @@ class BillingRepository(
     }
 
     suspend fun deleteProduct(userUid: String, product: ProductEntity) = withContext(Dispatchers.IO) {
-        if (FirebaseManager.isFirebaseAvailable && product.firestoreId.isNotBlank()) {
+        val activeUid = if (userUid.isNotBlank()) userUid else (FirebaseManager.auth?.currentUser?.uid ?: "")
+        if (FirebaseManager.isFirebaseAvailable && product.firestoreId.isNotBlank() && activeUid.isNotBlank()) {
             try {
                 val firestore = FirebaseManager.firestore
                 if (firestore != null) {
-                    val docRef = if (userUid.isNotBlank()) {
-                        firestore.collection("users").document(userUid).collection("products").document(product.firestoreId)
-                    } else {
-                        firestore.collection("products").document(product.firestoreId)
-                    }
-                    docRef.delete().await()
+                    val userRef = firestore.collection("users").document(activeUid)
+                    userRef.collection("products").document(product.firestoreId).delete().await()
+                    userRef.collection("inventory").document(product.firestoreId).delete().await()
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Firestore deleteProduct error: ${e.localizedMessage}")
@@ -841,27 +839,23 @@ class BillingRepository(
 
     suspend fun saveCustomer(userUid: String, customer: com.example.data.db.CustomerEntity) = withContext(Dispatchers.IO) {
         if (customer.mobileNumber.isBlank()) return@withContext
+        val activeUid = if (userUid.isNotBlank()) userUid else (FirebaseManager.auth?.currentUser?.uid ?: "")
         val docId = customer.mobileNumber.replace("+", "").replace(" ", "")
         customerDao.insertCustomer(customer)
 
-        if (FirebaseManager.isFirebaseAvailable) {
+        if (FirebaseManager.isFirebaseAvailable && activeUid.isNotBlank()) {
             val firestore = FirebaseManager.firestore
             if (firestore != null) {
                 try {
-                    val docRef = if (userUid.isNotBlank()) {
-                        firestore.collection("users").document(userUid).collection("customers").document(docId)
-                    } else {
-                        firestore.collection("customers").document(docId)
-                    }
-                    docRef.set(
-                        mapOf(
-                            "name" to customer.name,
-                            "mobileNumber" to customer.mobileNumber,
-                            "totalPendingBalance" to customer.totalPendingBalance,
-                            "lastTransactionTimestamp" to customer.lastTransactionTimestamp
-                        ),
-                        com.google.firebase.firestore.SetOptions.merge()
-                    ).await()
+                    val userRef = firestore.collection("users").document(activeUid)
+                    val customerData = mapOf(
+                        "name" to customer.name,
+                        "mobileNumber" to customer.mobileNumber,
+                        "totalPendingBalance" to customer.totalPendingBalance,
+                        "lastTransactionTimestamp" to customer.lastTransactionTimestamp
+                    )
+                    userRef.collection("customers").document(docId).set(customerData, com.google.firebase.firestore.SetOptions.merge()).await()
+                    userRef.collection("udhar_ledger").document(docId).set(customerData, com.google.firebase.firestore.SetOptions.merge()).await()
                 } catch (e: Exception) {
                     Log.e(TAG, "Firestore saveCustomer error: ${e.localizedMessage}")
                 }
@@ -870,18 +864,21 @@ class BillingRepository(
     }
 
     fun getCustomersStream(userUid: String): Flow<List<com.example.data.db.CustomerEntity>> = callbackFlow {
+        val activeUid = if (userUid.isNotBlank()) userUid else (FirebaseManager.auth?.currentUser?.uid ?: "")
+        if (activeUid.isBlank()) {
+            trySend(emptyList())
+            awaitClose()
+            return@callbackFlow
+        }
+
         if (FirebaseManager.isFirebaseAvailable) {
             val firestore = FirebaseManager.firestore
             if (firestore != null) {
-                val collectionRef = if (userUid.isNotBlank()) {
-                    firestore.collection("users").document(userUid).collection("customers")
-                } else {
-                    firestore.collection("customers")
-                }
+                val collectionRef = firestore.collection("users").document(activeUid).collection("customers")
 
                 val listenerRegistration = collectionRef.addSnapshotListener { snapshot, error ->
                     if (error != null) {
-                        Log.e(TAG, "Customers Firestore snapshot listener error: ${error.localizedMessage}")
+                        Log.e(TAG, "Customers Firestore snapshot listener error for $activeUid: ${error.localizedMessage}")
                         CoroutineScope(Dispatchers.IO).launch {
                             customerDao.getAllCustomers().collect { list ->
                                 trySend(list)
@@ -916,7 +913,8 @@ class BillingRepository(
     }.flowOn(Dispatchers.IO)
 
     fun getCustomerTransactionsStream(userUid: String, customerMobile: String): Flow<List<com.example.data.db.CustomerTransactionEntity>> = callbackFlow {
-        if (customerMobile.isBlank()) {
+        val activeUid = if (userUid.isNotBlank()) userUid else (FirebaseManager.auth?.currentUser?.uid ?: "")
+        if (activeUid.isBlank() || customerMobile.isBlank()) {
             trySend(emptyList())
             awaitClose()
             return@callbackFlow
@@ -926,19 +924,15 @@ class BillingRepository(
             val firestore = FirebaseManager.firestore
             if (firestore != null) {
                 val docId = customerMobile.replace("+", "").replace(" ", "")
-                val collectionRef = if (userUid.isNotBlank()) {
-                    firestore.collection("users").document(userUid)
-                        .collection("customers").document(docId)
-                        .collection("transactions")
-                } else {
-                    firestore.collection("customers").document(docId).collection("transactions")
-                }
+                val collectionRef = firestore.collection("users").document(activeUid)
+                    .collection("customers").document(docId)
+                    .collection("transactions")
 
                 val listenerRegistration = collectionRef
                     .orderBy("timestamp", com.google.firebase.firestore.Query.Direction.DESCENDING)
                     .addSnapshotListener { snapshot, error ->
                         if (error != null) {
-                            Log.e(TAG, "Customer transactions listener error: ${error.localizedMessage}")
+                            Log.e(TAG, "Customer transactions listener error for $activeUid: ${error.localizedMessage}")
                             CoroutineScope(Dispatchers.IO).launch {
                                 customerTransactionDao.getTransactionsForCustomer(customerMobile).collect { list ->
                                     trySend(list)
@@ -983,6 +977,7 @@ class BillingRepository(
         invoiceId: String
     ) = withContext(Dispatchers.IO) {
         if (invoiceId.isBlank() || customerMobile.isBlank()) return@withContext
+        val activeUid = if (userUid.isNotBlank()) userUid else (FirebaseManager.auth?.currentUser?.uid ?: "")
 
         val directMatch = customerTransactionDao.getTransactionByInvoiceId(
             id1 = invoiceId,
@@ -1025,7 +1020,7 @@ class BillingRepository(
             id4 = "Bill #${existingTx.invoiceId}"
         )
 
-        if (FirebaseManager.isFirebaseAvailable) {
+        if (FirebaseManager.isFirebaseAvailable && activeUid.isNotBlank()) {
             val firestore = FirebaseManager.firestore
             if (firestore != null) {
                 try {
@@ -1035,17 +1030,12 @@ class BillingRepository(
                         "totalPendingBalance" to updatedCustomer.totalPendingBalance,
                         "lastTransactionTimestamp" to now
                     )
-                    firestore.collection("customers").document(docId).set(customerData).await()
+                    val userRef = firestore.collection("users").document(activeUid)
+                    userRef.collection("customers").document(docId).set(customerData, com.google.firebase.firestore.SetOptions.merge()).await()
+                    userRef.collection("udhar_ledger").document(docId).set(customerData, com.google.firebase.firestore.SetOptions.merge()).await()
                     if (existingTx.firestoreId.isNotBlank()) {
-                        firestore.collection("customers").document(docId)
+                        userRef.collection("customers").document(docId)
                             .collection("transactions").document(existingTx.firestoreId).delete().await()
-                    }
-                    if (userUid.isNotBlank()) {
-                        firestore.collection("users").document(userUid).collection("customers").document(docId).set(customerData).await()
-                        if (existingTx.firestoreId.isNotBlank()) {
-                            firestore.collection("users").document(userUid).collection("customers").document(docId)
-                                .collection("transactions").document(existingTx.firestoreId).delete().await()
-                        }
                     }
                 } catch (e: Exception) {
                     Log.e(TAG, "removeUdharTransactionForInvoice Firestore error: ${e.localizedMessage}")
@@ -1066,6 +1056,7 @@ class BillingRepository(
         itemsJson: String = ""
     ) = withContext(Dispatchers.IO) {
         if (customerMobile.isBlank() || amount <= 0.0) return@withContext
+        val activeUid = if (userUid.isNotBlank()) userUid else (FirebaseManager.auth?.currentUser?.uid ?: "")
 
         val now = System.currentTimeMillis()
         val docId = customerMobile.replace("+", "").replace(" ", "")
@@ -1089,7 +1080,6 @@ class BillingRepository(
         } else null
 
         if (existingTx != null) {
-            // Revert old transaction amount first, then calculate new balance
             val balanceWithoutOldTx = if (existingTx.type == "DEBIT") {
                 (currentBalance - existingTx.amount).coerceAtLeast(0.0)
             } else {
@@ -1124,7 +1114,7 @@ class BillingRepository(
                 timestamp = now
             )
 
-            if (FirebaseManager.isFirebaseAvailable) {
+            if (FirebaseManager.isFirebaseAvailable && activeUid.isNotBlank()) {
                 val firestore = FirebaseManager.firestore
                 if (firestore != null) {
                     try {
@@ -1148,14 +1138,12 @@ class BillingRepository(
                             "timestamp" to now
                         )
 
-                        firestore.collection("customers").document(docId).set(customerData).await()
-                        val txDocId = existingTx.firestoreId.ifBlank { existingTx.id.toString() }
-                        firestore.collection("customers").document(docId).collection("transactions").document(txDocId).set(txData).await()
+                        val userRef = firestore.collection("users").document(activeUid)
+                        userRef.collection("customers").document(docId).set(customerData, com.google.firebase.firestore.SetOptions.merge()).await()
+                        userRef.collection("udhar_ledger").document(docId).set(customerData, com.google.firebase.firestore.SetOptions.merge()).await()
 
-                        if (userUid.isNotBlank()) {
-                            firestore.collection("users").document(userUid).collection("customers").document(docId).set(customerData).await()
-                            firestore.collection("users").document(userUid).collection("customers").document(docId).collection("transactions").document(txDocId).set(txData).await()
-                        }
+                        val txDocId = existingTx.firestoreId.ifBlank { existingTx.id.toString() }
+                        userRef.collection("customers").document(docId).collection("transactions").document(txDocId).set(txData, com.google.firebase.firestore.SetOptions.merge()).await()
                     } catch (e: Exception) {
                         Log.e(TAG, "recordUdharOrJamaTransaction Firestore update error: ${e.localizedMessage}")
                     }
@@ -1193,7 +1181,7 @@ class BillingRepository(
                 timestamp = now
             )
 
-            if (FirebaseManager.isFirebaseAvailable) {
+            if (FirebaseManager.isFirebaseAvailable && activeUid.isNotBlank()) {
                 val firestore = FirebaseManager.firestore
                 if (firestore != null) {
                     try {
@@ -1217,14 +1205,12 @@ class BillingRepository(
                             "timestamp" to now
                         )
 
-                        firestore.collection("customers").document(docId).set(customerData).await()
-                        val addedDoc = firestore.collection("customers").document(docId).collection("transactions").add(txData).await()
-                        txEntity = txEntity.copy(firestoreId = addedDoc.id)
+                        val userRef = firestore.collection("users").document(activeUid)
+                        userRef.collection("customers").document(docId).set(customerData, com.google.firebase.firestore.SetOptions.merge()).await()
+                        userRef.collection("udhar_ledger").document(docId).set(customerData, com.google.firebase.firestore.SetOptions.merge()).await()
 
-                        if (userUid.isNotBlank()) {
-                            firestore.collection("users").document(userUid).collection("customers").document(docId).set(customerData).await()
-                            firestore.collection("users").document(userUid).collection("customers").document(docId).collection("transactions").document(addedDoc.id).set(txData).await()
-                        }
+                        val addedDoc = userRef.collection("customers").document(docId).collection("transactions").add(txData).await()
+                        txEntity = txEntity.copy(firestoreId = addedDoc.id)
                     } catch (e: Exception) {
                         Log.e(TAG, "recordUdharOrJamaTransaction Firestore error: ${e.localizedMessage}")
                     }

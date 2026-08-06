@@ -284,9 +284,9 @@ class MainActivity : ComponentActivity(), com.razorpay.PaymentResultWithDataList
                             viewModel = viewModel,
                             initialTab = com.example.ui.screens.dashboard.BottomTab.HOME,
                             onLogout = {
-                                viewModel.logout {
+                                viewModel.logout(context = context) {
                                     navController.navigate(Screen.Login.route) {
-                                        popUpTo(Screen.Dashboard.route) { inclusive = true }
+                                        popUpTo(0) { inclusive = true }
                                     }
                                 }
                             }
@@ -298,9 +298,9 @@ class MainActivity : ComponentActivity(), com.razorpay.PaymentResultWithDataList
                             viewModel = viewModel,
                             initialTab = com.example.ui.screens.dashboard.BottomTab.HOME,
                             onLogout = {
-                                viewModel.logout {
+                                viewModel.logout(context = context) {
                                     navController.navigate(Screen.Login.route) {
-                                        popUpTo(Screen.Dashboard.route) { inclusive = true }
+                                        popUpTo(0) { inclusive = true }
                                     }
                                 }
                             }
@@ -312,9 +312,9 @@ class MainActivity : ComponentActivity(), com.razorpay.PaymentResultWithDataList
                             viewModel = viewModel,
                             initialTab = com.example.ui.screens.dashboard.BottomTab.UDHAR,
                             onLogout = {
-                                viewModel.logout {
+                                viewModel.logout(context = context) {
                                     navController.navigate(Screen.Login.route) {
-                                        popUpTo(Screen.Dashboard.route) { inclusive = true }
+                                        popUpTo(0) { inclusive = true }
                                     }
                                 }
                             }
@@ -326,9 +326,9 @@ class MainActivity : ComponentActivity(), com.razorpay.PaymentResultWithDataList
                             viewModel = viewModel,
                             initialTab = com.example.ui.screens.dashboard.BottomTab.INVENTORY,
                             onLogout = {
-                                viewModel.logout {
+                                viewModel.logout(context = context) {
                                     navController.navigate(Screen.Login.route) {
-                                        popUpTo(Screen.Dashboard.route) { inclusive = true }
+                                        popUpTo(0) { inclusive = true }
                                     }
                                 }
                             }
@@ -340,9 +340,9 @@ class MainActivity : ComponentActivity(), com.razorpay.PaymentResultWithDataList
                             viewModel = viewModel,
                             initialTab = com.example.ui.screens.dashboard.BottomTab.POS,
                             onLogout = {
-                                viewModel.logout {
+                                viewModel.logout(context = context) {
                                     navController.navigate(Screen.Login.route) {
-                                        popUpTo(Screen.Dashboard.route) { inclusive = true }
+                                        popUpTo(0) { inclusive = true }
                                     }
                                 }
                             }
@@ -354,9 +354,9 @@ class MainActivity : ComponentActivity(), com.razorpay.PaymentResultWithDataList
                             viewModel = viewModel,
                             initialTab = com.example.ui.screens.dashboard.BottomTab.HISTORY,
                             onLogout = {
-                                viewModel.logout {
+                                viewModel.logout(context = context) {
                                     navController.navigate(Screen.Login.route) {
-                                        popUpTo(Screen.Dashboard.route) { inclusive = true }
+                                        popUpTo(0) { inclusive = true }
                                     }
                                 }
                             }

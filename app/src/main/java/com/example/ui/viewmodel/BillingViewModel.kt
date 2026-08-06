@@ -598,9 +598,18 @@ class BillingViewModel(val repository: BillingRepository) : ViewModel() {
                 } catch (e: Exception) {
                     Log.e("Logout", "Sign out error: ${e.localizedMessage}")
                 }
+                try {
+                    com.google.firebase.firestore.FirebaseFirestore.getInstance().clearPersistence().await()
+                } catch (e: Exception) {
+                    Log.d("Logout", "Firestore clearPersistence skipped: ${e.localizedMessage}")
+                }
             }
             repository.clearLocalCache()
-            com.example.data.subscription.SubscriptionManager.clearLocalSubscriptionState(context)
+            if (context != null) {
+                com.example.data.subscription.AppSessionManager.clearSession(context)
+            } else {
+                com.example.data.subscription.SubscriptionManager.clearLocalSubscriptionState(null)
+            }
             _currentUser.value = null
             resetAuthState()
             _toastMessage.emit("Logged out successfully")

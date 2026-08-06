@@ -1,6 +1,7 @@
 package com.example.ui.viewmodel
 
 import android.app.Activity
+import android.content.Context
 import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -9,6 +10,7 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.data.repository.AuthRepository
+import com.example.data.repository.BillingRepository
 import com.google.firebase.FirebaseException
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.PhoneAuthCredential
@@ -203,9 +205,11 @@ class AuthViewModel(
         timerSeconds = 0
     }
 
-    fun signOut(onSuccess: () -> Unit) {
-        authRepository.signOut()
-        resetAuthState()
-        onSuccess()
+    fun signOut(context: Context? = null, billingRepository: BillingRepository? = null, onSuccess: () -> Unit) {
+        viewModelScope.launch {
+            authRepository.signOut(context, billingRepository)
+            resetAuthState()
+            onSuccess()
+        }
     }
 }

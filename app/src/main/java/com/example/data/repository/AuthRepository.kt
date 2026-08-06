@@ -177,9 +177,39 @@ class AuthRepository(
     }
 
     /**
-     * Signs out the current user.
+     * Signs out the current user, clears offline Firestore persistence cache,
+     * purges local Room DB data, and resets session state.
      */
-    fun signOut() {
-        firebaseAuth.signOut()
+    suspend fun signOut(
+        context: Context? = null,
+        billingRepository: BillingRepository? = null
+    ) = withContext(Dispatchers.IO) {
+        try {
+            firebaseAuth.signOut()
+            Log.d(TAG, "FirebaseAuth signed out successfully")
+        } catch (e: Exception) {
+            Log.e(TAG, "FirebaseAuth signOut error: ${e.localizedMessage}")
+        }
+
+        try {
+            firestore.clearPersistence().await()
+            Log.d(TAG, "Firestore persistence cache cleared successfully")
+        } catch (e: Exception) {
+            Log.d(TAG, "Firestore clearPersistence skipped or already closed: ${e.localizedMessage}")
+        }
+
+        try {
+            billingRepository?.clearLocalCache()
+        } catch (e: Exception) {
+            Log.e(TAG, "Clear local database cache error: ${e.localizedMessage}")
+        }
+
+        if (context != null) {
+            try {
+                com.example.data.subscription.AppSessionManager.clearSession(context)
+            } catch (e: Exception) {
+                Log.e(TAG, "Clear session preferences error: ${e.localizedMessage}")
+            }
+        }
     }
 }

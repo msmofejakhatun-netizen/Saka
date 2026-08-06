@@ -59,4 +59,23 @@ object AppSessionManager {
     fun isAccessGranted(context: Context, userUid: String = ""): Boolean {
         return verifyAndEnforceSubscriptionLock(context, userUid) is SessionAccessState.Granted
     }
+
+    /**
+     * Clears all session data and shared preferences upon logout.
+     */
+    fun clearSession(context: Context) {
+        try {
+            val smartPosPrefs = context.getSharedPreferences("smart_pos_prefs", Context.MODE_PRIVATE)
+            smartPosPrefs.edit().clear().apply()
+
+            val subPrefs = context.getSharedPreferences("subscription_prefs", Context.MODE_PRIVATE)
+            subPrefs.edit().clear().apply()
+
+            SubscriptionManager.clearLocalSubscriptionState(context)
+            _accessState.value = SessionAccessState.Granted
+            Log.d(TAG, "AppSessionManager session and preferences cleared successfully")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error clearing session in AppSessionManager: ${e.localizedMessage}")
+        }
+    }
 }

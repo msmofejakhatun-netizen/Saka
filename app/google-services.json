@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "968984077515",
+    "project_id": "fir-fc200",
+    "storage_bucket": "fir-fc200.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:968984077515:android:9e337b4e508091f74a274e",
+        "android_client_info": {
+          "package_name": "com.aistudio.billingsystem.bksdfp"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "968984077515-91t871nf5ckdqagf61lbkb32ld6natdo.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.aistudio.billingsystem.bksdfp",
+            "certificate_hash": "3dd9385c1c3ea4156e1f6708a57949d3a622dcf6"
+          }
+        },
+        {
+          "client_id": "968984077515-60s8sjn4vrh6dvamuqhpprr80u6cr210.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB5IwrXL-edyOtz9HrWot2C9evVdBRiIpw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "968984077515-60s8sjn4vrh6dvamuqhpprr80u6cr210.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

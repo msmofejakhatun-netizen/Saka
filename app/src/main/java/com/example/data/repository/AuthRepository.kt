@@ -3,6 +3,7 @@ package com.example.data.repository
 import android.app.Activity
 import android.content.Context
 import android.util.Log
+import com.example.data.auth.Fast2SMSHelper
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount
 import com.google.android.gms.auth.api.signin.GoogleSignInClient
@@ -11,14 +12,11 @@ import com.google.firebase.auth.AuthResult
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.GoogleAuthProvider
-import com.google.firebase.auth.PhoneAuthOptions
-import com.google.firebase.auth.PhoneAuthProvider
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.SetOptions
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
-import java.util.concurrent.TimeUnit
 
 class AuthRepository(
     private val firebaseAuth: FirebaseAuth = FirebaseAuth.getInstance(),
@@ -35,44 +33,92 @@ class AuthRepository(
         get() = firebaseAuth.currentUser
 
     /**
-     * Initiates real Phone Number OTP verification via Firebase PhoneAuthProvider.
+     * Initiates SMS OTP sending via Fast2SMS API.
      */
-    fun sendPhoneOtp(
-        phoneNumber: String,
-        activity: Activity,
-        callbacks: PhoneAuthProvider.OnVerificationStateChangedCallbacks,
-        forceResendingToken: PhoneAuthProvider.ForceResendingToken? = null
-    ) {
-        val optionsBuilder = PhoneAuthOptions.newBuilder(firebaseAuth)
-            .setPhoneNumber(phoneNumber)
-            .setTimeout(60L, TimeUnit.SECONDS)
-            .setActivity(activity)
-            .setCallbacks(callbacks)
-
-        if (forceResendingToken != null) {
-            optionsBuilder.setForceResendingToken(forceResendingToken)
-        }
-
-        PhoneAuthProvider.verifyPhoneNumber(optionsBuilder.build())
+    suspend fun sendFast2SmsOtp(
+        context: Context,
+        phoneNumber: String
+    ): Result<String> {
+        return Fast2SMSHelper.sendOtp(context, phoneNumber)
     }
 
     /**
-     * Verifies the 6-digit OTP code using PhoneAuthProvider credential.
+     * Verifies the 6-digit Fast2SMS OTP code and manages Firestore user profile & subscription session.
      */
-    suspend fun verifyPhoneOtp(
-        verificationId: String,
+    suspend fun verifyFast2SmsOtp(
+        context: Context,
+        phoneNumber: String,
         userEnteredOtp: String
-    ): Result<AuthResult> = withContext(Dispatchers.IO) {
+    ): Result<String> = withContext(Dispatchers.IO) {
+        val verifyResult = Fast2SMSHelper.verifyOtp(context, phoneNumber, userEnteredOtp)
+        if (verifyResult.isFailure) {
+            return@withContext Result.failure(verifyResult.exceptionOrNull() ?: Exception("OTP Verification Failed."))
+        }
+
         try {
-            val credential = PhoneAuthProvider.getCredential(verificationId, userEnteredOtp)
-            val authResult = firebaseAuth.signInWithCredential(credential).await()
-            val user = authResult.user
-            if (user != null) {
-                syncUserProfileAndSession(user, provider = "phone")
+            val cleanNumber = Fast2SMSHelper.sanitizePhoneNumber(phoneNumber)
+            val formattedPhone = "+91$cleanNumber"
+
+            // Query Firestore `users` collection by phone number
+            val usersQuery = firestore.collection("users")
+                .whereEqualTo("phoneNumber", formattedPhone)
+                .get()
+                .await()
+
+            val userId: String
+            if (!usersQuery.isEmpty) {
+                // User exists
+                val docSnap = usersQuery.documents.first()
+                userId = docSnap.id
+                val updateData = hashMapOf<String, Any>(
+                    "lastLoginAt" to System.currentTimeMillis()
+                )
+                firestore.collection("users").document(userId)
+                    .set(updateData, SetOptions.merge()).await()
+                Log.d(TAG, "Existing user logged in with phone: $userId")
+            } else {
+                // New user - create profile at users/{phoneUserId}
+                userId = "phone_$cleanNumber"
+                val profileData = hashMapOf(
+                    "uid" to userId,
+                    "phoneNumber" to formattedPhone,
+                    "displayName" to "User $cleanNumber",
+                    "createdAt" to System.currentTimeMillis(),
+                    "lastLoginAt" to System.currentTimeMillis(),
+                    "authProvider" to "phone",
+                    "role" to "user"
+                )
+                firestore.collection("users").document(userId)
+                    .set(profileData, SetOptions.merge()).await()
+                Log.d(TAG, "Created new user profile at users/$userId")
             }
-            Result.success(authResult)
+
+            // Sync FCM Token
+            com.example.service.MyFirebaseMessagingService.syncFcmTokenToFirestore(userId)
+
+            // Setup default subscription state under users/{phoneUserId}/subscription/current
+            val subRef = firestore.collection("users")
+                .document(userId)
+                .collection("subscription")
+                .document("current")
+
+            val subSnap = subRef.get().await()
+            if (!subSnap.exists()) {
+                val initialSubData = hashMapOf(
+                    "status" to "TRIAL_ACTIVE",
+                    "plan" to "trial",
+                    "createdAt" to System.currentTimeMillis(),
+                    "updatedAt" to System.currentTimeMillis(),
+                    "isTrial" to true,
+                    "isProUser" to true
+                )
+                subRef.set(initialSubData, SetOptions.merge()).await()
+                Log.d(TAG, "Initialized default subscription state under users/$userId/subscription/current")
+            }
+
+            Result.success(userId)
         } catch (e: Exception) {
-            Log.e(TAG, "Phone OTP verification error: ${e.localizedMessage}")
+            Log.e(TAG, "Fast2SMS post-verification session creation error: ${e.localizedMessage}")
             Result.failure(e)
         }
     }
@@ -80,6 +126,7 @@ class AuthRepository(
     /**
      * Authenticates with Firebase using a Google ID Token.
      */
+
     suspend fun signInWithGoogle(idToken: String): Result<AuthResult> = withContext(Dispatchers.IO) {
         try {
             val credential = GoogleAuthProvider.getCredential(idToken, null)

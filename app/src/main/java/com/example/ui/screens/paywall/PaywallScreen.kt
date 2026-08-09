@@ -122,6 +122,69 @@ fun PaywallScreenContent(
     var showPaymentBottomSheet by remember { mutableStateOf(false) }
     var isProcessingPayment by remember { mutableStateOf(false) }
 
+    var isSuccessOverlayVisible by remember { mutableStateOf(false) }
+    var hasProcessedSuccess by remember { mutableStateOf(false) }
+
+    val userId = currentUser?.mobileNumber.orEmpty().ifBlank {
+        com.example.data.firebase.FirebaseManager.auth?.currentUser?.uid.orEmpty()
+    }
+
+    // Real-time snapshot listener on users/{userId}/subscription/current
+    DisposableEffect(userId) {
+        if (userId.isBlank() || !com.example.data.firebase.FirebaseManager.isFirebaseAvailable) {
+            return@DisposableEffect onDispose { }
+        }
+
+        val firestore = com.example.data.firebase.FirebaseManager.firestore
+            ?: return@DisposableEffect onDispose { }
+
+        val registration = firestore.collection("users")
+            .document(userId)
+            .collection("subscription")
+            .document("current")
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    android.util.Log.e("PaywallScreen", "Subscription listener error: ${error.localizedMessage}")
+                    return@addSnapshotListener
+                }
+
+                if (snapshot != null && snapshot.exists()) {
+                    val status = snapshot.getString("status").orEmpty()
+                    val isPro = snapshot.getBoolean("isProUser") ?: false
+
+                    if ((status == "ACTIVE" || status == "TRIAL_ACTIVE" || isPro) && !hasProcessedSuccess) {
+                        hasProcessedSuccess = true
+                        isSuccessOverlayVisible = true
+                        playSuccessChime(context)
+                    }
+                }
+            }
+
+        onDispose {
+            registration.remove()
+        }
+    }
+
+    // Fallback: Monitor local subscriptionState flow directly for instantaneous response
+    LaunchedEffect(subscriptionState) {
+        val status = subscriptionState.autoPayMandateStatus
+        val isPro = subscriptionState.isProUser
+        if ((status == "ACTIVE" || status == "TRIAL_ACTIVE" || isPro) && !hasProcessedSuccess) {
+            hasProcessedSuccess = true
+            isSuccessOverlayVisible = true
+            playSuccessChime(context)
+        }
+    }
+
+    // Auto-dismiss and navigate to dashboard after 1 second green checkmark display
+    LaunchedEffect(isSuccessOverlayVisible) {
+        if (isSuccessOverlayVisible) {
+            kotlinx.coroutines.delay(1000)
+            viewModel.closePaywall()
+            onClose()
+        }
+    }
+
     val scrollState = rememberScrollState()
 
     Box(
@@ -558,6 +621,52 @@ fun PaywallScreenContent(
                 onDismiss = { if (!isProcessingPayment) showPaymentBottomSheet = false }
             )
         }
+
+        // Green checkmark success overlay (1-second transition)
+        if (isSuccessOverlayVisible) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.92f))
+                    .testTag("paywall_success_overlay"),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center,
+                    modifier = Modifier.padding(32.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(90.dp)
+                            .background(EmeraldGreen, CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Check,
+                            contentDescription = "Success",
+                            tint = Color.White,
+                            modifier = Modifier.size(54.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(20.dp))
+                    Text(
+                        text = "Subscription Activated! 🎉",
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 22.sp,
+                        textAlign = TextAlign.Center
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Unlocking Pro POS Features...",
+                        color = EmeraldLight,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -944,5 +1053,18 @@ private fun PaymentGatewayBottomSheet(
                 }
             }
         }
+    }
+}
+
+private fun playSuccessChime(context: android.content.Context) {
+    try {
+        val notificationUri = android.media.RingtoneManager.getDefaultUri(android.media.RingtoneManager.TYPE_NOTIFICATION)
+        val ringtone = android.media.RingtoneManager.getRingtone(context, notificationUri)
+        ringtone?.play()
+    } catch (e: Exception) {
+        try {
+            val toneGen = android.media.ToneGenerator(android.media.AudioManager.STREAM_MUSIC, 100)
+            toneGen.startTone(android.media.ToneGenerator.TONE_PROP_ACK, 300)
+        } catch (_: Exception) {}
     }
 }

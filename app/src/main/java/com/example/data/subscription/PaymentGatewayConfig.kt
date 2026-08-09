@@ -32,4 +32,24 @@ object PaymentGatewayConfig {
             GatewayProvider.DIRECT_UPI_MANDATE -> "Direct UPI Intent Autopay"
         }
     }
+
+    /**
+     * Client-side success callback handler for Razorpay or PhonePe SDK payment completion.
+     * Performs immediate optimistic update to Firestore users/{userId}/subscription/current and local session state.
+     */
+    fun handlePaymentSuccess(
+        context: Context,
+        userUid: String,
+        razorpayPaymentId: String,
+        paymentData: Any? = null,
+        onComplete: (() -> Unit)? = null
+    ) {
+        SubscriptionManager.onPaymentSuccess(
+            context = context,
+            userUid = userUid,
+            razorpayPaymentId = razorpayPaymentId,
+            paymentData = paymentData,
+            onComplete = onComplete
+        )
+    }
 }

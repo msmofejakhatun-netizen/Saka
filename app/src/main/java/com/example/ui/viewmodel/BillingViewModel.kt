@@ -365,67 +365,25 @@ class BillingViewModel(val repository: BillingRepository) : ViewModel() {
     // --- Premium Authentication Actions ---
 
     fun sendOtp(mobileNumber: String, activity: Activity) {
-        if (mobileNumber.length < 10) {
+        val cleanNumber = com.example.data.auth.Fast2SMSHelper.sanitizePhoneNumber(mobileNumber)
+        if (cleanNumber.length < 10) {
             authError = "Please enter a valid 10-digit mobile number."
             return
         }
         authError = null
         isSendingOtp = true
-        val fullNumber = "+91$mobileNumber"
+        val fullNumber = "+91$cleanNumber"
         authMobile = fullNumber
 
         viewModelScope.launch {
-            try {
-                val auth = com.google.firebase.auth.FirebaseAuth.getInstance()
-
-                val callbacks = object : com.google.firebase.auth.PhoneAuthProvider.OnVerificationStateChangedCallbacks() {
-                    override fun onVerificationCompleted(credential: com.google.firebase.auth.PhoneAuthCredential) {
-                        viewModelScope.launch {
-                            try {
-                                val authResult = auth.signInWithCredential(credential).await()
-                                authResult.user?.let { user ->
-                                    _toastMessage.emit("Phone number verified automatically!")
-                                    handlePostAuth(user.uid, authMobile, "phone", {})
-                                }
-                            } catch (e: Exception) {
-                                Log.e("PhoneAuth", "Auto sign-in failed: ${e.localizedMessage}")
-                            }
-                        }
-                    }
-
-                    override fun onVerificationFailed(e: com.google.firebase.FirebaseException) {
-                        Log.e("PhoneAuth", "Firebase PhoneAuth failed: ${e.localizedMessage}")
-                        viewModelScope.launch {
-                            isSendingOtp = false
-                            authError = "SMS Verification failed: ${e.localizedMessage}"
-                        }
-                    }
-
-                    override fun onCodeSent(
-                        verificationId: String,
-                        token: com.google.firebase.auth.PhoneAuthProvider.ForceResendingToken
-                    ) {
-                        tempVerificationId = verificationId
-                        isOtpSent = true
-                        isSendingOtp = false
-                        startResendTimer()
-                        viewModelScope.launch {
-                            _toastMessage.emit("Verification code sent to $fullNumber")
-                        }
-                    }
-                }
-
-                val options = com.google.firebase.auth.PhoneAuthOptions.newBuilder(auth)
-                    .setPhoneNumber(fullNumber)
-                    .setTimeout(60L, TimeUnit.SECONDS)
-                    .setActivity(activity)
-                    .setCallbacks(callbacks)
-                    .build()
-
-                com.google.firebase.auth.PhoneAuthProvider.verifyPhoneNumber(options)
-            } catch (e: Exception) {
-                isSendingOtp = false
-                authError = "Phone Auth error: ${e.localizedMessage}"
+            val result = com.example.data.auth.Fast2SMSHelper.sendOtp(activity, cleanNumber)
+            isSendingOtp = false
+            result.onSuccess { msg ->
+                isOtpSent = true
+                startResendTimer()
+                _toastMessage.emit(msg)
+            }.onFailure { e ->
+                authError = e.localizedMessage ?: "Failed to send OTP via Fast2SMS."
             }
         }
     }
@@ -445,23 +403,26 @@ class BillingViewModel(val repository: BillingRepository) : ViewModel() {
             authError = "Please enter the 6-digit OTP code."
             return
         }
-        if (tempVerificationId.isEmpty()) {
-            authError = "Invalid verification session. Please resend OTP."
-            return
-        }
         authError = null
         isVerifyingOtp = true
 
         viewModelScope.launch {
             try {
-                val credential = com.google.firebase.auth.PhoneAuthProvider.getCredential(tempVerificationId, code)
-                val auth = com.google.firebase.auth.FirebaseAuth.getInstance()
-                val authResult = auth.signInWithCredential(credential).await()
-                val user = authResult.user
-                if (user != null) {
-                    handlePostAuth(user.uid, authMobile, "phone", onNavigate)
-                } else {
-                    throw IllegalStateException("Firebase user is null.")
+                val cleanNumber = com.example.data.auth.Fast2SMSHelper.sanitizePhoneNumber(authMobile)
+                val authRepo = com.example.data.repository.AuthRepository()
+                val appContext = com.google.firebase.FirebaseApp.getInstance().applicationContext
+
+                val result = authRepo.verifyFast2SmsOtp(
+                    context = appContext,
+                    phoneNumber = cleanNumber,
+                    userEnteredOtp = code
+                )
+
+                result.onSuccess { phoneUserId ->
+                    handlePostAuth(phoneUserId, authMobile, "phone", onNavigate)
+                }.onFailure { e ->
+                    isVerifyingOtp = false
+                    authError = e.localizedMessage ?: "Verification failed."
                 }
             } catch (e: Exception) {
                 isVerifyingOtp = false

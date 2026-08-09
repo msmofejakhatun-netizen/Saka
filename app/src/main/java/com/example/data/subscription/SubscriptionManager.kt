@@ -131,7 +131,7 @@ object SubscriptionManager {
             isProUser = true,
             subscriptionTier = "TRIAL_1_INR",
             subscriptionExpiryDate = trialExpiry,
-            autoPayMandateStatus = "ACTIVE",
+            autoPayMandateStatus = "TRIAL_ACTIVE",
             autoPayMandateId = mandateId,
             gatewayProvider = gatewayProvider,
             gatewaySubscriptionId = mandateId,
@@ -145,6 +145,83 @@ object SubscriptionManager {
 
         syncToFirebase(userUid, info)
         onComplete(true, "3-Day Trial @ ₹1 Activated Successfully via $gatewayProvider! Mandate Ref: $mandateId")
+    }
+
+    /**
+     * Immediate client-side success callback handler for Razorpay / PhonePe SDK payment completion.
+     * Performs instant optimistic state transition locally and updates Firestore users/{userId}/subscription/current.
+     */
+    fun onPaymentSuccess(
+        context: Context,
+        userUid: String,
+        razorpayPaymentId: String,
+        paymentData: Any? = null,
+        onComplete: (() -> Unit)? = null
+    ) {
+        val effectiveUid = resolveUserUid(userUid)
+        val now = System.currentTimeMillis()
+        val trialExpiry = now + (3 * 24 * 60 * 60 * 1000L) // 3-day trial period
+        val mandateId = razorpayPaymentId.ifBlank { "MND-RZP-" + (100000..999999).random() }
+
+        val info = SubscriptionInfo(
+            isProUser = true,
+            subscriptionTier = "TRIAL_1_INR",
+            subscriptionExpiryDate = trialExpiry,
+            autoPayMandateStatus = "TRIAL_ACTIVE",
+            autoPayMandateId = mandateId,
+            gatewayProvider = "RAZORPAY",
+            gatewaySubscriptionId = mandateId,
+            settlementAccount = PaymentGatewayConfig.SETTLEMENT_ACCOUNT_MASKED,
+            trialStartDate = now,
+            paymentMethod = "Razorpay Checkout (UPI Autopay)"
+        )
+
+        saveLocal(context, info)
+        _subscriptionState.value = info
+
+        if (effectiveUid.isNotBlank() && FirebaseManager.isFirebaseAvailable) {
+            CoroutineScope(Dispatchers.IO).launch {
+                try {
+                    val firestore = FirebaseManager.firestore
+                    if (firestore != null) {
+                        val subMap = hashMapOf(
+                            "status" to "TRIAL_ACTIVE",
+                            "isProUser" to true,
+                            "mandateId" to mandateId,
+                            "expiryTimestamp" to trialExpiry,
+                            "subscriptionTier" to "TRIAL_1_INR",
+                            "lastUpdated" to System.currentTimeMillis(),
+                            "autoPayMandateStatus" to "TRIAL_ACTIVE",
+                            "gatewayProvider" to "RAZORPAY",
+                            "gatewaySubscriptionId" to mandateId,
+                            "settlementAccount" to PaymentGatewayConfig.SETTLEMENT_ACCOUNT_MASKED,
+                            "trialStartDate" to now,
+                            "paymentMethod" to "Razorpay Checkout (UPI Autopay)"
+                        )
+                        firestore.collection("users").document(effectiveUid)
+                            .collection("subscription").document("current")
+                            .set(subMap, com.google.firebase.firestore.SetOptions.merge()).await()
+
+                        firestore.collection("users").document(effectiveUid)
+                            .set(
+                                hashMapOf(
+                                    "isProUser" to true,
+                                    "subscriptionTier" to "TRIAL_1_INR",
+                                    "subscriptionStatus" to "TRIAL_ACTIVE",
+                                    "updatedAt" to System.currentTimeMillis()
+                                ),
+                                com.google.firebase.firestore.SetOptions.merge()
+                            ).await()
+                        Log.d(TAG, "Successfully updated Firestore users/$effectiveUid/subscription/current on payment success")
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error updating Firestore in onPaymentSuccess: ${e.localizedMessage}")
+                }
+            }
+        }
+
+        com.example.data.subscription.AppSessionManager.verifyAndEnforceSubscriptionLock(context, effectiveUid)
+        onComplete?.invoke()
     }
 
     fun activateSubscriptionPlan(
@@ -281,7 +358,9 @@ object SubscriptionManager {
                 val firestore = FirebaseManager.firestore
                 if (firestore != null) {
                     val statusStr = if (info.isProUser) {
-                        if (info.autoPayMandateStatus == "CANCELLED") "CANCELLED" else "ACTIVE"
+                        if (info.autoPayMandateStatus == "TRIAL_ACTIVE" || info.subscriptionTier == "TRIAL_1_INR") "TRIAL_ACTIVE"
+                        else if (info.autoPayMandateStatus == "CANCELLED") "CANCELLED"
+                        else "ACTIVE"
                     } else {
                         "EXPIRED"
                     }

@@ -32,6 +32,7 @@ import com.example.data.db.AppDatabase
 import com.example.data.firebase.FirebaseManager
 import com.example.data.repository.BillingRepository
 import com.example.data.subscription.AppSessionManager
+import com.example.data.subscription.PaymentGatewayConfig
 import com.example.data.subscription.SessionAccessState
 import com.example.ui.navigation.Screen
 import com.example.ui.screens.admin.AdminScreen
@@ -405,15 +406,13 @@ class MainActivity : ComponentActivity(), com.razorpay.PaymentResultWithDataList
             ?: FirebaseManager.auth?.currentUser?.phoneNumber
             ?: ""
 
-        com.example.data.subscription.SubscriptionManager.activateTrialMandate(
+        PaymentGatewayConfig.handlePaymentSuccess(
             context = this,
-            paymentMethod = "Razorpay Checkout (UPI Autopay)",
             userUid = userUid,
-            gatewayProvider = "RAZORPAY",
-            subscriptionId = mandateId,
-            onComplete = { _, _ ->
-                Toast.makeText(this, "Trial Activated Successfully! 🎉", Toast.LENGTH_LONG).show()
-                AppSessionManager.verifyAndEnforceSubscriptionLock(this, userUid)
+            razorpayPaymentId = mandateId,
+            paymentData = paymentData,
+            onComplete = {
+                Toast.makeText(this, "Subscription Activated! 🎉", Toast.LENGTH_LONG).show()
                 navControllerRef?.navigate(Screen.Dashboard.route) {
                     popUpTo(Screen.Paywall.route) { inclusive = true }
                 }

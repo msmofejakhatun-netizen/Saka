@@ -281,6 +281,43 @@ fun DashboardScreen(
                         modifier = Modifier.padding(horizontal = 12.dp).testTag("drawer_item_check_update")
                     )
 
+                    Spacer(modifier = Modifier.height(10.dp))
+                    HorizontalDivider(color = Color(0x22FFFFFF), modifier = Modifier.padding(horizontal = 16.dp))
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    Text(
+                        text = "LEGAL & POLICIES",
+                        color = Color(0xFF64748B),
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 0.5.sp,
+                        modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp)
+                    )
+
+                    NavigationDrawerItem(
+                        icon = { Icon(Icons.Default.Description, contentDescription = "Terms & Conditions", tint = Color(0xFF2DD4BF)) },
+                        label = { Text("Terms & Conditions", fontWeight = FontWeight.SemiBold, color = Color.White) },
+                        selected = false,
+                        onClick = {
+                            coroutineScope.launch { drawerState.close() }
+                            com.example.util.WebUtils.openWebUrl(context, com.example.util.WebUtils.TERMS_URL)
+                        },
+                        colors = NavigationDrawerItemDefaults.colors(selectedContainerColor = Color(0x332DD4BF)),
+                        modifier = Modifier.padding(horizontal = 12.dp).testTag("drawer_item_terms")
+                    )
+
+                    NavigationDrawerItem(
+                        icon = { Icon(Icons.Default.Security, contentDescription = "Privacy Policy", tint = Color(0xFF2DD4BF)) },
+                        label = { Text("Privacy Policy", fontWeight = FontWeight.SemiBold, color = Color.White) },
+                        selected = false,
+                        onClick = {
+                            coroutineScope.launch { drawerState.close() }
+                            com.example.util.WebUtils.openWebUrl(context, com.example.util.WebUtils.PRIVACY_URL)
+                        },
+                        colors = NavigationDrawerItemDefaults.colors(selectedContainerColor = Color(0x332DD4BF)),
+                        modifier = Modifier.padding(horizontal = 12.dp).testTag("drawer_item_privacy")
+                    )
+
                     Spacer(modifier = Modifier.weight(1f))
 
                     HorizontalDivider(color = Color(0x22FFFFFF), modifier = Modifier.padding(horizontal = 16.dp))

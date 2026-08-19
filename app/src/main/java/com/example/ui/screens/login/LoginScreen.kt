@@ -13,6 +13,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.ClickableText
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -32,9 +33,14 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.credentials.CredentialManager
@@ -49,6 +55,7 @@ import com.example.ui.components.PremiumLoadingState
 import com.example.ui.theme.EmeraldGreen
 import com.example.ui.theme.EmeraldLight
 import com.example.ui.viewmodel.BillingViewModel
+import com.example.util.WebUtils
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
@@ -194,7 +201,7 @@ fun LoginScreen(
                 text = if (viewModel.isOtpSent) {
                     "Enter the 6-digit verification code sent to ${viewModel.authMobile}"
                 } else {
-                    "Log in or Register with your Phone or Google Account"
+                    "Log in or Register with Phone OTP or Google Account"
                 },
                 style = MaterialTheme.typography.bodyMedium,
                 color = Color(0xFF94A3B8),
@@ -278,7 +285,18 @@ fun LoginScreen(
                                 .testTag("login_mobile_input")
                         )
 
-                        Spacer(modifier = Modifier.height(24.dp))
+                        // Subtitle / helper text below input field
+                        Text(
+                            text = "A 6-digit verification OTP will be sent to your mobile number via SMS",
+                            color = Color(0xFF94A3B8),
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Normal,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 6.dp, start = 4.dp)
+                        )
+
+                        Spacer(modifier = Modifier.height(20.dp))
 
                         // Get OTP Button
                         Button(
@@ -311,7 +329,7 @@ fun LoginScreen(
                                 contentAlignment = Alignment.Center
                             ) {
                                 if (viewModel.isSendingOtp) {
-                                    PremiumLoadingState(text = "Sending...")
+                                    PremiumLoadingState(text = "Sending OTP...")
                                 } else {
                                     Text(
                                         text = "GET OTP",
@@ -446,6 +464,11 @@ fun LoginScreen(
                             }
                         }
 
+                        Spacer(modifier = Modifier.height(20.dp))
+
+                        // Legal Consent Text
+                        LegalConsentText()
+
                     } else {
                         // --- SCREEN 2: OTP Verification ---
                         
@@ -518,8 +541,8 @@ fun LoginScreen(
                                     PremiumLoadingState(text = "Verifying...")
                                 } else {
                                     Text(
-                                        text = "VERIFY & PROCEED",
-                                        fontSize = 15.sp,
+                                        text = "VERIFY OTP",
+                                        fontSize = 16.sp,
                                         fontWeight = FontWeight.Bold,
                                         color = Color.White,
                                         letterSpacing = 1.sp
@@ -570,9 +593,77 @@ fun LoginScreen(
                                 }
                                 .padding(vertical = 4.dp)
                         )
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        // Legal Consent Text
+                        LegalConsentText()
                     }
                 }
             }
         }
     }
+}
+
+@Composable
+fun LegalConsentText(
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+    val termsTag = "TERMS"
+    val privacyTag = "PRIVACY"
+
+    val annotatedString = buildAnnotatedString {
+        withStyle(style = SpanStyle(color = Color(0xFF94A3B8), fontSize = 12.sp)) {
+            append("By continuing, you agree to our ")
+        }
+        pushStringAnnotation(tag = termsTag, annotation = WebUtils.TERMS_URL)
+        withStyle(
+            style = SpanStyle(
+                color = Color(0xFF2DD4BF),
+                fontSize = 12.sp,
+                fontWeight = FontWeight.SemiBold,
+                textDecoration = TextDecoration.Underline
+            )
+        ) {
+            append("Terms & Conditions")
+        }
+        pop()
+        withStyle(style = SpanStyle(color = Color(0xFF94A3B8), fontSize = 12.sp)) {
+            append(" and ")
+        }
+        pushStringAnnotation(tag = privacyTag, annotation = WebUtils.PRIVACY_URL)
+        withStyle(
+            style = SpanStyle(
+                color = Color(0xFF2DD4BF),
+                fontSize = 12.sp,
+                fontWeight = FontWeight.SemiBold,
+                textDecoration = TextDecoration.Underline
+            )
+        ) {
+            append("Privacy Policy")
+        }
+        pop()
+    }
+
+    ClickableText(
+        text = annotatedString,
+        style = TextStyle(
+            textAlign = TextAlign.Center,
+            fontSize = 12.sp,
+            lineHeight = 16.sp
+        ),
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 8.dp)
+            .testTag("login_legal_consent_text"),
+        onClick = { offset ->
+            annotatedString.getStringAnnotations(tag = termsTag, start = offset, end = offset).firstOrNull()?.let {
+                WebUtils.openWebUrl(context, it.item)
+            }
+            annotatedString.getStringAnnotations(tag = privacyTag, start = offset, end = offset).firstOrNull()?.let {
+                WebUtils.openWebUrl(context, it.item)
+            }
+        }
+    )
 }

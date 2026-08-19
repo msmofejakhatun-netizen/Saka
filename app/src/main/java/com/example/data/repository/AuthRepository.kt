@@ -3,20 +3,24 @@ package com.example.data.repository
 import android.app.Activity
 import android.content.Context
 import android.util.Log
-import com.example.data.auth.Fast2SMSHelper
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount
 import com.google.android.gms.auth.api.signin.GoogleSignInClient
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.google.firebase.FirebaseException
 import com.google.firebase.auth.AuthResult
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.GoogleAuthProvider
+import com.google.firebase.auth.PhoneAuthCredential
+import com.google.firebase.auth.PhoneAuthOptions
+import com.google.firebase.auth.PhoneAuthProvider
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.SetOptions
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
+import java.util.concurrent.TimeUnit
 
 class AuthRepository(
     private val firebaseAuth: FirebaseAuth = FirebaseAuth.getInstance(),
@@ -33,92 +37,62 @@ class AuthRepository(
         get() = firebaseAuth.currentUser
 
     /**
-     * Initiates SMS OTP sending via Fast2SMS API.
+     * Initiates Firebase Phone Number verification via official PhoneAuthProvider.
      */
-    suspend fun sendFast2SmsOtp(
-        context: Context,
-        phoneNumber: String
-    ): Result<String> {
-        return Fast2SMSHelper.sendOtp(context, phoneNumber)
+    fun verifyPhoneNumber(
+        activity: Activity,
+        phoneNumber: String,
+        callbacks: PhoneAuthProvider.OnVerificationStateChangedCallbacks,
+        resendToken: PhoneAuthProvider.ForceResendingToken? = null
+    ) {
+        val cleanDigits = phoneNumber.replace("\\D".toRegex(), "")
+        val formattedPhone = when {
+            phoneNumber.startsWith("+") -> phoneNumber
+            cleanDigits.length == 10 -> "+91$cleanDigits"
+            else -> "+$cleanDigits"
+        }
+
+        Log.d(TAG, "Starting Firebase Phone Auth verification for: $formattedPhone")
+
+        val optionsBuilder = PhoneAuthOptions.newBuilder(firebaseAuth)
+            .setPhoneNumber(formattedPhone)
+            .setTimeout(60L, TimeUnit.SECONDS)
+            .setActivity(activity)
+            .setCallbacks(callbacks)
+
+        if (resendToken != null) {
+            optionsBuilder.setForceResendingToken(resendToken)
+        }
+
+        PhoneAuthProvider.verifyPhoneNumber(optionsBuilder.build())
     }
 
     /**
-     * Verifies the 6-digit Fast2SMS OTP code and manages Firestore user profile & subscription session.
+     * Signs in with a PhoneAuthCredential generated automatically or via verification code.
      */
-    suspend fun verifyFast2SmsOtp(
-        context: Context,
-        phoneNumber: String,
-        userEnteredOtp: String
-    ): Result<String> = withContext(Dispatchers.IO) {
-        val verifyResult = Fast2SMSHelper.verifyOtp(context, phoneNumber, userEnteredOtp)
-        if (verifyResult.isFailure) {
-            return@withContext Result.failure(verifyResult.exceptionOrNull() ?: Exception("OTP Verification Failed."))
-        }
-
+    suspend fun signInWithPhoneCredential(credential: PhoneAuthCredential): Result<AuthResult> = withContext(Dispatchers.IO) {
         try {
-            val cleanNumber = Fast2SMSHelper.sanitizePhoneNumber(phoneNumber)
-            val formattedPhone = "+91$cleanNumber"
-
-            // Query Firestore `users` collection by phone number
-            val usersQuery = firestore.collection("users")
-                .whereEqualTo("phoneNumber", formattedPhone)
-                .get()
-                .await()
-
-            val userId: String
-            if (!usersQuery.isEmpty) {
-                // User exists
-                val docSnap = usersQuery.documents.first()
-                userId = docSnap.id
-                val updateData = hashMapOf<String, Any>(
-                    "lastLoginAt" to System.currentTimeMillis()
-                )
-                firestore.collection("users").document(userId)
-                    .set(updateData, SetOptions.merge()).await()
-                Log.d(TAG, "Existing user logged in with phone: $userId")
-            } else {
-                // New user - create profile at users/{phoneUserId}
-                userId = "phone_$cleanNumber"
-                val profileData = hashMapOf(
-                    "uid" to userId,
-                    "phoneNumber" to formattedPhone,
-                    "displayName" to "User $cleanNumber",
-                    "createdAt" to System.currentTimeMillis(),
-                    "lastLoginAt" to System.currentTimeMillis(),
-                    "authProvider" to "phone",
-                    "role" to "user"
-                )
-                firestore.collection("users").document(userId)
-                    .set(profileData, SetOptions.merge()).await()
-                Log.d(TAG, "Created new user profile at users/$userId")
+            val authResult = firebaseAuth.signInWithCredential(credential).await()
+            val user = authResult.user
+            if (user != null) {
+                syncUserProfileAndSession(user, provider = "phone")
             }
-
-            // Sync FCM Token
-            com.example.service.MyFirebaseMessagingService.syncFcmTokenToFirestore(userId)
-
-            // Setup default subscription state under users/{phoneUserId}/subscription/current
-            val subRef = firestore.collection("users")
-                .document(userId)
-                .collection("subscription")
-                .document("current")
-
-            val subSnap = subRef.get().await()
-            if (!subSnap.exists()) {
-                val initialSubData = hashMapOf(
-                    "status" to "TRIAL_ACTIVE",
-                    "plan" to "trial",
-                    "createdAt" to System.currentTimeMillis(),
-                    "updatedAt" to System.currentTimeMillis(),
-                    "isTrial" to true,
-                    "isProUser" to true
-                )
-                subRef.set(initialSubData, SetOptions.merge()).await()
-                Log.d(TAG, "Initialized default subscription state under users/$userId/subscription/current")
-            }
-
-            Result.success(userId)
+            Result.success(authResult)
         } catch (e: Exception) {
-            Log.e(TAG, "Fast2SMS post-verification session creation error: ${e.localizedMessage}")
+            Log.e(TAG, "signInWithPhoneCredential error: ${e.localizedMessage}")
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Verifies the 6-digit OTP code using verification ID and PhoneAuthProvider credential.
+     */
+    suspend fun verifyOtp(verificationId: String, otpCode: String): Result<AuthResult> {
+        return try {
+            val credential = PhoneAuthProvider.getCredential(verificationId, otpCode.trim())
+            signInWithPhoneCredential(credential)
+        } catch (e: Exception) {
+            Log.e(TAG, "verifyOtp error: ${e.localizedMessage}")
             Result.failure(e)
         }
     }
@@ -126,7 +100,6 @@ class AuthRepository(
     /**
      * Authenticates with Firebase using a Google ID Token.
      */
-
     suspend fun signInWithGoogle(idToken: String): Result<AuthResult> = withContext(Dispatchers.IO) {
         try {
             val credential = GoogleAuthProvider.getCredential(idToken, null)
@@ -180,8 +153,9 @@ class AuthRepository(
                     "uid" to user.uid,
                     "email" to (user.email ?: ""),
                     "phoneNumber" to (user.phoneNumber ?: ""),
-                    "displayName" to (user.displayName ?: ""),
+                    "displayName" to (user.displayName ?: "User ${user.uid.take(6)}"),
                     "createdAt" to System.currentTimeMillis(),
+                    "lastLoginAt" to System.currentTimeMillis(),
                     "authProvider" to provider,
                     "role" to "user"
                 )
@@ -205,15 +179,16 @@ class AuthRepository(
                 .document(user.uid)
                 .collection("subscription")
                 .document("current")
-            
+
             val subSnap = subRef.get().await()
             if (!subSnap.exists()) {
                 val initialSubData = hashMapOf(
-                    "status" to "active",
+                    "status" to "TRIAL_ACTIVE",
                     "plan" to "trial",
                     "createdAt" to System.currentTimeMillis(),
                     "updatedAt" to System.currentTimeMillis(),
-                    "isTrial" to true
+                    "isTrial" to true,
+                    "isProUser" to true
                 )
                 subRef.set(initialSubData, SetOptions.merge()).await()
                 Log.d(TAG, "Initialized subscription session for user ${user.uid}")
@@ -242,7 +217,7 @@ class AuthRepository(
             firestore.clearPersistence().await()
             Log.d(TAG, "Firestore persistence cache cleared successfully")
         } catch (e: Exception) {
-            Log.d(TAG, "Firestore clearPersistence skipped or already closed: ${e.localizedMessage}")
+            Log.e(TAG, "Firestore clearPersistence skipped or already closed: ${e.localizedMessage}")
         }
 
         try {

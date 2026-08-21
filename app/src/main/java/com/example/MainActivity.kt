@@ -53,6 +53,9 @@ class MainActivity : ComponentActivity(), com.razorpay.PaymentResultWithDataList
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
+        // Handle initial notification intent if app opened from push notification
+        handleNotificationIntent(intent)
+
         // Preload Razorpay Checkout SDK
         try {
             com.razorpay.Checkout.preload(applicationContext)
@@ -93,9 +96,40 @@ class MainActivity : ComponentActivity(), com.razorpay.PaymentResultWithDataList
                     contract = ActivityResultContracts.RequestPermission()
                 ) { isGranted ->
                     if (isGranted) {
-                        android.util.Log.d("MainActivity", "Notification permission granted")
+                        android.util.Log.d("MainActivity", "POST_NOTIFICATIONS permission granted")
                     } else {
-                        android.util.Log.w("MainActivity", "Notification permission denied")
+                        android.util.Log.w("MainActivity", "POST_NOTIFICATIONS permission denied")
+                    }
+                }
+
+                LaunchedEffect(Unit) {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        if (ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                        }
+                    }
+                    try {
+                        com.onesignal.OneSignal.Notifications.requestPermission(false)
+                    } catch (e: Exception) {
+                        android.util.Log.d("MainActivity", "OneSignal requestPermission: ${e.localizedMessage}")
+                    }
+                }
+
+                // OneSignal Notification Deep Linking Handler
+                val deepLinkRoute by SmartPOSApplication.deepLinkRoute.collectAsState()
+                LaunchedEffect(deepLinkRoute) {
+                    deepLinkRoute?.let { targetRoute ->
+                        if (targetRoute.isNotBlank()) {
+                            android.util.Log.d("MainActivity", "Executing Deep Link Navigation to: $targetRoute")
+                            try {
+                                navController.navigate(targetRoute) {
+                                    launchSingleTop = true
+                                }
+                            } catch (e: Exception) {
+                                android.util.Log.e("MainActivity", "Deep Link navigation error: ${e.localizedMessage}")
+                            }
+                            SmartPOSApplication.consumeDeepLinkRoute()
+                        }
                     }
                 }
 
@@ -132,19 +166,22 @@ class MainActivity : ComponentActivity(), com.razorpay.PaymentResultWithDataList
                     }
                 }
 
-                // App Update State & Checker
+                // RemoteConfig App Update Checker (config/app_settings)
                 var appUpdateInfo by remember { mutableStateOf<com.example.update.AppUpdateInfo?>(null) }
                 var showUpdateDialog by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
 
                 LaunchedEffect(Unit) {
-                    com.example.update.AppUpdateManagerHelper.checkForAppUpdate(context) { info ->
-                        if (info.isUpdateAvailable && info.latestVersionCode > com.example.BuildConfig.VERSION_CODE) {
-                            appUpdateInfo = info
+                    try {
+                        val updateInfo = com.example.service.RemoteConfigService.checkForAppUpdate(com.example.BuildConfig.VERSION_CODE)
+                        if (updateInfo.isUpdateAvailable && updateInfo.latestVersionCode > com.example.BuildConfig.VERSION_CODE) {
+                            appUpdateInfo = updateInfo
                             showUpdateDialog = true
                         } else {
-                            appUpdateInfo = info
+                            appUpdateInfo = updateInfo
                             showUpdateDialog = false
                         }
+                    } catch (e: Exception) {
+                        android.util.Log.e("MainActivity", "Remote update checker error: ${e.localizedMessage}")
                     }
                 }
 
@@ -160,18 +197,18 @@ class MainActivity : ComponentActivity(), com.razorpay.PaymentResultWithDataList
                     com.example.ui.components.AppUpdateDialog(
                         updateInfo = currentUpdateInfo,
                         onUpdateNow = {
-                            com.example.update.AppUpdateManagerHelper.startInAppUpdate(
+                            com.example.service.RemoteConfigService.openPlayStore(
                                 context = context,
-                                updateInfo = currentUpdateInfo,
-                                onProgress = { progress -> },
-                                onCompleted = {
-                                    Toast.makeText(context, "Update download completed! Launching installer...", Toast.LENGTH_LONG).show()
-                                    showUpdateDialog = false
-                                }
+                                customUrl = currentUpdateInfo.downloadUrl
                             )
+                            if (!currentUpdateInfo.isForceUpdate) {
+                                showUpdateDialog = false
+                            }
                         },
                         onLater = {
-                            showUpdateDialog = false
+                            if (!currentUpdateInfo.isForceUpdate) {
+                                showUpdateDialog = false
+                            }
                         }
                     )
                 }
@@ -447,5 +484,23 @@ class MainActivity : ComponentActivity(), com.razorpay.PaymentResultWithDataList
     override fun onPaymentError(code: Int, response: String?, paymentData: PaymentData?) {
         val errorMsg = response ?: "Payment cancelled or authorization failed"
         Toast.makeText(this, "Payment Error ($code): $errorMsg", Toast.LENGTH_LONG).show()
+    }
+
+    override fun onNewIntent(intent: android.content.Intent) {
+        super.onNewIntent(intent)
+        handleNotificationIntent(intent)
+    }
+
+    private fun handleNotificationIntent(intent: android.content.Intent?) {
+        val extras = intent?.extras ?: return
+        val rawRoute = extras.getString("screen_route")
+            ?: extras.getString("route")
+            ?: extras.getString("target_screen")
+            ?: extras.getString("screen")
+
+        if (!rawRoute.isNullOrBlank()) {
+            val resolvedRoute = SmartPOSApplication.mapRoute(rawRoute)
+            SmartPOSApplication.setDeepLinkRoute(resolvedRoute)
+        }
     }
 }

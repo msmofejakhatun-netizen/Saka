@@ -193,6 +193,23 @@ class AuthRepository(
                 subRef.set(initialSubData, SetOptions.merge()).await()
                 Log.d(TAG, "Initialized subscription session for user ${user.uid}")
             }
+
+            // OneSignal User Identification & CRM Tagging
+            try {
+                com.onesignal.OneSignal.login(user.uid)
+                com.onesignal.OneSignal.User.addTag("subscription_status", "PRO_ACTIVE")
+                com.onesignal.OneSignal.User.addTag("user_role", "merchant")
+                com.onesignal.OneSignal.User.addTag("auth_provider", provider)
+                if (!user.email.isNullOrBlank()) {
+                    com.onesignal.OneSignal.User.addEmail(user.email!!)
+                }
+                if (!user.phoneNumber.isNullOrBlank()) {
+                    com.onesignal.OneSignal.User.addSms(user.phoneNumber!!)
+                }
+                Log.d(TAG, "OneSignal user identified and tagged successfully for ${user.uid}")
+            } catch (e: Exception) {
+                Log.e(TAG, "OneSignal login/tagging error: ${e.localizedMessage}")
+            }
         } catch (e: Exception) {
             Log.e(TAG, "Error syncing user profile and subscription in Firestore: ${e.localizedMessage}")
         }
@@ -206,6 +223,13 @@ class AuthRepository(
         context: Context? = null,
         billingRepository: BillingRepository? = null
     ) = withContext(Dispatchers.IO) {
+        try {
+            com.onesignal.OneSignal.logout()
+            Log.d(TAG, "OneSignal logged out successfully")
+        } catch (e: Exception) {
+            Log.e(TAG, "OneSignal logout error: ${e.localizedMessage}")
+        }
+
         try {
             firebaseAuth.signOut()
             Log.d(TAG, "FirebaseAuth signed out successfully")

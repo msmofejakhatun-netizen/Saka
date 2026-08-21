@@ -48,8 +48,10 @@ razorpayCheckout = "1.6.33"
 zxingCore = "3.5.3"
 mlkitBarcodeScanning = "17.3.0"
 mlkitTextRecognition = "16.0.1"
+onesignal = "5.1.26"
 
 [libraries]
+onesignal = { group = "com.onesignal", name = "OneSignal", version.ref = "onesignal" }
 zxing-core = { group = "com.google.zxing", name = "core", version.ref = "zxingCore" }
 mlkit-barcode-scanning = { group = "com.google.mlkit", name = "barcode-scanning", version.ref = "mlkitBarcodeScanning" }
 mlkit-text-recognition = { group = "com.google.mlkit", name = "text-recognition", version.ref = "mlkitTextRecognition" }

@@ -214,6 +214,14 @@ object SubscriptionManager {
                             ).await()
                         Log.d(TAG, "Successfully updated Firestore users/$effectiveUid/subscription/current on payment success")
                     }
+
+                    // Update OneSignal CRM Tagging
+                    try {
+                        com.onesignal.OneSignal.User.addTag("subscription_status", "PRO_ACTIVE")
+                        com.onesignal.OneSignal.User.addTag("is_pro_user", "true")
+                    } catch (e: Exception) {
+                        Log.d(TAG, "OneSignal tag update error: ${e.localizedMessage}")
+                    }
                 } catch (e: Exception) {
                     Log.e(TAG, "Error updating Firestore in onPaymentSuccess: ${e.localizedMessage}")
                 }

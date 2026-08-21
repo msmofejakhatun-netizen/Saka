@@ -375,13 +375,30 @@ class MainActivity : ComponentActivity(), com.razorpay.PaymentResultWithDataList
                         val lockReason = (accessState as? SessionAccessState.Locked)?.reason
                             ?: "Mandatory Autopay ₹1 Trial Setup required to activate SmartPOS features."
 
+                        val navigateToDashboard = {
+                            navController.navigate(Screen.Dashboard.route) {
+                                popUpTo(Screen.Paywall.route) { inclusive = true }
+                                launchSingleTop = true
+                            }
+                        }
+
                         com.example.ui.screens.paywall.PaywallScreen(
                             viewModel = viewModel,
                             onBack = {
-                                if (!isMandatory) {
-                                    navController.popBackStack()
+                                val isPro = viewModel.subscriptionState.value.isProUser ||
+                                        viewModel.subscriptionState.value.autoPayMandateStatus == "ACTIVE" ||
+                                        viewModel.subscriptionState.value.autoPayMandateStatus == "TRIAL_ACTIVE"
+                                if (isPro) {
+                                    navigateToDashboard()
+                                } else if (!isMandatory) {
+                                    if (navController.previousBackStackEntry != null) {
+                                        navController.popBackStack()
+                                    } else {
+                                        navigateToDashboard()
+                                    }
                                 }
                             },
+                            onNavigateToDashboard = navigateToDashboard,
                             isMandatory = isMandatory,
                             lockReason = lockReason
                         )
@@ -412,9 +429,12 @@ class MainActivity : ComponentActivity(), com.razorpay.PaymentResultWithDataList
             razorpayPaymentId = mandateId,
             paymentData = paymentData,
             onComplete = {
-                Toast.makeText(this, "Subscription Activated! 🎉", Toast.LENGTH_LONG).show()
-                navControllerRef?.navigate(Screen.Dashboard.route) {
-                    popUpTo(Screen.Paywall.route) { inclusive = true }
+                runOnUiThread {
+                    Toast.makeText(this, "Subscription Activated! 🎉", Toast.LENGTH_LONG).show()
+                    navControllerRef?.navigate(Screen.Dashboard.route) {
+                        popUpTo(Screen.Paywall.route) { inclusive = true }
+                        launchSingleTop = true
+                    }
                 }
             }
         )

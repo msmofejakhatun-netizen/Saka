@@ -1,5 +1,6 @@
 package com.example.ui.screens.profile
 
+import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -22,50 +23,47 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.ui.components.GlassmorphicCard
 import com.example.ui.components.PremiumGradientBackground
 import com.example.ui.components.PremiumLoadingState
 import com.example.ui.theme.EmeraldGreen
 import com.example.ui.theme.EmeraldLight
-import com.example.ui.viewmodel.BillingViewModel
+import com.example.ui.viewmodel.ProfileViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ProfileSetupScreen(
-    viewModel: BillingViewModel,
-    onSetupSuccess: () -> Unit
+fun ProfileScreen(
+    viewModel: ProfileViewModel = viewModel(),
+    onSaveSuccess: () -> Unit = {}
 ) {
+    val context = LocalContext.current
     val scrollState = rememberScrollState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
-    // Immediately load existing user profile from Firestore / Local DB upon screen launch
+    // Immediately load user profile from Firestore / Room upon screen launch
     LaunchedEffect(Unit) {
         viewModel.loadUserProfile()
     }
 
-    val activeCategories by viewModel.categories.collectAsStateWithLifecycle()
-    val enabledCategories = remember(activeCategories) {
-        activeCategories.filter { it.isEnabled }
-    }
-
-    val requiredBusinessCategories = remember {
+    val selectableCategories = remember {
         listOf(
             "Kirana / Grocery",
             "Pharmacy / Medical",
             "Garments / Clothing",
             "Restaurant / Cafe / Food",
-            "General Store / Retail"
+            "General Store / Retail",
+            "Electronics & Mobile",
+            "Hardware & Sanitary",
+            "Automobile & Spares"
         )
-    }
-
-    val selectableCategories = remember(enabledCategories) {
-        val extraCategories = enabledCategories.map { it.name }.filter { it.isNotBlank() }
-        (requiredBusinessCategories + extraCategories).distinct()
     }
 
     var showCategoryMenu by remember { mutableStateOf(false) }
@@ -82,17 +80,17 @@ fun ProfileSetupScreen(
             verticalArrangement = Arrangement.Center
         ) {
             Text(
-                text = "Complete Profile",
+                text = "Business Profile Settings",
                 style = MaterialTheme.typography.displaySmall.copy(
                     fontWeight = FontWeight.Bold,
                     color = Color.White,
                     letterSpacing = 0.5.sp
                 ),
-                modifier = Modifier.testTag("profile_setup_title")
+                modifier = Modifier.testTag("profile_screen_title")
             )
 
             Text(
-                text = "Set up your business identity to start billing",
+                text = "Manage your merchant details & billing identity",
                 style = MaterialTheme.typography.bodyMedium,
                 color = Color(0xFF94A3B8),
                 textAlign = TextAlign.Center,
@@ -102,7 +100,7 @@ fun ProfileSetupScreen(
             GlassmorphicCard(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .testTag("profile_setup_form_card")
+                    .testTag("profile_form_card")
             ) {
                 Column(
                     modifier = Modifier
@@ -112,11 +110,11 @@ fun ProfileSetupScreen(
                 ) {
                     // Validation Errors
                     AnimatedVisibility(
-                        visible = viewModel.profileError != null,
+                        visible = uiState.errorMessage != null,
                         enter = fadeIn(),
                         exit = fadeOut()
                     ) {
-                        viewModel.profileError?.let { error ->
+                        uiState.errorMessage?.let { error ->
                             Text(
                                 text = error,
                                 color = MaterialTheme.colorScheme.error,
@@ -124,15 +122,15 @@ fun ProfileSetupScreen(
                                 fontWeight = FontWeight.Medium,
                                 modifier = Modifier
                                     .padding(bottom = 16.dp)
-                                    .testTag("profile_setup_error")
+                                    .testTag("profile_error_text")
                             )
                         }
                     }
 
-                    // Full Name Field
+                    // Full Name Field (Two-way UI State binding)
                     OutlinedTextField(
-                        value = viewModel.profileFullName,
-                        onValueChange = { viewModel.profileFullName = it },
+                        value = viewModel.fullName.ifBlank { uiState.fullName },
+                        onValueChange = { viewModel.updateFullName(it) },
                         label = { Text("Full Name", color = Color(0xFF94A3B8)) },
                         leadingIcon = {
                             Icon(
@@ -160,10 +158,10 @@ fun ProfileSetupScreen(
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // Business Name Field
+                    // Business Name Field (Two-way UI State binding)
                     OutlinedTextField(
-                        value = viewModel.profileBusinessName,
-                        onValueChange = { viewModel.profileBusinessName = it },
+                        value = viewModel.businessName.ifBlank { uiState.businessName },
+                        onValueChange = { viewModel.updateBusinessName(it) },
                         label = { Text("Business Name", color = Color(0xFF94A3B8)) },
                         leadingIcon = {
                             Icon(
@@ -191,14 +189,14 @@ fun ProfileSetupScreen(
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // Category Dropdown Selection
+                    // Business Category Dropdown Selection
                     ExposedDropdownMenuBox(
                         expanded = showCategoryMenu,
                         onExpandedChange = { showCategoryMenu = !showCategoryMenu },
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         OutlinedTextField(
-                            value = viewModel.profileCategory,
+                            value = viewModel.businessCategory.ifBlank { uiState.businessCategory },
                             onValueChange = {},
                             readOnly = true,
                             label = { Text("Business Category", color = Color(0xFF94A3B8)) },
@@ -246,7 +244,7 @@ fun ProfileSetupScreen(
                                 DropdownMenuItem(
                                     text = { Text(categoryName, color = Color.White) },
                                     onClick = {
-                                        viewModel.profileCategory = categoryName
+                                        viewModel.updateBusinessCategory(categoryName)
                                         showCategoryMenu = false
                                     },
                                     modifier = Modifier.testTag("profile_category_option_${categoryName.lowercase().replace(" ", "_").replace("/", "")}")
@@ -257,15 +255,15 @@ fun ProfileSetupScreen(
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // Merchant UPI ID Field
+                    // Merchant UPI ID Field (Two-way UI State binding)
                     OutlinedTextField(
-                        value = viewModel.profileUpiId,
-                        onValueChange = { viewModel.profileUpiId = it },
+                        value = viewModel.upiId.ifBlank { uiState.upiId },
+                        onValueChange = { viewModel.updateUpiId(it) },
                         label = { Text("Merchant UPI ID / VPA", color = Color(0xFF94A3B8)) },
                         placeholder = { Text("e.g. 9876543210@paytm") },
                         leadingIcon = {
                             Icon(
-                                imageVector = androidx.compose.material.icons.Icons.Default.AccountBalanceWallet,
+                                imageVector = Icons.Default.AccountBalanceWallet,
                                 contentDescription = "UPI Icon",
                                 tint = EmeraldGreen
                             )
@@ -289,17 +287,21 @@ fun ProfileSetupScreen(
 
                     Spacer(modifier = Modifier.height(32.dp))
 
-                    // Submit Button
+                    // Submit / Update Button
                     Button(
-                        onClick = { viewModel.completeProfileSetup(onSetupSuccess) },
-                        enabled = !viewModel.isSavingProfile,
+                        onClick = {
+                            viewModel.saveUserProfile(context = context) {
+                                onSaveSuccess()
+                            }
+                        },
+                        enabled = !uiState.isSaving && !viewModel.isSaving,
                         colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
                         contentPadding = PaddingValues(),
                         shape = RoundedCornerShape(12.dp),
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(52.dp)
-                            .testTag("profile_setup_submit")
+                            .testTag("profile_update_submit")
                     ) {
                         Box(
                             modifier = Modifier
@@ -314,11 +316,11 @@ fun ProfileSetupScreen(
                                 ),
                             contentAlignment = Alignment.Center
                         ) {
-                            if (viewModel.isSavingProfile) {
-                                PremiumLoadingState(text = "Saving...")
+                            if (uiState.isSaving || viewModel.isSaving) {
+                                PremiumLoadingState(text = "Updating Profile...")
                             } else {
                                 Text(
-                                    text = "SAVE & CONTINUE",
+                                    text = "UPDATE PROFILE",
                                     fontSize = 15.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = Color.White,

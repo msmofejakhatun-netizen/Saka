@@ -1,0 +1,92 @@
+package com.example.ui.viewmodel
+
+import android.content.Context
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.example.data.subscription.AppSessionManager
+import com.example.data.subscription.PaymentGatewayConfig
+import com.example.data.subscription.SubscriptionInfo
+import com.example.data.subscription.SubscriptionManager
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
+
+sealed class SubscriptionNavEvent {
+    object NavigateToDashboard : SubscriptionNavEvent()
+    data class ShowToast(val message: String) : SubscriptionNavEvent()
+}
+
+class SubscriptionViewModel : ViewModel() {
+
+    val subscriptionState: StateFlow<SubscriptionInfo> = SubscriptionManager.subscriptionState
+
+    val isProUser: StateFlow<Boolean> = subscriptionState
+        .map { it.isProUser }
+        .distinctUntilChanged()
+        .let { flow ->
+            // Expose as StateFlow with initial value
+            val initial = subscriptionState.value.isProUser
+            val stateFlow = kotlinx.coroutines.flow.MutableStateFlow(initial)
+            viewModelScope.launch {
+                flow.collect { stateFlow.value = it }
+            }
+            stateFlow
+        }
+
+    val subscriptionTier: StateFlow<String> = subscriptionState
+        .map { it.subscriptionTier }
+        .distinctUntilChanged()
+        .let { flow ->
+            val initial = subscriptionState.value.subscriptionTier
+            val stateFlow = kotlinx.coroutines.flow.MutableStateFlow(initial)
+            viewModelScope.launch {
+                flow.collect { stateFlow.value = it }
+            }
+            stateFlow
+        }
+
+    private val _navigationEvent = MutableSharedFlow<SubscriptionNavEvent>(replay = 0)
+    val navigationEvent: SharedFlow<SubscriptionNavEvent> = _navigationEvent.asSharedFlow()
+
+    init {
+        viewModelScope.launch {
+            subscriptionState.collect { info ->
+                val isActive = info.isProUser ||
+                        info.autoPayMandateStatus == "ACTIVE" ||
+                        info.autoPayMandateStatus == "TRIAL_ACTIVE"
+                if (isActive) {
+                    _navigationEvent.emit(SubscriptionNavEvent.NavigateToDashboard)
+                }
+            }
+        }
+    }
+
+    fun onSubscriptionSuccess(context: Context, userUid: String, paymentId: String) {
+        viewModelScope.launch {
+            PaymentGatewayConfig.handlePaymentSuccess(
+                context = context,
+                userUid = userUid,
+                razorpayPaymentId = paymentId,
+                onComplete = {
+                    viewModelScope.launch {
+                        _navigationEvent.emit(SubscriptionNavEvent.NavigateToDashboard)
+                    }
+                }
+            )
+        }
+    }
+
+    fun refreshSubscription(context: Context, userUid: String) {
+        AppSessionManager.verifyAndEnforceSubscriptionLock(context, userUid)
+    }
+
+    fun triggerDashboardNavigation() {
+        viewModelScope.launch {
+            _navigationEvent.emit(SubscriptionNavEvent.NavigateToDashboard)
+        }
+    }
+}

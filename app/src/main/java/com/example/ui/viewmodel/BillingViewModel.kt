@@ -537,11 +537,81 @@ class BillingViewModel(val repository: BillingRepository) : ViewModel() {
             tempUid = uid
             tempAuthProvider = provider
             tempMobileOrEmail = mobileOrEmail
-            profileFullName = ""
-            profileBusinessName = ""
-            profileCategory = ""
             isVerifyingOtp = false
+            loadUserProfile(uid)
             onNavigate(com.example.ui.navigation.Screen.ProfileSetup.route)
+        }
+    }
+
+    fun loadUserProfile(userId: String? = null) {
+        val targetUid = userId
+            ?: tempUid.takeIf { it.isNotBlank() }
+            ?: com.example.data.firebase.FirebaseManager.auth?.currentUser?.uid
+            ?: _currentUser.value?.id?.toString()
+
+        // If we already have currentUser in state, pre-fill immediately
+        _currentUser.value?.let { user ->
+            if (profileFullName.isBlank()) profileFullName = user.fullName
+            if (profileBusinessName.isBlank()) profileBusinessName = user.businessName
+            if (profileCategory.isBlank()) profileCategory = user.category
+            if (profileUpiId.isBlank() || profileUpiId == "merchant@upi") profileUpiId = user.upiId
+            if (profileMerchantName.isBlank()) profileMerchantName = user.merchantName.ifBlank { user.businessName }
+            if (tempMobileOrEmail.isBlank()) tempMobileOrEmail = user.mobileNumber
+        }
+
+        if (targetUid.isNullOrEmpty()) return
+
+        viewModelScope.launch {
+            try {
+                // Fetch from Firestore
+                if (com.example.data.firebase.FirebaseManager.isFirebaseAvailable) {
+                    val firestore = com.example.data.firebase.FirebaseManager.firestore
+                    val doc = firestore?.collection("users")?.document(targetUid)?.get()?.await()
+                    if (doc != null && doc.exists()) {
+                        val fullName = doc.getString("fullName") ?: doc.getString("displayName") ?: doc.getString("name") ?: ""
+                        val businessName = doc.getString("businessName") ?: doc.getString("shopName") ?: ""
+                        val category = doc.getString("businessCategory") ?: doc.getString("category") ?: doc.getString("selectedCategory") ?: ""
+                        val upiId = doc.getString("upiId") ?: doc.getString("merchantUpi") ?: doc.getString("vpa") ?: ""
+                        val merchantName = doc.getString("merchantName") ?: businessName
+                        val mobile = doc.getString("mobileNumber") ?: doc.getString("phoneNumber") ?: doc.getString("mobile") ?: ""
+
+                        if (fullName.isNotBlank()) profileFullName = fullName
+                        if (businessName.isNotBlank()) profileBusinessName = businessName
+                        if (category.isNotBlank()) profileCategory = category
+                        if (upiId.isNotBlank()) profileUpiId = upiId
+                        if (merchantName.isNotBlank()) profileMerchantName = merchantName
+                        if (mobile.isNotBlank()) tempMobileOrEmail = mobile
+
+                        val updatedEntity = UserEntity(
+                            id = targetUid.hashCode(),
+                            fullName = profileFullName,
+                            businessName = profileBusinessName,
+                            mobileNumber = tempMobileOrEmail,
+                            passwordHash = "",
+                            category = profileCategory,
+                            upiId = profileUpiId.ifBlank { "merchant@upi" },
+                            merchantName = profileMerchantName.ifBlank { profileBusinessName }
+                        )
+                        _currentUser.value = updatedEntity
+                        repository.insertUser(updatedEntity)
+                    }
+                }
+
+                // If still empty, check local DB
+                if (profileFullName.isBlank()) {
+                    val local = repository.getUserByUid(targetUid)
+                    if (local != null) {
+                        profileFullName = local.fullName
+                        profileBusinessName = local.businessName
+                        profileCategory = local.category
+                        profileUpiId = local.upiId.ifBlank { "merchant@upi" }
+                        profileMerchantName = local.merchantName.ifBlank { local.businessName }
+                        _currentUser.value = local
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("BillingViewModel", "Error loading user profile: ${e.localizedMessage}")
+            }
         }
     }
 
@@ -553,31 +623,37 @@ class BillingViewModel(val repository: BillingRepository) : ViewModel() {
         profileError = null
         isSavingProfile = true
 
+        val targetUid = tempUid.ifBlank {
+            com.example.data.firebase.FirebaseManager.auth?.currentUser?.uid ?: "user_${System.currentTimeMillis()}"
+        }
+
         viewModelScope.launch {
             try {
                 repository.saveUserProfile(
-                    uid = tempUid,
-                    fullName = profileFullName,
-                    businessName = profileBusinessName,
-                    mobileOrEmail = tempMobileOrEmail,
-                    category = profileCategory,
-                    authProvider = tempAuthProvider
+                    uid = targetUid,
+                    fullName = profileFullName.trim(),
+                    businessName = profileBusinessName.trim(),
+                    mobileOrEmail = tempMobileOrEmail.trim(),
+                    category = profileCategory.trim(),
+                    authProvider = tempAuthProvider.ifBlank { "phone" },
+                    upiId = profileUpiId.trim().ifBlank { "merchant@upi" },
+                    merchantName = profileMerchantName.trim().ifBlank { profileBusinessName.trim() }
                 )
 
                 val loggedUser = UserEntity(
-                    id = tempUid.hashCode(),
-                    fullName = profileFullName,
-                    businessName = profileBusinessName,
-                    mobileNumber = tempMobileOrEmail,
+                    id = targetUid.hashCode(),
+                    fullName = profileFullName.trim(),
+                    businessName = profileBusinessName.trim(),
+                    mobileNumber = tempMobileOrEmail.trim(),
                     passwordHash = "",
-                    category = profileCategory,
-                    upiId = profileUpiId.ifBlank { "store@upi" },
-                    merchantName = profileMerchantName.ifBlank { profileBusinessName }
+                    category = profileCategory.trim(),
+                    upiId = profileUpiId.trim().ifBlank { "merchant@upi" },
+                    merchantName = profileMerchantName.trim().ifBlank { profileBusinessName.trim() }
                 )
                 repository.insertUser(loggedUser)
                 _currentUser.value = loggedUser
                 isSavingProfile = false
-                _toastMessage.emit("Profile setup complete! Welcome to premium billing.")
+                _toastMessage.emit("Profile Updated Successfully")
                 resetAuthState()
                 onNavigateToDashboard()
             } catch (e: Exception) {
@@ -585,17 +661,18 @@ class BillingViewModel(val repository: BillingRepository) : ViewModel() {
                 Log.e("ProfileSetup", "Save user profile error: ${e.localizedMessage}")
                 // Graceful fallback: set local user and navigate smoothly to dashboard
                 val loggedUser = UserEntity(
-                    id = tempUid.hashCode(),
-                    fullName = profileFullName,
-                    businessName = profileBusinessName,
-                    mobileNumber = tempMobileOrEmail,
+                    id = targetUid.hashCode(),
+                    fullName = profileFullName.trim(),
+                    businessName = profileBusinessName.trim(),
+                    mobileNumber = tempMobileOrEmail.trim(),
                     passwordHash = "",
-                    category = profileCategory,
-                    upiId = profileUpiId.ifBlank { "store@upi" },
-                    merchantName = profileMerchantName.ifBlank { profileBusinessName }
+                    category = profileCategory.trim(),
+                    upiId = profileUpiId.trim().ifBlank { "merchant@upi" },
+                    merchantName = profileMerchantName.trim().ifBlank { profileBusinessName.trim() }
                 )
+                repository.insertUser(loggedUser)
                 _currentUser.value = loggedUser
-                _toastMessage.emit("Profile setup saved! Welcome.")
+                _toastMessage.emit("Profile Updated Successfully")
                 resetAuthState()
                 onNavigateToDashboard()
             }

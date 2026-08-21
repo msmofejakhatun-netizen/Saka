@@ -133,13 +133,22 @@ class BillingRepository(
                     ?.get()
                     ?.await()
                 if (doc != null && doc.exists()) {
+                    val fullName = doc.getString("fullName") ?: doc.getString("displayName") ?: ""
+                    val businessName = doc.getString("businessName") ?: doc.getString("shopName") ?: ""
+                    val mobileNumber = doc.getString("mobileNumber") ?: doc.getString("phoneNumber") ?: doc.getString("mobile") ?: ""
+                    val category = doc.getString("businessCategory") ?: doc.getString("category") ?: doc.getString("selectedCategory") ?: "Retail"
+                    val upiId = doc.getString("upiId") ?: doc.getString("merchantUpi") ?: doc.getString("vpa") ?: "merchant@upi"
+                    val merchantName = doc.getString("merchantName") ?: businessName
+
                     return@withContext UserEntity(
                         id = uid.hashCode(),
-                        fullName = doc.getString("fullName") ?: "",
-                        businessName = doc.getString("businessName") ?: "",
-                        mobileNumber = doc.getString("mobileNumber") ?: doc.getString("mobile") ?: "",
+                        fullName = fullName,
+                        businessName = businessName,
+                        mobileNumber = mobileNumber,
                         passwordHash = "",
-                        category = doc.getString("category") ?: doc.getString("selectedCategory") ?: "Retail"
+                        category = category,
+                        upiId = upiId.ifBlank { "merchant@upi" },
+                        merchantName = merchantName
                     )
                 }
             } catch (e: Exception) {
@@ -155,7 +164,9 @@ class BillingRepository(
         businessName: String,
         mobileOrEmail: String,
         category: String,
-        authProvider: String
+        authProvider: String,
+        upiId: String = "merchant@upi",
+        merchantName: String = businessName
     ) = withContext(Dispatchers.IO) {
         val authUser = FirebaseManager.auth?.currentUser
         val targetUid = authUser?.uid ?: uid
@@ -171,7 +182,9 @@ class BillingRepository(
             businessName = businessName,
             mobileNumber = mobileOrEmail,
             passwordHash = "",
-            category = category
+            category = category,
+            upiId = upiId.ifBlank { "merchant@upi" },
+            merchantName = merchantName.ifBlank { businessName }
         )
 
         if (FirebaseManager.isFirebaseAvailable) {
@@ -180,16 +193,20 @@ class BillingRepository(
                 val data = hashMapOf(
                     "uid" to targetUid,
                     "fullName" to fullName,
+                    "displayName" to fullName,
                     "businessName" to businessName,
+                    "businessCategory" to category,
                     "mobileNumber" to (if (mobileOrEmail.contains("@")) "" else mobileOrEmail),
                     "email" to (if (mobileOrEmail.contains("@")) mobileOrEmail else ""),
                     "category" to category,
+                    "upiId" to upiId.ifBlank { "merchant@upi" },
+                    "merchantName" to merchantName.ifBlank { businessName },
                     "role" to "user",
                     "authProvider" to authProvider,
-                    "createdAt" to System.currentTimeMillis()
+                    "updatedAt" to System.currentTimeMillis()
                 )
                 try {
-                    firestore.collection("users").document(targetUid).set(data).await()
+                    firestore.collection("users").document(targetUid).set(data, com.google.firebase.firestore.SetOptions.merge()).await()
                 } catch (e: Exception) {
                     Log.e(TAG, "Firestore saveUserProfile exception: ${e.localizedMessage}")
                     // Save to local Room database before rethrowing so local copy is safe

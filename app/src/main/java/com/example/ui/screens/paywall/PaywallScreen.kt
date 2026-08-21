@@ -43,12 +43,22 @@ import java.util.*
 fun PaywallScreen(
     viewModel: BillingViewModel,
     onBack: () -> Unit,
+    onNavigateToDashboard: () -> Unit = onBack,
     isMandatory: Boolean = false,
     lockReason: String? = null
 ) {
-    if (isMandatory) {
-        BackHandler(enabled = true) {
-            // Intercept and disable back button on mandatory paywall gate
+    val subscriptionState by viewModel.subscriptionState.collectAsState()
+    val isProUser = subscriptionState.isProUser ||
+            subscriptionState.autoPayMandateStatus == "ACTIVE" ||
+            subscriptionState.autoPayMandateStatus == "TRIAL_ACTIVE"
+
+    BackHandler(enabled = true) {
+        if (isProUser) {
+            viewModel.closePaywall()
+            onNavigateToDashboard()
+        } else if (!isMandatory) {
+            viewModel.closePaywall()
+            onBack()
         }
     }
 
@@ -62,6 +72,7 @@ fun PaywallScreen(
         PaywallScreenContent(
             viewModel = viewModel,
             onClose = onBack,
+            onNavigateToDashboard = onNavigateToDashboard,
             isMandatory = isMandatory,
             lockReason = lockReason
         )
@@ -72,18 +83,38 @@ fun PaywallScreen(
 fun PaywallModalDialog(
     viewModel: BillingViewModel,
     onDismiss: () -> Unit,
+    onNavigateToDashboard: () -> Unit = onDismiss,
     isMandatory: Boolean = false,
     lockReason: String? = null
 ) {
-    if (isMandatory) {
-        BackHandler(enabled = true) { }
+    val subscriptionState by viewModel.subscriptionState.collectAsState()
+    val isProUser = subscriptionState.isProUser ||
+            subscriptionState.autoPayMandateStatus == "ACTIVE" ||
+            subscriptionState.autoPayMandateStatus == "TRIAL_ACTIVE"
+
+    BackHandler(enabled = true) {
+        if (isProUser) {
+            viewModel.closePaywall()
+            onNavigateToDashboard()
+        } else if (!isMandatory) {
+            viewModel.closePaywall()
+            onDismiss()
+        }
     }
     Dialog(
-        onDismissRequest = { if (!isMandatory) onDismiss() },
+        onDismissRequest = {
+            if (isProUser) {
+                viewModel.closePaywall()
+                onNavigateToDashboard()
+            } else if (!isMandatory) {
+                viewModel.closePaywall()
+                onDismiss()
+            }
+        },
         properties = DialogProperties(
             usePlatformDefaultWidth = false,
-            dismissOnBackPress = !isMandatory,
-            dismissOnClickOutside = !isMandatory
+            dismissOnBackPress = isProUser || !isMandatory,
+            dismissOnClickOutside = isProUser || !isMandatory
         )
     ) {
         Surface(
@@ -99,6 +130,7 @@ fun PaywallModalDialog(
             PaywallScreenContent(
                 viewModel = viewModel,
                 onClose = onDismiss,
+                onNavigateToDashboard = onNavigateToDashboard,
                 isMandatory = isMandatory,
                 lockReason = lockReason
             )
@@ -110,6 +142,7 @@ fun PaywallModalDialog(
 fun PaywallScreenContent(
     viewModel: BillingViewModel,
     onClose: () -> Unit,
+    onNavigateToDashboard: () -> Unit = onClose,
     isMandatory: Boolean = false,
     lockReason: String? = null
 ) {
@@ -117,6 +150,10 @@ fun PaywallScreenContent(
     val activity = context as? android.app.Activity
     val subscriptionState by viewModel.subscriptionState.collectAsState()
     val currentUser by viewModel.currentUser.collectAsState()
+
+    val isProUser = subscriptionState.isProUser ||
+            subscriptionState.autoPayMandateStatus == "ACTIVE" ||
+            subscriptionState.autoPayMandateStatus == "TRIAL_ACTIVE"
 
     var selectedPlan by remember { mutableStateOf(PaymentGatewayHandler.SubscriptionPlan.TRIAL_3_DAYS_1_INR) }
     var showPaymentBottomSheet by remember { mutableStateOf(false) }
@@ -176,12 +213,12 @@ fun PaywallScreenContent(
         }
     }
 
-    // Auto-dismiss and navigate to dashboard after 1 second green checkmark display
+    // Auto-dismiss and navigate to dashboard after 1.5 second green checkmark confirmation
     LaunchedEffect(isSuccessOverlayVisible) {
         if (isSuccessOverlayVisible) {
-            kotlinx.coroutines.delay(1000)
+            kotlinx.coroutines.delay(1500)
             viewModel.closePaywall()
-            onClose()
+            onNavigateToDashboard()
         }
     }
 
@@ -213,9 +250,16 @@ fun PaywallScreenContent(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                if (!isMandatory) {
+                if (!isMandatory || isProUser) {
                     IconButton(
-                        onClick = onClose,
+                        onClick = {
+                            viewModel.closePaywall()
+                            if (isProUser) {
+                                onNavigateToDashboard()
+                            } else {
+                                onClose()
+                            }
+                        },
                         modifier = Modifier
                             .background(Color(0x22FFFFFF), CircleShape)
                             .testTag("paywall_close_button")
@@ -606,7 +650,7 @@ fun PaywallScreenContent(
                                         "🎉 Mandate Approved! Pro Activated via ${result.provider}. Ref: $mandateRef",
                                         Toast.LENGTH_LONG
                                     ).show()
-                                    onClose()
+                                    isSuccessOverlayVisible = true
                                 } else {
                                     Toast.makeText(
                                         context,
@@ -622,12 +666,16 @@ fun PaywallScreenContent(
             )
         }
 
-        // Green checkmark success overlay (1-second transition)
+        // Green checkmark success overlay (1.5-second transition with instant click-to-proceed)
         if (isSuccessOverlayVisible) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(Color.Black.copy(alpha = 0.92f))
+                    .clickable {
+                        viewModel.closePaywall()
+                        onNavigateToDashboard()
+                    }
                     .testTag("paywall_success_overlay"),
                 contentAlignment = Alignment.Center
             ) {

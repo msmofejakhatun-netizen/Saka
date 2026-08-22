@@ -65,11 +65,14 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -80,6 +83,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -122,6 +126,9 @@ fun CreateBillScreen(
     val activeBusinessType = remember(currentUser) { com.example.util.BusinessCategoryUtils.getBusinessType(currentUser) }
 
     val context = LocalContext.current
+    LaunchedEffect(Unit) {
+        viewModel.syncSettingsFromPrefs(context)
+    }
     var searchQuery by remember { mutableStateOf("") }
     var selectedCategoryFilter by remember { mutableStateOf("All") }
     var showSuccessReceiptDialog by remember { mutableStateOf(false) }
@@ -862,18 +869,42 @@ fun CreateBillScreen(
 
                         Button(
                             onClick = {
-                                val pdf = com.example.util.InvoicePdfHelper.generateInvoicePdf(
-                                    context = localContext,
-                                    invoice = invoice,
-                                    businessName = currentUser?.businessName,
-                                    merchantMobile = currentUser?.mobileNumber
-                                )
-                                com.example.util.InvoicePdfHelper.shareInvoicePdfWhatsApp(
-                                    context = localContext,
-                                    pdfFile = pdf,
-                                    invoice = invoice,
-                                    businessName = currentUser?.businessName
-                                )
+                                val custPhone = invoice.customerMobile.ifBlank { "" }
+                                if (custPhone.isNotBlank()) {
+                                    val sent = com.example.util.WhatsAppInvoiceHelper.sendWhatsAppInvoice(
+                                        context = localContext,
+                                        customerPhone = custPhone,
+                                        invoice = invoice,
+                                        businessName = currentUser?.businessName ?: "SmartPOS Store"
+                                    )
+                                    if (!sent) {
+                                        val pdf = com.example.util.InvoicePdfHelper.generateInvoicePdf(
+                                            context = localContext,
+                                            invoice = invoice,
+                                            businessName = currentUser?.businessName,
+                                            merchantMobile = currentUser?.mobileNumber
+                                        )
+                                        com.example.util.InvoicePdfHelper.shareInvoicePdfWhatsApp(
+                                            context = localContext,
+                                            pdfFile = pdf,
+                                            invoice = invoice,
+                                            businessName = currentUser?.businessName
+                                        )
+                                    }
+                                } else {
+                                    val pdf = com.example.util.InvoicePdfHelper.generateInvoicePdf(
+                                        context = localContext,
+                                        invoice = invoice,
+                                        businessName = currentUser?.businessName,
+                                        merchantMobile = currentUser?.mobileNumber
+                                    )
+                                    com.example.util.InvoicePdfHelper.shareInvoicePdfWhatsApp(
+                                        context = localContext,
+                                        pdfFile = pdf,
+                                        invoice = invoice,
+                                        businessName = currentUser?.businessName
+                                    )
+                                }
                             },
                             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF25D366)),
                             modifier = Modifier.fillMaxWidth().height(42.dp).testTag("receipt_whatsapp_button")
@@ -972,11 +1003,31 @@ fun CreateBillScreen(
                     viewModel.updatePOSInvoice { updated ->
                         generatedInvoiceForReceipt = updated
                         showSuccessReceiptDialog = true
+
+                        // Auto-send WhatsApp invoice if enabled and customer phone number is present
+                        if (viewModel.autoSendWhatsAppInvoice && updated.customerMobile.isNotBlank()) {
+                            com.example.util.WhatsAppInvoiceHelper.sendWhatsAppInvoice(
+                                context = context,
+                                customerPhone = updated.customerMobile,
+                                invoice = updated,
+                                businessName = currentUser?.businessName ?: "SmartPOS Store"
+                            )
+                        }
                     }
                 } else {
                     viewModel.generatePOSInvoice { generatedInvoice ->
                         generatedInvoiceForReceipt = generatedInvoice
                         showSuccessReceiptDialog = true
+
+                        // Auto-send WhatsApp invoice if enabled and customer phone number is present
+                        if (viewModel.autoSendWhatsAppInvoice && generatedInvoice.customerMobile.isNotBlank()) {
+                            com.example.util.WhatsAppInvoiceHelper.sendWhatsAppInvoice(
+                                context = context,
+                                customerPhone = generatedInvoice.customerMobile,
+                                invoice = generatedInvoice,
+                                businessName = currentUser?.businessName ?: "SmartPOS Store"
+                            )
+                        }
                     }
                 }
             },
@@ -1069,6 +1120,16 @@ fun CreateBillScreen(
                         showCartReviewModal = false
                         generatedInvoiceForReceipt = updated
                         showSuccessReceiptDialog = true
+
+                        // Auto-send WhatsApp invoice if enabled and customer phone number is present
+                        if (viewModel.autoSendWhatsAppInvoice && updated.customerMobile.isNotBlank()) {
+                            com.example.util.WhatsAppInvoiceHelper.sendWhatsAppInvoice(
+                                context = context,
+                                customerPhone = updated.customerMobile,
+                                invoice = updated,
+                                businessName = currentUser?.businessName ?: "SmartPOS Store"
+                            )
+                        }
                     }
                 } else {
                     viewModel.generatePOSInvoice { generatedInvoice ->
@@ -1076,6 +1137,16 @@ fun CreateBillScreen(
                         showCartReviewModal = false
                         generatedInvoiceForReceipt = generatedInvoice
                         showSuccessReceiptDialog = true
+
+                        // Auto-send WhatsApp invoice if enabled and customer phone number is present
+                        if (viewModel.autoSendWhatsAppInvoice && generatedInvoice.customerMobile.isNotBlank()) {
+                            com.example.util.WhatsAppInvoiceHelper.sendWhatsAppInvoice(
+                                context = context,
+                                customerPhone = generatedInvoice.customerMobile,
+                                invoice = generatedInvoice,
+                                businessName = currentUser?.businessName ?: "SmartPOS Store"
+                            )
+                        }
                     }
                 }
             },
@@ -1511,6 +1582,7 @@ private fun PaymentAndCheckoutModalDialog(
     onBackToCart: () -> Unit,
     onDismiss: () -> Unit
 ) {
+    val context = LocalContext.current
     androidx.compose.ui.window.Dialog(
         onDismissRequest = onDismiss,
         properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)
@@ -1757,6 +1829,64 @@ private fun PaymentAndCheckoutModalDialog(
                                         }
                                     }
                                 }
+                            }
+                        }
+                    }
+
+                    // Auto-send WhatsApp Bill Switch Option
+                    item {
+                        Card(
+                            colors = CardDefaults.cardColors(containerColor = Color(0x1F1E295D)),
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .border(1.dp, Color(0x3310B981), RoundedCornerShape(12.dp))
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(
+                                    modifier = Modifier.weight(1f),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Share,
+                                        contentDescription = "WhatsApp",
+                                        tint = Color(0xFF25D366),
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Column {
+                                        Text(
+                                            text = "Auto-send WhatsApp Bill",
+                                            color = Color.White,
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                        Text(
+                                            text = if (viewModel.posCustomerMobile.isNotBlank()) "Send invoice to ${viewModel.posCustomerMobile}" else "Opens WhatsApp when mobile number is provided",
+                                            color = Color(0xFF94A3B8),
+                                            fontSize = 10.sp
+                                        )
+                                    }
+                                }
+                                Switch(
+                                    checked = viewModel.autoSendWhatsAppInvoice,
+                                    onCheckedChange = { checked ->
+                                        viewModel.toggleAutoSendWhatsAppInvoice(checked, context)
+                                    },
+                                    colors = SwitchDefaults.colors(
+                                        checkedThumbColor = Color.White,
+                                        checkedTrackColor = EmeraldGreen,
+                                        uncheckedThumbColor = Color(0xFF94A3B8),
+                                        uncheckedTrackColor = Color(0x33FFFFFF)
+                                    ),
+                                    modifier = Modifier.testTag("pos_auto_whatsapp_checkout_switch")
+                                )
                             }
                         }
                     }

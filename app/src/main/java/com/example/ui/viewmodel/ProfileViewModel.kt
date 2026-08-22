@@ -41,6 +41,7 @@ class ProfileViewModel(
     var businessCategory by mutableStateOf("")
     var upiId by mutableStateOf("merchant@upi")
     var merchantName by mutableStateOf("")
+    var autoSendWhatsAppInvoice by mutableStateOf(true)
     var errorMessage by mutableStateOf<String?>(null)
     var isSaving by mutableStateOf(false)
     var isLoading by mutableStateOf(false)
@@ -49,7 +50,10 @@ class ProfileViewModel(
         loadUserProfile()
     }
 
-    fun loadUserProfile(userId: String? = null) {
+    fun loadUserProfile(userId: String? = null, context: Context? = null) {
+        if (context != null) {
+            autoSendWhatsAppInvoice = com.example.util.WhatsAppInvoiceHelper.isAutoSendEnabled(context)
+        }
         val targetUid = userId ?: FirebaseManager.auth?.currentUser?.uid
         if (targetUid.isNullOrEmpty()) return
 
@@ -112,10 +116,20 @@ class ProfileViewModel(
         _uiState.value = _uiState.value.copy(merchantName = value)
     }
 
+    fun updateAutoSendWhatsAppInvoice(enabled: Boolean, context: Context? = null) {
+        autoSendWhatsAppInvoice = enabled
+        if (context != null) {
+            com.example.util.WhatsAppInvoiceHelper.setAutoSendEnabled(context, enabled)
+        }
+    }
+
     fun saveUserProfile(
         context: Context? = null,
         onSuccess: () -> Unit
     ) {
+        if (context != null) {
+            com.example.util.WhatsAppInvoiceHelper.setAutoSendEnabled(context, autoSendWhatsAppInvoice)
+        }
         if (fullName.isBlank() || businessName.isBlank() || businessCategory.isBlank()) {
             errorMessage = "Please fill all required fields and select a business category"
             _uiState.value = _uiState.value.copy(errorMessage = errorMessage)

@@ -113,6 +113,7 @@ dependencies {
   implementation(libs.play.services.auth)
   implementation(libs.razorpay.checkout)
   implementation(libs.onesignal)
+  implementation(libs.androidx.work.runtime.ktx)
   implementation(libs.firebase.appcheck.recaptcha)
   implementation(libs.kotlinx.coroutines.android)
   implementation(libs.kotlinx.coroutines.core)

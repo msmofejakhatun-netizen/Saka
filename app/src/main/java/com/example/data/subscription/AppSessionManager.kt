@@ -44,6 +44,13 @@ object AppSessionManager {
             SessionAccessState.Granted
         } else {
             val message = if (isExpired || !isPro) {
+                // Check if 3-day trial notification needs to be dispatched
+                com.example.worker.TrialTrackerWorker.checkAndNotifyIfExpired(
+                    context = context,
+                    trialStartDate = info.trialStartDate,
+                    isProActive = info.isProUser,
+                    tier = info.subscriptionTier
+                )
                 "Subscription Expired. Upgrade to Pro to continue using SmartPOS"
             } else {
                 "Mandate Authorization Required. Upgrade to Pro to continue using SmartPOS"

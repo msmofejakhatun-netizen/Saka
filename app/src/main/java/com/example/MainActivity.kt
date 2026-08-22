@@ -69,6 +69,9 @@ class MainActivity : ComponentActivity(), com.razorpay.PaymentResultWithDataList
         // Initialize Subscription Manager
         com.example.data.subscription.SubscriptionManager.init(this)
 
+        // Schedule Background 3-Day Trial Expiry Tracker Worker
+        com.example.worker.TrialTrackerWorker.schedule(this)
+
         // Initialize SQLite Room database & repository locally
         val database = AppDatabase.getDatabase(this)
         val repository = BillingRepository(

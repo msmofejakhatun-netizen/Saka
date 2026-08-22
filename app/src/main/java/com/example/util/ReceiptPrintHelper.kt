@@ -43,20 +43,12 @@ object ReceiptPrintHelper {
      */
     @SuppressLint("MissingPermission")
     fun getPairedPrinters(context: Context): List<PairedPrinter> {
-        val bluetoothAdapter = BluetoothAdapter.getDefaultAdapter() ?: return emptyList()
-        if (!bluetoothAdapter.isEnabled) return emptyList()
-
-        return try {
-            val pairedDevices: Set<BluetoothDevice>? = bluetoothAdapter.bondedDevices
-            pairedDevices?.map { device ->
-                PairedPrinter(
-                    name = device.name ?: "Unknown Device",
-                    address = device.address
-                )
-            } ?: emptyList()
-        } catch (e: SecurityException) {
-            Log.e(TAG, "SecurityException getting paired printers: ${e.message}")
-            emptyList()
+        val paired = PrinterManager.loadPairedDevices(context)
+        return paired.map {
+            PairedPrinter(
+                name = it.name,
+                address = it.address
+            )
         }
     }
 
@@ -74,23 +66,21 @@ object ReceiptPrintHelper {
         isGstMode: Boolean = true,
         onStatusUpdate: (String) -> Unit
     ): Boolean = withContext(Dispatchers.IO) {
-        val bluetoothAdapter = BluetoothAdapter.getDefaultAdapter()
-        if (bluetoothAdapter == null || !bluetoothAdapter.isEnabled) {
+        val adapter = BluetoothPermissionHandler.getBluetoothAdapter(context)
+        if (adapter == null || !adapter.isEnabled) {
             withContext(Dispatchers.Main) { onStatusUpdate("Bluetooth is turned off") }
             return@withContext false
         }
 
-        var socket: BluetoothSocket? = null
+        val socket = PrinterManager.openSocket(context, deviceAddress)
+        if (socket == null) {
+            withContext(Dispatchers.Main) { onStatusUpdate("Connection failed to $deviceAddress") }
+            return@withContext false
+        }
+
         var outputStream: OutputStream? = null
 
         try {
-            withContext(Dispatchers.Main) { onStatusUpdate("Connecting to printer $deviceAddress...") }
-            val device: BluetoothDevice = bluetoothAdapter.getRemoteDevice(deviceAddress)
-
-            socket = device.createRfcommSocketToServiceRecord(SPP_UUID)
-            bluetoothAdapter.cancelDiscovery()
-            socket.connect()
-
             outputStream = socket.outputStream
 
             withContext(Dispatchers.Main) { onStatusUpdate("Formatting ESC/POS receipt data...") }
@@ -115,7 +105,7 @@ object ReceiptPrintHelper {
         } finally {
             try {
                 outputStream?.close()
-                socket?.close()
+                socket.close()
             } catch (e: Exception) {
                 Log.e(TAG, "Error closing printer socket: ${e.message}")
             }
@@ -132,59 +122,33 @@ object ReceiptPrintHelper {
         businessName: String = "Kirana Store",
         paperWidthMm: Int = 58,
         onStatusUpdate: (String) -> Unit
-    ): Boolean = withContext(Dispatchers.IO) {
-        val adapter = BluetoothAdapter.getDefaultAdapter() ?: return@withContext false
-        var socket: BluetoothSocket? = null
-        var outputStream: OutputStream? = null
-
-        try {
-            withContext(Dispatchers.Main) { onStatusUpdate("Connecting to $deviceAddress...") }
-            val device = adapter.getRemoteDevice(deviceAddress)
-            socket = device.createRfcommSocketToServiceRecord(SPP_UUID)
-            adapter.cancelDiscovery()
-            socket.connect()
-
-            outputStream = socket.outputStream
-            val lineLen = if (paperWidthMm == 80) 48 else 32
-
-            val sb = ByteArrayOutputStream()
-            sb.write(INIT_PRINTER)
-            sb.write(ALIGN_CENTER)
-            sb.write(DOUBLE_SIZE)
-            sb.write(BOLD_ON)
-            sb.write("${businessName.uppercase()}\n".toByteArray(Charsets.UTF_8))
-            sb.write(NORMAL_SIZE)
-            sb.write(BOLD_OFF)
-            sb.write("BLUETOOTH PRINTER TEST OK\n".toByteArray(Charsets.UTF_8))
-            sb.write("${"-".repeat(lineLen)}\n".toByteArray(Charsets.UTF_8))
-            sb.write(ALIGN_LEFT)
-            sb.write("Width Mode: ${paperWidthMm}mm ($lineLen cols)\n".toByteArray(Charsets.UTF_8))
-            sb.write("Status: Connected & Ready\n".toByteArray(Charsets.UTF_8))
-            sb.write("Date: ${SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()).format(Date())}\n".toByteArray(Charsets.UTF_8))
-            sb.write("${"-".repeat(lineLen)}\n".toByteArray(Charsets.UTF_8))
-            sb.write(ALIGN_CENTER)
-            sb.write("Smart Kirana POS Thermal Engine\n\n\n\n".toByteArray(Charsets.UTF_8))
-            sb.write(CUT_PAPER)
-
-            outputStream.write(sb.toByteArray())
-            outputStream.flush()
-            withContext(Dispatchers.Main) { onStatusUpdate("Test print successful!") }
-            true
-        } catch (e: Exception) {
-            withContext(Dispatchers.Main) { onStatusUpdate("Test Print Error: ${e.localizedMessage}") }
-            false
-        } finally {
-            try {
-                outputStream?.close()
-                socket?.close()
-            } catch (_: Exception) {}
-        }
+    ): Boolean {
+        return PrinterManager.printTestPage(
+            context = context,
+            deviceAddress = deviceAddress,
+            businessName = businessName,
+            paperWidthMm = paperWidthMm,
+            onStatus = onStatusUpdate
+        )
     }
 
     /**
      * Generate ESC/POS byte sequence for thermal printer receipt
      */
-    private fun generateReceiptBytes(
+    fun printReceiptBytes(
+        invoice: InvoiceEntity,
+        businessName: String,
+        upiId: String,
+        paperWidthMm: Int,
+        isGstMode: Boolean
+    ): ByteArray {
+        return generateReceiptBytes(invoice, businessName, upiId, paperWidthMm, isGstMode)
+    }
+
+    /**
+     * Generate ESC/POS byte sequence for thermal printer receipt
+     */
+    fun generateReceiptBytes(
         invoice: InvoiceEntity,
         businessName: String,
         upiId: String,

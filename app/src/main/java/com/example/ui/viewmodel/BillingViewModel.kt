@@ -1,6 +1,7 @@
 package com.example.ui.viewmodel
 
 import android.app.Activity
+import android.content.Context
 import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -819,10 +820,22 @@ class BillingViewModel(val repository: BillingRepository) : ViewModel() {
     var posDiscountInput by mutableStateOf("")
     var posTaxPercentageInput by mutableStateOf("0")
     var isGstInvoiceMode by mutableStateOf(true) // GST Invoice vs Simple Estimate
+    var autoSendWhatsAppInvoice by mutableStateOf(true)
     val posCartItems = mutableStateListOf<POSCartItem>()
     var isGeneratingPOSInvoice by mutableStateOf(false)
     var posInvoiceError by mutableStateOf<String?>(null)
     var lastGeneratedInvoice by mutableStateOf<InvoiceEntity?>(null)
+
+    fun toggleAutoSendWhatsAppInvoice(enabled: Boolean, context: Context? = null) {
+        autoSendWhatsAppInvoice = enabled
+        if (context != null) {
+            com.example.util.WhatsAppInvoiceHelper.setAutoSendEnabled(context, enabled)
+        }
+    }
+
+    fun syncSettingsFromPrefs(context: Context) {
+        autoSendWhatsAppInvoice = com.example.util.WhatsAppInvoiceHelper.isAutoSendEnabled(context)
+    }
 
     // Editing POS Invoice state
     var editingInvoice by mutableStateOf<InvoiceEntity?>(null)

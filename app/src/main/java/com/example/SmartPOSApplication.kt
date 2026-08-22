@@ -66,6 +66,7 @@ class SmartPOSApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         initOneSignal()
+        com.example.worker.TrialTrackerWorker.schedule(this)
     }
 
     private fun initOneSignal() {

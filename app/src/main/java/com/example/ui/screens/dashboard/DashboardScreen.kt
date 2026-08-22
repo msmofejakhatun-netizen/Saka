@@ -62,6 +62,7 @@ fun DashboardScreen(
     var currentTab by remember { mutableStateOf(initialTab) }
     var showAdminScreenOverlay by remember { mutableStateOf(false) }
     var showProfileScreenOverlay by remember { mutableStateOf(false) }
+    var showPrinterSettingsOverlay by remember { mutableStateOf(false) }
 
     val context = LocalContext.current
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
@@ -138,11 +139,12 @@ fun DashboardScreen(
                     NavigationDrawerItem(
                         icon = { Icon(Icons.Default.Home, contentDescription = "Home", tint = EmeraldGreen) },
                         label = { Text("Home Dashboard", fontWeight = FontWeight.SemiBold) },
-                        selected = currentTab == BottomTab.HOME && !showAdminScreenOverlay && !showProfileScreenOverlay,
+                        selected = currentTab == BottomTab.HOME && !showAdminScreenOverlay && !showProfileScreenOverlay && !showPrinterSettingsOverlay,
                         onClick = {
                             currentTab = BottomTab.HOME
                             showAdminScreenOverlay = false
                             showProfileScreenOverlay = false
+                            showPrinterSettingsOverlay = false
                             coroutineScope.launch { drawerState.close() }
                         },
                         colors = NavigationDrawerItemDefaults.colors(selectedContainerColor = Color(0x3310B981)),
@@ -152,11 +154,12 @@ fun DashboardScreen(
                     NavigationDrawerItem(
                         icon = { Icon(Icons.Default.PointOfSale, contentDescription = "POS Bill", tint = EmeraldGreen) },
                         label = { Text("POS Terminal & Billing", fontWeight = FontWeight.SemiBold) },
-                        selected = currentTab == BottomTab.POS && !showAdminScreenOverlay && !showProfileScreenOverlay,
+                        selected = currentTab == BottomTab.POS && !showAdminScreenOverlay && !showProfileScreenOverlay && !showPrinterSettingsOverlay,
                         onClick = {
                             currentTab = BottomTab.POS
                             showAdminScreenOverlay = false
                             showProfileScreenOverlay = false
+                            showPrinterSettingsOverlay = false
                             coroutineScope.launch { drawerState.close() }
                         },
                         colors = NavigationDrawerItemDefaults.colors(selectedContainerColor = Color(0x3310B981)),
@@ -166,11 +169,12 @@ fun DashboardScreen(
                     NavigationDrawerItem(
                         icon = { Icon(Icons.Default.Inventory2, contentDescription = "Inventory", tint = EmeraldGreen) },
                         label = { Text("Inventory & Stock Alert", fontWeight = FontWeight.SemiBold) },
-                        selected = currentTab == BottomTab.INVENTORY && !showAdminScreenOverlay && !showProfileScreenOverlay,
+                        selected = currentTab == BottomTab.INVENTORY && !showAdminScreenOverlay && !showProfileScreenOverlay && !showPrinterSettingsOverlay,
                         onClick = {
                             currentTab = BottomTab.INVENTORY
                             showAdminScreenOverlay = false
                             showProfileScreenOverlay = false
+                            showPrinterSettingsOverlay = false
                             coroutineScope.launch { drawerState.close() }
                         },
                         colors = NavigationDrawerItemDefaults.colors(selectedContainerColor = Color(0x3310B981)),
@@ -180,11 +184,12 @@ fun DashboardScreen(
                     NavigationDrawerItem(
                         icon = { Icon(Icons.Default.History, contentDescription = "History", tint = EmeraldGreen) },
                         label = { Text("Transaction History", fontWeight = FontWeight.SemiBold) },
-                        selected = currentTab == BottomTab.HISTORY && !showAdminScreenOverlay && !showProfileScreenOverlay,
+                        selected = currentTab == BottomTab.HISTORY && !showAdminScreenOverlay && !showProfileScreenOverlay && !showPrinterSettingsOverlay,
                         onClick = {
                             currentTab = BottomTab.HISTORY
                             showAdminScreenOverlay = false
                             showProfileScreenOverlay = false
+                            showPrinterSettingsOverlay = false
                             coroutineScope.launch { drawerState.close() }
                         },
                         colors = NavigationDrawerItemDefaults.colors(selectedContainerColor = Color(0x3310B981)),
@@ -194,11 +199,12 @@ fun DashboardScreen(
                     NavigationDrawerItem(
                         icon = { Icon(Icons.Default.AccountBalanceWallet, contentDescription = "Udhar Khata", tint = EmeraldGreen) },
                         label = { Text("Udhar Khata (Credit Ledger)", fontWeight = FontWeight.SemiBold) },
-                        selected = currentTab == BottomTab.UDHAR && !showAdminScreenOverlay && !showProfileScreenOverlay,
+                        selected = currentTab == BottomTab.UDHAR && !showAdminScreenOverlay && !showProfileScreenOverlay && !showPrinterSettingsOverlay,
                         onClick = {
                             currentTab = BottomTab.UDHAR
                             showAdminScreenOverlay = false
                             showProfileScreenOverlay = false
+                            showPrinterSettingsOverlay = false
                             coroutineScope.launch { drawerState.close() }
                         },
                         colors = NavigationDrawerItemDefaults.colors(selectedContainerColor = Color(0x3310B981)),
@@ -225,10 +231,25 @@ fun DashboardScreen(
                         onClick = {
                             showProfileScreenOverlay = true
                             showAdminScreenOverlay = false
+                            showPrinterSettingsOverlay = false
                             coroutineScope.launch { drawerState.close() }
                         },
                         colors = NavigationDrawerItemDefaults.colors(selectedContainerColor = Color(0x33F59E0B)),
                         modifier = Modifier.padding(horizontal = 12.dp).testTag("drawer_item_profile")
+                    )
+
+                    NavigationDrawerItem(
+                        icon = { Icon(Icons.Default.Print, contentDescription = "Thermal Printer", tint = EmeraldGreen) },
+                        label = { Text("Thermal Printer Setup", fontWeight = FontWeight.SemiBold) },
+                        selected = showPrinterSettingsOverlay,
+                        onClick = {
+                            showPrinterSettingsOverlay = true
+                            showProfileScreenOverlay = false
+                            showAdminScreenOverlay = false
+                            coroutineScope.launch { drawerState.close() }
+                        },
+                        colors = NavigationDrawerItemDefaults.colors(selectedContainerColor = Color(0x3310B981)),
+                        modifier = Modifier.padding(horizontal = 12.dp).testTag("drawer_item_printer_settings")
                     )
 
                     NavigationDrawerItem(
@@ -398,6 +419,11 @@ fun DashboardScreen(
                         com.example.ui.screens.profile.ProfileSetupScreen(
                             viewModel = viewModel,
                             onSetupSuccess = { showProfileScreenOverlay = false }
+                        )
+                    } else if (showPrinterSettingsOverlay) {
+                        com.example.ui.screens.settings.PrinterSettingsScreen(
+                            businessName = currentUser?.businessName ?: "Smart POS Store",
+                            onNavigateBack = { showPrinterSettingsOverlay = false }
                         )
                     } else {
                         AnimatedContent(

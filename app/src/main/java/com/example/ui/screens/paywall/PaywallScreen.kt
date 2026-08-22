@@ -187,9 +187,9 @@ fun PaywallScreenContent(
 
                 if (snapshot != null && snapshot.exists()) {
                     val status = snapshot.getString("status").orEmpty()
-                    val isPro = snapshot.getBoolean("isProUser") ?: false
+                    val isProSnap = snapshot.getBoolean("isProUser") ?: false
 
-                    if ((status == "ACTIVE" || status == "TRIAL_ACTIVE" || isPro) && !hasProcessedSuccess) {
+                    if ((status == "ACTIVE" || status == "TRIAL_ACTIVE" || isProSnap) && !hasProcessedSuccess) {
                         hasProcessedSuccess = true
                         isSuccessOverlayVisible = true
                         playSuccessChime(context)
@@ -202,21 +202,22 @@ fun PaywallScreenContent(
         }
     }
 
-    // Fallback: Monitor local subscriptionState flow directly for instantaneous response
-    LaunchedEffect(subscriptionState) {
-        val status = subscriptionState.autoPayMandateStatus
-        val isPro = subscriptionState.isProUser
-        if ((status == "ACTIVE" || status == "TRIAL_ACTIVE" || isPro) && !hasProcessedSuccess) {
+    val subscriptionStatus = subscriptionState.autoPayMandateStatus
+    val isPro = subscriptionState.isProUser
+
+    // Monitor subscription state and trigger one-time transition
+    LaunchedEffect(subscriptionStatus, isPro) {
+        if ((subscriptionStatus == "ACTIVE" || subscriptionStatus == "TRIAL_ACTIVE" || isPro) && !hasProcessedSuccess) {
             hasProcessedSuccess = true
             isSuccessOverlayVisible = true
             playSuccessChime(context)
         }
     }
 
-    // Auto-dismiss and navigate to dashboard after 1.5 second green checkmark confirmation
+    // Auto-dismiss and wipe paywall from history to transition smoothly to home dashboard
     LaunchedEffect(isSuccessOverlayVisible) {
         if (isSuccessOverlayVisible) {
-            kotlinx.coroutines.delay(1500)
+            kotlinx.coroutines.delay(1200)
             viewModel.closePaywall()
             onNavigateToDashboard()
         }

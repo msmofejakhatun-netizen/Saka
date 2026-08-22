@@ -83,6 +83,25 @@ class BillingViewModel(val repository: BillingRepository) : ViewModel() {
     private val _currentUser = MutableStateFlow<UserEntity?>(null)
     val currentUser: StateFlow<UserEntity?> = _currentUser.asStateFlow()
 
+    init {
+        viewModelScope.launch {
+            try {
+                val fb = com.example.data.firebase.FirebaseManager.auth?.currentUser
+                if (fb != null) {
+                    val user = repository.getUserByUid(fb.uid)
+                        ?: repository.getUserByMobile(fb.phoneNumber.orEmpty())
+                    if (user != null) {
+                        _currentUser.value = user
+                    } else {
+                        loadUserProfile(fb.uid)
+                    }
+                }
+            } catch (e: Exception) {
+                Log.d("BillingVM", "Auto user fetch: ${e.localizedMessage}")
+            }
+        }
+    }
+
     // --- Subscription & Paywall State ---
     val subscriptionState = com.example.data.subscription.SubscriptionManager.subscriptionState
     var showPaywallDialog by mutableStateOf(false)

@@ -134,6 +134,23 @@ class MainActivity : ComponentActivity(), com.razorpay.PaymentResultWithDataList
                 }
 
                 val currentUser by viewModel.currentUser.collectAsState()
+                val subscriptionState by viewModel.subscriptionState.collectAsState()
+                val fbUser = com.example.data.firebase.FirebaseManager.auth?.currentUser
+
+                // Strict Route Guard logic
+                val isLoggedIn = (fbUser != null) || (currentUser != null)
+                val isProUser = subscriptionState.isProUser ||
+                        subscriptionState.autoPayMandateStatus == "ACTIVE" ||
+                        subscriptionState.autoPayMandateStatus == "TRIAL_ACTIVE"
+
+                val startDestination = remember {
+                    when {
+                        !isLoggedIn -> Screen.Login.route
+                        isLoggedIn && !isProUser -> Screen.Paywall.route
+                        else -> Screen.Dashboard.route // Force move to dashboard if logged in & pro
+                    }
+                }
+
                 val lifecycleOwner = LocalLifecycleOwner.current
                 var sessionAccessState by remember {
                     mutableStateOf<SessionAccessState>(SessionAccessState.Granted)
@@ -154,6 +171,7 @@ class MainActivity : ComponentActivity(), com.razorpay.PaymentResultWithDataList
                                     if (currentRoute != Screen.Paywall.route && currentRoute != Screen.Login.route && currentRoute != Screen.ProfileSetup.route) {
                                         navController.navigate(Screen.Paywall.route) {
                                             popUpTo(Screen.Dashboard.route) { inclusive = true }
+                                            launchSingleTop = true
                                         }
                                     }
                                 }
@@ -215,7 +233,7 @@ class MainActivity : ComponentActivity(), com.razorpay.PaymentResultWithDataList
 
                 NavHost(
                     navController = navController,
-                    startDestination = Screen.Login.route,
+                    startDestination = startDestination,
                     modifier = Modifier.fillMaxSize()
                 ) {
                     composable(Screen.Login.route) {

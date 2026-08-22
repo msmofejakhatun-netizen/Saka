@@ -7,12 +7,13 @@ import com.example.data.subscription.AppSessionManager
 import com.example.data.subscription.PaymentGatewayConfig
 import com.example.data.subscription.SubscriptionInfo
 import com.example.data.subscription.SubscriptionManager
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 
 sealed class SubscriptionNavEvent {
@@ -28,9 +29,8 @@ class SubscriptionViewModel : ViewModel() {
         .map { it.isProUser }
         .distinctUntilChanged()
         .let { flow ->
-            // Expose as StateFlow with initial value
             val initial = subscriptionState.value.isProUser
-            val stateFlow = kotlinx.coroutines.flow.MutableStateFlow(initial)
+            val stateFlow = MutableStateFlow(initial)
             viewModelScope.launch {
                 flow.collect { stateFlow.value = it }
             }
@@ -42,15 +42,17 @@ class SubscriptionViewModel : ViewModel() {
         .distinctUntilChanged()
         .let { flow ->
             val initial = subscriptionState.value.subscriptionTier
-            val stateFlow = kotlinx.coroutines.flow.MutableStateFlow(initial)
+            val stateFlow = MutableStateFlow(initial)
             viewModelScope.launch {
                 flow.collect { stateFlow.value = it }
             }
             stateFlow
         }
 
-    private val _navigationEvent = MutableSharedFlow<SubscriptionNavEvent>(replay = 0)
-    val navigationEvent: SharedFlow<SubscriptionNavEvent> = _navigationEvent.asSharedFlow()
+    private val _navigationChannel = Channel<SubscriptionNavEvent>(Channel.BUFFERED)
+    val navigationEvent: Flow<SubscriptionNavEvent> = _navigationChannel.receiveAsFlow()
+
+    private var hasEmittedActiveNav = false
 
     init {
         viewModelScope.launch {
@@ -58,8 +60,11 @@ class SubscriptionViewModel : ViewModel() {
                 val isActive = info.isProUser ||
                         info.autoPayMandateStatus == "ACTIVE" ||
                         info.autoPayMandateStatus == "TRIAL_ACTIVE"
-                if (isActive) {
-                    _navigationEvent.emit(SubscriptionNavEvent.NavigateToDashboard)
+                if (isActive && !hasEmittedActiveNav) {
+                    hasEmittedActiveNav = true
+                    _navigationChannel.send(SubscriptionNavEvent.NavigateToDashboard)
+                } else if (!isActive) {
+                    hasEmittedActiveNav = false
                 }
             }
         }
@@ -73,7 +78,7 @@ class SubscriptionViewModel : ViewModel() {
                 razorpayPaymentId = paymentId,
                 onComplete = {
                     viewModelScope.launch {
-                        _navigationEvent.emit(SubscriptionNavEvent.NavigateToDashboard)
+                        _navigationChannel.send(SubscriptionNavEvent.NavigateToDashboard)
                     }
                 }
             )
@@ -86,7 +91,8 @@ class SubscriptionViewModel : ViewModel() {
 
     fun triggerDashboardNavigation() {
         viewModelScope.launch {
-            _navigationEvent.emit(SubscriptionNavEvent.NavigateToDashboard)
+            _navigationChannel.send(SubscriptionNavEvent.NavigateToDashboard)
         }
     }
 }
+

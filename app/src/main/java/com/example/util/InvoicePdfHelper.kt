@@ -427,7 +427,7 @@ object InvoicePdfHelper {
             return
         }
 
-        val message = "Hello ${invoice.customerName},\n\nHere is your digital tax invoice from ${businessName ?: "Billing Store"}.\nInvoice Amount: $${String.format(Locale.US, "%.2f", invoice.amount)}\nPayment Mode: ${invoice.paymentMode}\n\nThank you for shopping with us!"
+        val message = WhatsAppInvoiceHelper.formatInvoiceText(invoice, businessName ?: "SmartPOS Store")
 
         val whatsappIntent = Intent(Intent.ACTION_SEND).apply {
             type = "application/pdf"

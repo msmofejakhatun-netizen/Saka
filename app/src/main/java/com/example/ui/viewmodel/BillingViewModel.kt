@@ -837,6 +837,69 @@ class BillingViewModel(val repository: BillingRepository) : ViewModel() {
         autoSendWhatsAppInvoice = com.example.util.WhatsAppInvoiceHelper.isAutoSendEnabled(context)
     }
 
+    /**
+     * Generates a complete itemized WhatsApp invoice text message from an InvoiceEntity.
+     */
+    fun generateWhatsAppInvoiceText(invoice: InvoiceEntity, storeName: String? = null): String {
+        val effectiveStore = storeName?.ifBlank { currentUser.value?.businessName }
+            ?: currentUser.value?.businessName
+            ?: "SmartPOS Retail Store"
+        return com.example.util.WhatsAppInvoiceHelper.formatInvoiceText(invoice, effectiveStore)
+    }
+
+    /**
+     * Generates complete itemized WhatsApp invoice text message directly from current POS Cart state.
+     */
+    fun generateWhatsAppInvoiceTextFromCart(
+        storeName: String? = null,
+        invoiceNumber: String = "BILL-${(1000..9999).random()}"
+    ): String {
+        val effectiveStore = storeName?.ifBlank { currentUser.value?.businessName }
+            ?: currentUser.value?.businessName
+            ?: "SmartPOS Retail Store"
+
+        val cartItemList = posCartItems.map { item ->
+            com.example.util.WhatsAppInvoiceItem(
+                name = item.product.name,
+                quantity = item.quantity,
+                unit = item.product.unit,
+                price = item.customPrice,
+                totalAmount = item.totalAmount
+            )
+        }
+
+        return com.example.util.WhatsAppInvoiceHelper.generateWhatsAppInvoiceTextFromItems(
+            items = cartItemList,
+            invoiceNumber = invoiceNumber,
+            storeName = effectiveStore,
+            subtotal = posSubtotal,
+            discountAmount = posDiscountAmount,
+            taxAmount = posTaxAmount,
+            totalAmount = posFinalTotal,
+            paymentMode = posPaymentMode
+        )
+    }
+
+    /**
+     * Dispatches the itemized WhatsApp invoice message to customer.
+     */
+    fun sendWhatsAppInvoice(
+        context: Context,
+        customerMobile: String,
+        invoice: InvoiceEntity,
+        storeName: String? = null
+    ): Boolean {
+        val effectiveStore = storeName?.ifBlank { currentUser.value?.businessName }
+            ?: currentUser.value?.businessName
+            ?: "SmartPOS Retail Store"
+        return com.example.util.WhatsAppInvoiceHelper.sendWhatsAppInvoice(
+            context = context,
+            customerPhone = customerMobile,
+            invoice = invoice,
+            businessName = effectiveStore
+        )
+    }
+
     // Editing POS Invoice state
     var editingInvoice by mutableStateOf<InvoiceEntity?>(null)
     var originalPurchasedItems by mutableStateOf<List<Pair<ProductEntity, Double>>>(emptyList())

@@ -17,13 +17,14 @@ data class SubscriptionInfo(
     val isProUser: Boolean = false,
     val subscriptionTier: String = "FREE", // "FREE", "TRIAL_1_INR", "MONTHLY_79_INR", "ANNUAL_799_INR"
     val subscriptionExpiryDate: Long = 0L,
-    val autoPayMandateStatus: String = "NONE", // "NONE", "ACTIVE", "CANCELLED", "FAILED"
+    val autoPayMandateStatus: String = "NONE", // "NONE", "ACTIVE", "TRIAL_ACTIVE", "CANCELLED", "FAILED"
     val autoPayMandateId: String = "",
     val gatewayProvider: String = "RAZORPAY", // "RAZORPAY", "PHONEPE", "DIRECT_UPI_MANDATE"
     val gatewaySubscriptionId: String = "",
     val settlementAccount: String = PaymentGatewayConfig.SETTLEMENT_ACCOUNT_MASKED,
     val trialStartDate: Long = 0L,
-    val paymentMethod: String = ""
+    val paymentMethod: String = "",
+    val hasUsedTrial: Boolean = false
 )
 
 object SubscriptionManager {
@@ -40,6 +41,7 @@ object SubscriptionManager {
     private const val KEY_SETTLEMENT_ACCT = "settlement_account"
     private const val KEY_TRIAL_START = "trial_start_date"
     private const val KEY_PAYMENT_METHOD = "payment_method"
+    private const val KEY_HAS_USED_TRIAL = "has_used_trial"
 
     private val _subscriptionState = MutableStateFlow(SubscriptionInfo())
     val subscriptionState: StateFlow<SubscriptionInfo> = _subscriptionState.asStateFlow()
@@ -69,11 +71,12 @@ object SubscriptionManager {
         val settlement = prefs.getString(KEY_SETTLEMENT_ACCT, PaymentGatewayConfig.SETTLEMENT_ACCOUNT_MASKED) ?: PaymentGatewayConfig.SETTLEMENT_ACCOUNT_MASKED
         val trialStart = prefs.getLong(KEY_TRIAL_START, 0L)
         val method = prefs.getString(KEY_PAYMENT_METHOD, "") ?: ""
+        val hasUsedTrial = prefs.getBoolean(KEY_HAS_USED_TRIAL, false) || trialStart > 0L || tier == "TRIAL_1_INR"
 
         val now = System.currentTimeMillis()
         var validPro = isPro
         if (expiry > 0L && now > expiry) {
-            if (mandateStatus == "ACTIVE") {
+            if (mandateStatus == "ACTIVE" || mandateStatus == "TRIAL_ACTIVE") {
                 val newExpiry = now + TimeUnit.DAYS.toMillis(30)
                 prefs.edit().putLong(KEY_EXPIRY, newExpiry).apply()
                 validPro = true
@@ -93,7 +96,8 @@ object SubscriptionManager {
             gatewaySubscriptionId = subId,
             settlementAccount = settlement,
             trialStartDate = trialStart,
-            paymentMethod = method
+            paymentMethod = method,
+            hasUsedTrial = hasUsedTrial
         )
         _subscriptionState.value = info
 
@@ -127,6 +131,7 @@ object SubscriptionManager {
         val trialExpiry = now + TimeUnit.DAYS.toMillis(3) // 3-day trial
         val mandateId = if (subscriptionId.isNotBlank()) subscriptionId else "MND-RZP-" + (100000..999999).random()
 
+        val hasUsedTrial = true
         val info = SubscriptionInfo(
             isProUser = true,
             subscriptionTier = "TRIAL_1_INR",
@@ -137,7 +142,8 @@ object SubscriptionManager {
             gatewaySubscriptionId = mandateId,
             settlementAccount = PaymentGatewayConfig.SETTLEMENT_ACCOUNT_MASKED,
             trialStartDate = now,
-            paymentMethod = paymentMethod
+            paymentMethod = paymentMethod,
+            hasUsedTrial = hasUsedTrial
         )
 
         saveLocal(context, info)
@@ -173,7 +179,8 @@ object SubscriptionManager {
             gatewaySubscriptionId = mandateId,
             settlementAccount = PaymentGatewayConfig.SETTLEMENT_ACCOUNT_MASKED,
             trialStartDate = now,
-            paymentMethod = "Razorpay Checkout (UPI Autopay)"
+            paymentMethod = "Razorpay Checkout (UPI Autopay)",
+            hasUsedTrial = true
         )
 
         saveLocal(context, info)
@@ -196,7 +203,8 @@ object SubscriptionManager {
                             "gatewaySubscriptionId" to mandateId,
                             "settlementAccount" to PaymentGatewayConfig.SETTLEMENT_ACCOUNT_MASKED,
                             "trialStartDate" to now,
-                            "paymentMethod" to "Razorpay Checkout (UPI Autopay)"
+                            "paymentMethod" to "Razorpay Checkout (UPI Autopay)",
+                            "hasUsedTrial" to true
                         )
                         firestore.collection("users").document(effectiveUid)
                             .collection("subscription").document("current")
@@ -208,6 +216,7 @@ object SubscriptionManager {
                                     "isProUser" to true,
                                     "subscriptionTier" to "TRIAL_1_INR",
                                     "subscriptionStatus" to "TRIAL_ACTIVE",
+                                    "hasUsedTrial" to true,
                                     "updatedAt" to System.currentTimeMillis()
                                 ),
                                 com.google.firebase.firestore.SetOptions.merge()
@@ -219,6 +228,7 @@ object SubscriptionManager {
                     try {
                         com.onesignal.OneSignal.User.addTag("subscription_status", "PRO_ACTIVE")
                         com.onesignal.OneSignal.User.addTag("is_pro_user", "true")
+                        com.onesignal.OneSignal.User.addTag("has_used_trial", "true")
                     } catch (e: Exception) {
                         Log.d(TAG, "OneSignal tag update error: ${e.localizedMessage}")
                     }
@@ -350,6 +360,7 @@ object SubscriptionManager {
             .putString(KEY_SETTLEMENT_ACCT, info.settlementAccount)
             .putLong(KEY_TRIAL_START, info.trialStartDate)
             .putString(KEY_PAYMENT_METHOD, info.paymentMethod)
+            .putBoolean(KEY_HAS_USED_TRIAL, info.hasUsedTrial || info.trialStartDate > 0L || info.subscriptionTier == "TRIAL_1_INR")
             .apply()
     }
 
@@ -372,6 +383,7 @@ object SubscriptionManager {
                     } else {
                         "EXPIRED"
                     }
+                    val usedTrialFlag = info.hasUsedTrial || info.trialStartDate > 0L || info.subscriptionTier == "TRIAL_1_INR"
                     val subMap = hashMapOf(
                         "isProUser" to info.isProUser,
                         "subscriptionTier" to info.subscriptionTier,
@@ -384,17 +396,19 @@ object SubscriptionManager {
                         "gatewaySubscriptionId" to info.gatewaySubscriptionId,
                         "settlementAccount" to info.settlementAccount,
                         "trialStartDate" to info.trialStartDate,
-                        "paymentMethod" to info.paymentMethod
+                        "paymentMethod" to info.paymentMethod,
+                        "hasUsedTrial" to usedTrialFlag
                     )
                     firestore.collection("users").document(targetUid)
                         .collection("subscription").document("current")
-                        .set(subMap).await()
+                        .set(subMap, com.google.firebase.firestore.SetOptions.merge()).await()
                     firestore.collection("users").document(targetUid)
                         .set(
                             hashMapOf(
                                 "isProUser" to info.isProUser,
                                 "subscriptionTier" to info.subscriptionTier,
                                 "subscriptionStatus" to statusStr,
+                                "hasUsedTrial" to usedTrialFlag,
                                 "updatedAt" to System.currentTimeMillis()
                             ),
                             com.google.firebase.firestore.SetOptions.merge()
@@ -415,6 +429,12 @@ object SubscriptionManager {
                 if (firestore != null) {
                     val doc = firestore.collection("users").document(targetUid)
                         .collection("subscription").document("current").get().await()
+                    val userDoc = firestore.collection("users").document(targetUid).get().await()
+                    
+                    val hasUsedTrialDoc = doc.getBoolean("hasUsedTrial") 
+                        ?: userDoc.getBoolean("hasUsedTrial") 
+                        ?: false
+
                     if (doc.exists()) {
                         val isPro = doc.getBoolean("isProUser") ?: false
                         val tier = doc.getString("subscriptionTier") ?: "FREE"
@@ -426,6 +446,7 @@ object SubscriptionManager {
                         val settlement = doc.getString("settlementAccount") ?: PaymentGatewayConfig.SETTLEMENT_ACCOUNT_MASKED
                         val trialStart = doc.getLong("trialStartDate") ?: 0L
                         val method = doc.getString("paymentMethod") ?: ""
+                        val hasUsedTrial = hasUsedTrialDoc || trialStart > 0L || tier == "TRIAL_1_INR"
 
                         val now = System.currentTimeMillis()
                         val validPro = isPro && (expiry == 0L || expiry > now)
@@ -440,11 +461,17 @@ object SubscriptionManager {
                             gatewaySubscriptionId = subId,
                             settlementAccount = settlement,
                             trialStartDate = trialStart,
-                            paymentMethod = method
+                            paymentMethod = method,
+                            hasUsedTrial = hasUsedTrial
                         )
 
                         saveLocal(context, remoteInfo)
                         _subscriptionState.value = remoteInfo
+                    } else if (userDoc.exists() && hasUsedTrialDoc) {
+                        val current = _subscriptionState.value
+                        val updated = current.copy(hasUsedTrial = true)
+                        saveLocal(context, updated)
+                        _subscriptionState.value = updated
                     }
                 }
             } catch (e: Exception) {

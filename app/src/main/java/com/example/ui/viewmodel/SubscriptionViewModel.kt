@@ -11,6 +11,7 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
@@ -49,43 +50,60 @@ class SubscriptionViewModel : ViewModel() {
             stateFlow
         }
 
+    val hasUsedTrial: StateFlow<Boolean> = subscriptionState
+        .map { it.hasUsedTrial }
+        .distinctUntilChanged()
+        .let { flow ->
+            val initial = subscriptionState.value.hasUsedTrial
+            val stateFlow = MutableStateFlow(initial)
+            viewModelScope.launch {
+                flow.collect { stateFlow.value = it }
+            }
+            stateFlow
+        }
+
+    private val _isSuccessDialogVisible = MutableStateFlow(false)
+    val isSuccessDialogVisible: StateFlow<Boolean> = _isSuccessDialogVisible.asStateFlow()
+
     private val _navigationChannel = Channel<SubscriptionNavEvent>(Channel.BUFFERED)
     val navigationEvent: Flow<SubscriptionNavEvent> = _navigationChannel.receiveAsFlow()
 
-    private var hasEmittedActiveNav = false
+    fun showSuccessDialog() {
+        _isSuccessDialogVisible.value = true
+    }
 
-    init {
-        viewModelScope.launch {
-            subscriptionState.collect { info ->
-                val isActive = info.isProUser ||
-                        info.autoPayMandateStatus == "ACTIVE" ||
-                        info.autoPayMandateStatus == "TRIAL_ACTIVE"
-                if (isActive && !hasEmittedActiveNav) {
-                    hasEmittedActiveNav = true
-                    _navigationChannel.send(SubscriptionNavEvent.NavigateToDashboard)
-                } else if (!isActive) {
-                    hasEmittedActiveNav = false
-                }
-            }
-        }
+    fun dismissSuccessDialog() {
+        _isSuccessDialogVisible.value = false
     }
 
     fun onSubscriptionSuccess(context: Context, userUid: String, paymentId: String) {
         viewModelScope.launch {
+            _isSuccessDialogVisible.value = true
             PaymentGatewayConfig.handlePaymentSuccess(
                 context = context,
                 userUid = userUid,
                 razorpayPaymentId = paymentId,
                 onComplete = {
-                    viewModelScope.launch {
-                        _navigationChannel.send(SubscriptionNavEvent.NavigateToDashboard)
-                    }
+                    // Success handled cleanly, dialog can be dismissed by user or transition
                 }
             )
         }
     }
 
+    fun cancelSubscription(
+        context: Context,
+        userUid: String,
+        onComplete: (Boolean, String) -> Unit
+    ) {
+        SubscriptionManager.cancelSubscription(
+            context = context,
+            userUid = userUid,
+            onComplete = onComplete
+        )
+    }
+
     fun refreshSubscription(context: Context, userUid: String) {
+        SubscriptionManager.init(context, userUid)
         AppSessionManager.verifyAndEnforceSubscriptionLock(context, userUid)
     }
 
@@ -95,4 +113,3 @@ class SubscriptionViewModel : ViewModel() {
         }
     }
 }
-

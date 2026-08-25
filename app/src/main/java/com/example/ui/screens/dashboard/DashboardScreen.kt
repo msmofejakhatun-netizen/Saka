@@ -73,6 +73,8 @@ fun DashboardScreen(
         currentTab = initialTab
     }
 
+    val subscriptionState by com.example.data.subscription.SubscriptionManager.subscriptionState.collectAsState()
+
     PremiumGradientBackground {
         ModalNavigationDrawer(
             drawerState = drawerState,
@@ -85,210 +87,35 @@ fun DashboardScreen(
                         .width(300.dp)
                         .testTag("side_navigation_drawer_sheet")
                 ) {
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    // Business Header in Drawer
-                    Card(
-                        colors = CardDefaults.cardColors(containerColor = Color(0x3310B981)),
-                        shape = RoundedCornerShape(16.dp),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp)
-                            .border(1.dp, Color(0x3310B981), RoundedCornerShape(16.dp))
-                    ) {
-                        Column(modifier = Modifier.padding(16.dp)) {
-                            Box(
-                                modifier = Modifier
-                                    .size(48.dp)
-                                    .background(EmeraldGreen, CircleShape),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = (currentUser?.businessName?.take(1) ?: "K").uppercase(),
-                                    color = Color.White,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 22.sp
-                                )
-                            }
-                            Spacer(modifier = Modifier.height(10.dp))
-                            Text(
-                                text = currentUser?.businessName ?: "Kirana Billing",
-                                color = Color.White,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 16.sp
-                            )
-                            Text(
-                                text = "👤 ${currentUser?.fullName ?: "Store Owner"}",
-                                color = Color(0xFF94A3B8),
-                                fontSize = 12.sp
-                            )
-                            Text(
-                                text = "Category: ${currentUser?.category ?: "Retail"}",
-                                color = EmeraldLight,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(20.dp))
-                    HorizontalDivider(color = Color(0x22FFFFFF), modifier = Modifier.padding(horizontal = 16.dp))
-                    Spacer(modifier = Modifier.height(10.dp))
-
-                    // Drawer Links
-                    NavigationDrawerItem(
-                        icon = { Icon(Icons.Default.Home, contentDescription = "Home", tint = EmeraldGreen) },
-                        label = { Text("Home Dashboard", fontWeight = FontWeight.SemiBold) },
-                        selected = currentTab == BottomTab.HOME && !showAdminScreenOverlay && !showProfileScreenOverlay && !showPrinterSettingsOverlay,
-                        onClick = {
-                            currentTab = BottomTab.HOME
+                    com.example.ui.components.NavDrawerContent(
+                        currentUser = currentUser,
+                        currentTab = currentTab,
+                        showProfileScreenOverlay = showProfileScreenOverlay,
+                        showPrinterSettingsOverlay = showPrinterSettingsOverlay,
+                        onTabSelected = { tab ->
+                            currentTab = tab
                             showAdminScreenOverlay = false
                             showProfileScreenOverlay = false
                             showPrinterSettingsOverlay = false
                             coroutineScope.launch { drawerState.close() }
                         },
-                        colors = NavigationDrawerItemDefaults.colors(selectedContainerColor = Color(0x3310B981)),
-                        modifier = Modifier.padding(horizontal = 12.dp).testTag("drawer_item_home")
-                    )
-
-                    NavigationDrawerItem(
-                        icon = { Icon(Icons.Default.PointOfSale, contentDescription = "POS Bill", tint = EmeraldGreen) },
-                        label = { Text("POS Terminal & Billing", fontWeight = FontWeight.SemiBold) },
-                        selected = currentTab == BottomTab.POS && !showAdminScreenOverlay && !showProfileScreenOverlay && !showPrinterSettingsOverlay,
-                        onClick = {
-                            currentTab = BottomTab.POS
-                            showAdminScreenOverlay = false
-                            showProfileScreenOverlay = false
-                            showPrinterSettingsOverlay = false
-                            coroutineScope.launch { drawerState.close() }
-                        },
-                        colors = NavigationDrawerItemDefaults.colors(selectedContainerColor = Color(0x3310B981)),
-                        modifier = Modifier.padding(horizontal = 12.dp).testTag("drawer_item_pos")
-                    )
-
-                    NavigationDrawerItem(
-                        icon = { Icon(Icons.Default.Inventory2, contentDescription = "Inventory", tint = EmeraldGreen) },
-                        label = { Text("Inventory & Stock Alert", fontWeight = FontWeight.SemiBold) },
-                        selected = currentTab == BottomTab.INVENTORY && !showAdminScreenOverlay && !showProfileScreenOverlay && !showPrinterSettingsOverlay,
-                        onClick = {
-                            currentTab = BottomTab.INVENTORY
-                            showAdminScreenOverlay = false
-                            showProfileScreenOverlay = false
-                            showPrinterSettingsOverlay = false
-                            coroutineScope.launch { drawerState.close() }
-                        },
-                        colors = NavigationDrawerItemDefaults.colors(selectedContainerColor = Color(0x3310B981)),
-                        modifier = Modifier.padding(horizontal = 12.dp).testTag("drawer_item_inventory")
-                    )
-
-                    NavigationDrawerItem(
-                        icon = { Icon(Icons.Default.History, contentDescription = "History", tint = EmeraldGreen) },
-                        label = { Text("Transaction History", fontWeight = FontWeight.SemiBold) },
-                        selected = currentTab == BottomTab.HISTORY && !showAdminScreenOverlay && !showProfileScreenOverlay && !showPrinterSettingsOverlay,
-                        onClick = {
-                            currentTab = BottomTab.HISTORY
-                            showAdminScreenOverlay = false
-                            showProfileScreenOverlay = false
-                            showPrinterSettingsOverlay = false
-                            coroutineScope.launch { drawerState.close() }
-                        },
-                        colors = NavigationDrawerItemDefaults.colors(selectedContainerColor = Color(0x3310B981)),
-                        modifier = Modifier.padding(horizontal = 12.dp).testTag("drawer_item_history")
-                    )
-
-                    NavigationDrawerItem(
-                        icon = { Icon(Icons.Default.AccountBalanceWallet, contentDescription = "Udhar Khata", tint = EmeraldGreen) },
-                        label = { Text("Udhar Khata (Credit Ledger)", fontWeight = FontWeight.SemiBold) },
-                        selected = currentTab == BottomTab.UDHAR && !showAdminScreenOverlay && !showProfileScreenOverlay && !showPrinterSettingsOverlay,
-                        onClick = {
-                            currentTab = BottomTab.UDHAR
-                            showAdminScreenOverlay = false
-                            showProfileScreenOverlay = false
-                            showPrinterSettingsOverlay = false
-                            coroutineScope.launch { drawerState.close() }
-                        },
-                        colors = NavigationDrawerItemDefaults.colors(selectedContainerColor = Color(0x3310B981)),
-                        modifier = Modifier.padding(horizontal = 12.dp).testTag("drawer_item_udhar")
-                    )
-
-                    Spacer(modifier = Modifier.height(10.dp))
-                    HorizontalDivider(color = Color(0x22FFFFFF), modifier = Modifier.padding(horizontal = 16.dp))
-                    Spacer(modifier = Modifier.height(10.dp))
-
-                    Text(
-                        text = "MANAGEMENT & PROFILE",
-                        color = Color(0xFF64748B),
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 0.5.sp,
-                        modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp)
-                    )
-
-                    NavigationDrawerItem(
-                        icon = { Icon(Icons.Default.Person, contentDescription = "Profile", tint = GoldYellow) },
-                        label = { Text("Business Profile Settings", fontWeight = FontWeight.SemiBold) },
-                        selected = showProfileScreenOverlay,
-                        onClick = {
+                        onProfileClick = {
                             showProfileScreenOverlay = true
                             showAdminScreenOverlay = false
                             showPrinterSettingsOverlay = false
                             coroutineScope.launch { drawerState.close() }
                         },
-                        colors = NavigationDrawerItemDefaults.colors(selectedContainerColor = Color(0x33F59E0B)),
-                        modifier = Modifier.padding(horizontal = 12.dp).testTag("drawer_item_profile")
-                    )
-
-                    NavigationDrawerItem(
-                        icon = { Icon(Icons.Default.Print, contentDescription = "Thermal Printer", tint = EmeraldGreen) },
-                        label = { Text("Thermal Printer Setup", fontWeight = FontWeight.SemiBold) },
-                        selected = showPrinterSettingsOverlay,
-                        onClick = {
+                        onPrinterSettingsClick = {
                             showPrinterSettingsOverlay = true
                             showProfileScreenOverlay = false
                             showAdminScreenOverlay = false
                             coroutineScope.launch { drawerState.close() }
                         },
-                        colors = NavigationDrawerItemDefaults.colors(selectedContainerColor = Color(0x3310B981)),
-                        modifier = Modifier.padding(horizontal = 12.dp).testTag("drawer_item_printer_settings")
-                    )
-
-                    NavigationDrawerItem(
-                        icon = { Icon(Icons.Default.WorkspacePremium, contentDescription = "Paywall Pro", tint = GoldYellow) },
-                        label = {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text("Pro Membership & ₹1 Trial", fontWeight = FontWeight.Bold, color = GoldYellow)
-                                Surface(
-                                    color = GoldYellow,
-                                    shape = RoundedCornerShape(8.dp)
-                                ) {
-                                    Text(
-                                        text = "PRO",
-                                        color = Color.Black,
-                                        fontSize = 10.sp,
-                                        fontWeight = FontWeight.ExtraBold,
-                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                    )
-                                }
-                            }
-                        },
-                        selected = false,
-                        onClick = {
+                        onPaywallClick = {
                             coroutineScope.launch { drawerState.close() }
                             viewModel.openPaywall()
                         },
-                        colors = NavigationDrawerItemDefaults.colors(selectedContainerColor = Color(0x33F59E0B)),
-                        modifier = Modifier.padding(horizontal = 12.dp).testTag("drawer_item_paywall")
-                    )
-
-                    NavigationDrawerItem(
-                        icon = { Icon(Icons.Default.SystemUpdate, contentDescription = "Check for Updates", tint = ElectricVioletLight) },
-                        label = { Text("Check App Updates", fontWeight = FontWeight.Bold, color = Color.White) },
-                        selected = false,
-                        onClick = {
+                        onCheckUpdateClick = {
                             coroutineScope.launch { drawerState.close() }
                             com.example.update.AppUpdateManagerHelper.checkForAppUpdate(context) { info ->
                                 if (info.isUpdateAvailable) {
@@ -298,60 +125,18 @@ fun DashboardScreen(
                                 }
                             }
                         },
-                        colors = NavigationDrawerItemDefaults.colors(selectedContainerColor = Color(0x338B5CF6)),
-                        modifier = Modifier.padding(horizontal = 12.dp).testTag("drawer_item_check_update")
-                    )
-
-                    Spacer(modifier = Modifier.height(10.dp))
-                    HorizontalDivider(color = Color(0x22FFFFFF), modifier = Modifier.padding(horizontal = 16.dp))
-                    Spacer(modifier = Modifier.height(10.dp))
-
-                    Text(
-                        text = "LEGAL & POLICIES",
-                        color = Color(0xFF64748B),
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 0.5.sp,
-                        modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp)
-                    )
-
-                    NavigationDrawerItem(
-                        icon = { Icon(Icons.Default.Description, contentDescription = "Terms & Conditions", tint = Color(0xFF2DD4BF)) },
-                        label = { Text("Terms & Conditions", fontWeight = FontWeight.SemiBold, color = Color.White) },
-                        selected = false,
-                        onClick = {
+                        onTermsClick = {
                             coroutineScope.launch { drawerState.close() }
                             com.example.util.WebUtils.openWebUrl(context, com.example.util.WebUtils.TERMS_URL)
                         },
-                        colors = NavigationDrawerItemDefaults.colors(selectedContainerColor = Color(0x332DD4BF)),
-                        modifier = Modifier.padding(horizontal = 12.dp).testTag("drawer_item_terms")
-                    )
-
-                    NavigationDrawerItem(
-                        icon = { Icon(Icons.Default.Security, contentDescription = "Privacy Policy", tint = Color(0xFF2DD4BF)) },
-                        label = { Text("Privacy Policy", fontWeight = FontWeight.SemiBold, color = Color.White) },
-                        selected = false,
-                        onClick = {
+                        onPrivacyClick = {
                             coroutineScope.launch { drawerState.close() }
                             com.example.util.WebUtils.openWebUrl(context, com.example.util.WebUtils.PRIVACY_URL)
                         },
-                        colors = NavigationDrawerItemDefaults.colors(selectedContainerColor = Color(0x332DD4BF)),
-                        modifier = Modifier.padding(horizontal = 12.dp).testTag("drawer_item_privacy")
-                    )
-
-                    Spacer(modifier = Modifier.weight(1f))
-
-                    HorizontalDivider(color = Color(0x22FFFFFF), modifier = Modifier.padding(horizontal = 16.dp))
-
-                    NavigationDrawerItem(
-                        icon = { Icon(Icons.Default.Logout, contentDescription = "Logout", tint = AccentPink) },
-                        label = { Text("Logout", fontWeight = FontWeight.Bold, color = AccentPink) },
-                        selected = false,
-                        onClick = {
+                        onLogoutClick = {
                             coroutineScope.launch { drawerState.close() }
                             onLogout()
-                        },
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp).testTag("drawer_item_logout")
+                        }
                     )
                 }
             }
@@ -482,6 +267,28 @@ private fun HomeDashboardContent(
     onOpenDrawer: () -> Unit,
     onLogout: () -> Unit
 ) {
+    val context = LocalContext.current
+    val homeViewModel: com.example.ui.viewmodel.HomeViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
+    val showWelcomeDialog by homeViewModel.showWelcomeDialog.collectAsState()
+
+    // Check local preferences for welcome dialog on first login after signup
+    LaunchedEffect(Unit) {
+        homeViewModel.checkWelcomeStatus(context)
+    }
+
+    if (showWelcomeDialog) {
+        WelcomeTrialOnboardingDialog(
+            onDismiss = {
+                homeViewModel.dismissWelcomeDialog(context)
+            },
+            onStartBilling = {
+                homeViewModel.dismissWelcomeDialog(context) {
+                    onSelectTab(BottomTab.POS)
+                }
+            }
+        )
+    }
+
     val currentUser by viewModel.currentUser.collectAsState()
     val invoices by viewModel.invoices.collectAsState()
     val totalSales by viewModel.totalSales.collectAsState()

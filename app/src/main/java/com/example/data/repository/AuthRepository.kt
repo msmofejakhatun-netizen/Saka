@@ -1,8 +1,16 @@
 package com.example.data.repository
 
 import android.app.Activity
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.Context
+import android.content.Intent
+import android.os.Build
 import android.util.Log
+import androidx.core.app.NotificationCompat
+import com.example.MainActivity
+import com.example.R
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount
 import com.google.android.gms.auth.api.signin.GoogleSignInClient
@@ -142,20 +150,23 @@ class AuthRepository(
      */
     suspend fun syncUserProfileAndSession(
         user: FirebaseUser,
-        provider: String
+        provider: String,
+        context: Context? = null
     ) = withContext(Dispatchers.IO) {
         try {
             val userRef = firestore.collection("users").document(user.uid)
             val docSnap = userRef.get().await()
+            val isNewRegistration = !docSnap.exists()
 
-            if (!docSnap.exists()) {
+            if (isNewRegistration) {
+                val nowTime = System.currentTimeMillis()
                 val profileData = hashMapOf(
                     "uid" to user.uid,
                     "email" to (user.email ?: ""),
                     "phoneNumber" to (user.phoneNumber ?: ""),
                     "displayName" to (user.displayName ?: "User ${user.uid.take(6)}"),
-                    "createdAt" to System.currentTimeMillis(),
-                    "lastLoginAt" to System.currentTimeMillis(),
+                    "createdAt" to nowTime,
+                    "lastLoginAt" to nowTime,
                     "authProvider" to provider,
                     "role" to "user"
                 )
@@ -200,6 +211,19 @@ class AuthRepository(
                 com.onesignal.OneSignal.User.addTag("subscription_status", "PRO_ACTIVE")
                 com.onesignal.OneSignal.User.addTag("user_role", "merchant")
                 com.onesignal.OneSignal.User.addTag("auth_provider", provider)
+
+                // Welcome Push Notification Trigger & account_created_date tag upon new account registration
+                if (isNewRegistration) {
+                    val createdAtStr = System.currentTimeMillis().toString()
+                    com.onesignal.OneSignal.User.addTag("account_created_date", createdAtStr)
+                    com.onesignal.OneSignal.User.addTag("trial_active", "true")
+                    com.onesignal.OneSignal.User.addTag("welcome_notified", "true")
+                    Log.d(TAG, "Set OneSignal account_created_date tag: $createdAtStr for new registration")
+
+                    // Trigger instant local notification / initial welcome alert
+                    triggerWelcomeNotification(context)
+                }
+
                 if (!user.email.isNullOrBlank()) {
                     com.onesignal.OneSignal.User.addEmail(user.email!!)
                 }
@@ -212,6 +236,73 @@ class AuthRepository(
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error syncing user profile and subscription in Firestore: ${e.localizedMessage}")
+        }
+    }
+
+    /**
+     * Triggers an instant local notification or welcome alert for newly registered SmartPOS merchants.
+     */
+    fun triggerWelcomeNotification(context: Context?) {
+        if (context == null) return
+        try {
+            val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
+                ?: return
+
+            val channelId = "smartpos_welcome_channel"
+            val channelName = "SmartPOS Welcome & Onboarding"
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                val channel = NotificationChannel(
+                    channelId,
+                    channelName,
+                    NotificationManager.IMPORTANCE_HIGH
+                ).apply {
+                    description = "Welcome alerts and onboarding notifications for SmartPOS users"
+                    enableVibration(true)
+                    enableLights(true)
+                }
+                notificationManager.createNotificationChannel(channel)
+            }
+
+            val intent = Intent(context, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                putExtra("screen_route", "dashboard")
+                putExtra("target_screen", "dashboard")
+                putExtra("source", "welcome_registration")
+            }
+
+            val pendingIntentFlags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            } else {
+                PendingIntent.FLAG_UPDATE_CURRENT
+            }
+
+            val pendingIntent = PendingIntent.getActivity(
+                context,
+                2003,
+                intent,
+                pendingIntentFlags
+            )
+
+            val notification = NotificationCompat.Builder(context, channelId)
+                .setSmallIcon(R.mipmap.ic_launcher)
+                .setContentTitle("🎉 Welcome to SmartPOS!")
+                .setContentText("Your 3-Day Free Trial is Active. Enjoy unlimited invoices, thermal printing & cloud sync!")
+                .setStyle(
+                    NotificationCompat.BigTextStyle().bigText(
+                        "🎉 Welcome to SmartPOS! 🚀\n\nYour 3-day free trial has started! Enjoy full access to unlimited invoices, Bluetooth thermal printing, Udhar Khata ledger & cloud sync. Tap to start billing now!"
+                    )
+                )
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setDefaults(NotificationCompat.DEFAULT_ALL)
+                .setAutoCancel(true)
+                .setContentIntent(pendingIntent)
+                .build()
+
+            notificationManager.notify(2003, notification)
+            Log.d(TAG, "Instant welcome notification dispatched successfully to newly registered user")
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to trigger welcome notification: ${e.localizedMessage}")
         }
     }
 

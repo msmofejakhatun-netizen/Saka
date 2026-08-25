@@ -585,7 +585,7 @@ fun CreateBillScreen(
                                 )
                             }
 
-                            // Search Field with Barcode Scanner Icon Button
+                            // Compact Modern Search Bar & Barcode Scanner Button
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 verticalAlignment = Alignment.CenterVertically,
@@ -594,24 +594,50 @@ fun CreateBillScreen(
                                 OutlinedTextField(
                                     value = searchQuery,
                                     onValueChange = { searchQuery = it },
-                                    placeholder = { Text("Search product name, category or barcode...", color = Color(0xFF64748B), fontSize = 13.sp) },
-                                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search", tint = GoldYellow, modifier = Modifier.size(20.dp)) },
+                                    placeholder = {
+                                        Text(
+                                            "Search products...",
+                                            style = MaterialTheme.typography.bodyMedium.copy(color = Color(0xFF94A3B8)),
+                                            maxLines = 1
+                                        )
+                                    },
+                                    leadingIcon = {
+                                        Icon(
+                                            imageVector = Icons.Default.Search,
+                                            contentDescription = "Search Icon",
+                                            tint = Color(0xFF10B981), // Mint green accent
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    },
                                     trailingIcon = {
                                         if (searchQuery.isNotEmpty()) {
-                                            IconButton(onClick = { searchQuery = "" }) {
-                                                Icon(Icons.Default.Clear, contentDescription = "Clear", tint = Color.White)
+                                            IconButton(
+                                                onClick = { searchQuery = "" },
+                                                modifier = Modifier.size(24.dp)
+                                            ) {
+                                                Icon(
+                                                    Icons.Default.Clear,
+                                                    contentDescription = "Clear Search",
+                                                    tint = Color(0xFF94A3B8),
+                                                    modifier = Modifier.size(16.dp)
+                                                )
                                             }
                                         }
                                     },
-                                    colors = OutlinedTextFieldDefaults.colors(
-                                        focusedBorderColor = GoldYellow,
-                                        unfocusedBorderColor = Color(0x22FFFFFF),
-                                        focusedTextColor = Color.White,
-                                        unfocusedTextColor = Color.White
-                                    ),
                                     singleLine = true,
+                                    shape = RoundedCornerShape(12.dp),
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedBorderColor = Color(0xFF10B981),
+                                        unfocusedBorderColor = Color(0xFF334155),
+                                        focusedContainerColor = Color(0xFF0F172A),
+                                        unfocusedContainerColor = Color(0xFF0F172A),
+                                        focusedTextColor = Color.White,
+                                        unfocusedTextColor = Color.White,
+                                        cursorColor = Color(0xFF10B981)
+                                    ),
                                     modifier = Modifier
                                         .weight(1f)
+                                        .height(52.dp)
                                         .testTag("pos_product_search_input")
                                 )
 
@@ -620,11 +646,11 @@ fun CreateBillScreen(
                                     shape = RoundedCornerShape(12.dp),
                                     color = EmeraldGreen,
                                     modifier = Modifier
-                                        .height(54.dp)
+                                        .height(52.dp)
                                         .testTag("pos_scan_barcode_button")
                                 ) {
                                     Row(
-                                        modifier = Modifier.padding(horizontal = 12.dp),
+                                        modifier = Modifier.padding(horizontal = 14.dp),
                                         verticalAlignment = Alignment.CenterVertically,
                                         horizontalArrangement = Arrangement.spacedBy(6.dp)
                                     ) {
@@ -632,7 +658,7 @@ fun CreateBillScreen(
                                             imageVector = Icons.Default.QrCodeScanner,
                                             contentDescription = "Scan Barcode",
                                             tint = Color.White,
-                                            modifier = Modifier.size(22.dp)
+                                            modifier = Modifier.size(20.dp)
                                         )
                                         Text(
                                             text = "Scan",

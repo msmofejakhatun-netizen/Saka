@@ -366,6 +366,8 @@ fun HomeDashboardScreen(
 ) {
     val context = LocalContext.current
     val showWelcomeDialog by homeViewModel.showWelcomeDialog.collectAsState()
+    val subscriptionState by billingViewModel.subscriptionState.collectAsState()
+    val isSubscriptionValid = com.example.util.AuthGuard.isSubscriptionValid(subscriptionState)
 
     // Trigger local preference check on launch
     LaunchedEffect(Unit) {
@@ -379,7 +381,11 @@ fun HomeDashboardScreen(
             },
             onStartBilling = {
                 homeViewModel.dismissWelcomeDialog(context) {
-                    onNavigateToPOS()
+                    if (isSubscriptionValid) {
+                        onNavigateToPOS()
+                    } else {
+                        billingViewModel.openPaywall()
+                    }
                 }
             }
         )

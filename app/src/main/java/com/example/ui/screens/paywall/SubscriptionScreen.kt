@@ -113,15 +113,13 @@ fun SubscriptionScreenContent(
         ?: "9999999999"
     val userId = currentAuthUser?.uid ?: userMobile
 
-    // Active subscription flag: Pro user or active mandate
-    val isSubscribed = subscriptionState.isProUser ||
-            subscriptionState.autoPayMandateStatus == "ACTIVE" ||
-            subscriptionState.autoPayMandateStatus == "TRIAL_ACTIVE"
+    // Active subscription flag: Pro user or active mandate strictly verified by AuthGuard
+    val isSubscribed = com.example.util.AuthGuard.isSubscriptionValid(subscriptionState)
 
-    // Default selected plan (Monthly if trial was used, otherwise 3-Day trial)
-    var selectedPlan by remember(hasUsedTrial) {
+    // Default selected plan (Monthly if trial was used or expired, otherwise 3-Day trial)
+    var selectedPlan by remember(hasUsedTrial, isSubscribed) {
         mutableStateOf(
-            if (hasUsedTrial) PaymentGatewayHandler.SubscriptionPlan.MONTHLY_79_INR
+            if (hasUsedTrial || !isSubscribed) PaymentGatewayHandler.SubscriptionPlan.MONTHLY_79_INR
             else PaymentGatewayHandler.SubscriptionPlan.TRIAL_3_DAYS_1_INR
         )
     }

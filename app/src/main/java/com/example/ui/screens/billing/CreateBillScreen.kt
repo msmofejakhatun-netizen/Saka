@@ -123,6 +123,9 @@ fun CreateBillScreen(
     val products by viewModel.products.collectAsState()
     val customers by viewModel.customers.collectAsState()
     val currentUser by viewModel.currentUser.collectAsState()
+    val subscriptionState by viewModel.subscriptionState.collectAsState()
+    val isSubscriptionValid = com.example.util.AuthGuard.isSubscriptionValid(subscriptionState)
+    var showExpiredBillingDialog by remember { mutableStateOf(false) }
     val activeBusinessType = remember(currentUser) { com.example.util.BusinessCategoryUtils.getBusinessType(currentUser) }
 
     val context = LocalContext.current
@@ -242,6 +245,62 @@ fun CreateBillScreen(
                 verticalArrangement = Arrangement.spacedBy(14.dp),
                 contentPadding = PaddingValues(bottom = 100.dp)
             ) {
+                // Subscription Expired Warning Banner
+                if (!isSubscriptionValid) {
+                    item {
+                        Card(
+                            onClick = { viewModel.openPaywall() },
+                            colors = CardDefaults.cardColors(containerColor = Color(0x33EF4444)),
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .border(1.dp, Color(0x66EF4444), RoundedCornerShape(12.dp))
+                                .padding(top = 4.dp)
+                                .testTag("pos_subscription_expired_banner")
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                                    Icon(
+                                        imageVector = Icons.Default.Close,
+                                        contentDescription = "Expired",
+                                        tint = Color(0xFFEF4444),
+                                        modifier = Modifier.size(22.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(10.dp))
+                                    Column {
+                                        Text(
+                                            text = "Subscription Expired",
+                                            color = Color.White,
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 13.sp
+                                        )
+                                        Text(
+                                            text = "Complete payment of ₹79 to unlock all features.",
+                                            color = Color(0xFFFCA5A5),
+                                            fontSize = 11.sp
+                                        )
+                                    }
+                                }
+                                Button(
+                                    onClick = { viewModel.openPaywall() },
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF4444)),
+                                    shape = RoundedCornerShape(8.dp),
+                                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                                    modifier = Modifier.height(32.dp).testTag("pos_renew_subscription_btn")
+                                ) {
+                                    Text("Pay ₹79", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                                }
+                            }
+                        }
+                    }
+                }
+
                 // Editing Bill Banner
                 if (viewModel.isEditingBill) {
                     item {
@@ -758,7 +817,13 @@ fun CreateBillScreen(
                     }
 
                     Button(
-                        onClick = { showCartReviewModal = true },
+                        onClick = {
+                            if (!isSubscriptionValid) {
+                                showExpiredBillingDialog = true
+                            } else {
+                                showCartReviewModal = true
+                            }
+                        },
                         enabled = viewModel.posCartItems.isNotEmpty(),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = EmeraldGreen,
@@ -780,6 +845,58 @@ fun CreateBillScreen(
                 }
             }
         }
+    }
+
+    // Subscription Expired Alert Dialog
+    if (showExpiredBillingDialog) {
+        AlertDialog(
+            onDismissRequest = { showExpiredBillingDialog = false },
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = null,
+                        tint = Color(0xFFEF4444),
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Subscription Expired",
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                    )
+                }
+            },
+            text = {
+                Text(
+                    text = "Your trial has expired. Please complete payment of ₹79 to continue billing and unlock all SmartPOS features.",
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        color = Color(0xFFCBD5E1)
+                    )
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showExpiredBillingDialog = false
+                        viewModel.openPaywall()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = EmeraldGreen),
+                    shape = RoundedCornerShape(10.dp)
+                ) {
+                    Text("Complete Payment (₹79)", fontWeight = FontWeight.Bold, color = Color.White)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showExpiredBillingDialog = false }) {
+                    Text("Cancel", color = Color(0xFF94A3B8))
+                }
+            },
+            containerColor = Color(0xFF1E293B),
+            shape = RoundedCornerShape(16.dp)
+        )
     }
 
     // Success Digital Receipt Dialog Modal
@@ -1123,8 +1240,13 @@ fun CreateBillScreen(
         CartReviewModalDialog(
             viewModel = viewModel,
             onProceedToPayment = {
-                showCartReviewModal = false
-                showPaymentModal = true
+                if (!isSubscriptionValid) {
+                    showCartReviewModal = false
+                    showExpiredBillingDialog = true
+                } else {
+                    showCartReviewModal = false
+                    showPaymentModal = true
+                }
             },
             onChangeCustomerClick = {
                 showCustomerPickerModal = true
@@ -1140,6 +1262,11 @@ fun CreateBillScreen(
             currentUser = currentUser,
             onShowUpiQr = { showUpiQrPaymentDialog = true },
             onCompleteSale = {
+                if (!isSubscriptionValid) {
+                    showPaymentModal = false
+                    showExpiredBillingDialog = true
+                    return@PaymentAndCheckoutModalDialog
+                }
                 if (viewModel.isEditingBill) {
                     viewModel.updatePOSInvoice { updated ->
                         showPaymentModal = false

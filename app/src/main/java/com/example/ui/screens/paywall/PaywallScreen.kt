@@ -26,15 +26,14 @@ fun PaywallScreen(
     lockReason: String? = null
 ) {
     val subscriptionState by viewModel.subscriptionState.collectAsState()
-    val isProUser = subscriptionState.isProUser ||
-            subscriptionState.autoPayMandateStatus == "ACTIVE" ||
-            subscriptionState.autoPayMandateStatus == "TRIAL_ACTIVE"
+    val isSubscriptionValid = com.example.util.AuthGuard.isSubscriptionValid(subscriptionState)
 
     BackHandler(enabled = true) {
-        viewModel.closePaywall()
-        if (isProUser) {
+        if (isSubscriptionValid) {
+            viewModel.closePaywall()
             onNavigateToDashboard()
         } else if (!isMandatory) {
+            viewModel.closePaywall()
             onBack()
         }
     }
@@ -67,22 +66,21 @@ fun PaywallModalDialog(
     lockReason: String? = null
 ) {
     val subscriptionState by viewModel.subscriptionState.collectAsState()
-    val isProUser = subscriptionState.isProUser ||
-            subscriptionState.autoPayMandateStatus == "ACTIVE" ||
-            subscriptionState.autoPayMandateStatus == "TRIAL_ACTIVE"
+    val isSubscriptionValid = com.example.util.AuthGuard.isSubscriptionValid(subscriptionState)
 
     BackHandler(enabled = true) {
-        viewModel.closePaywall()
-        if (isProUser) {
+        if (isSubscriptionValid) {
+            viewModel.closePaywall()
             onNavigateToDashboard()
         } else if (!isMandatory) {
+            viewModel.closePaywall()
             onDismiss()
         }
     }
 
     Dialog(
         onDismissRequest = {
-            if (isProUser) {
+            if (isSubscriptionValid) {
                 viewModel.closePaywall()
                 onNavigateToDashboard()
             } else if (!isMandatory) {
@@ -92,8 +90,8 @@ fun PaywallModalDialog(
         },
         properties = DialogProperties(
             usePlatformDefaultWidth = false,
-            dismissOnBackPress = isProUser || !isMandatory,
-            dismissOnClickOutside = isProUser || !isMandatory
+            dismissOnBackPress = isSubscriptionValid || !isMandatory,
+            dismissOnClickOutside = isSubscriptionValid || !isMandatory
         )
     ) {
         Surface(

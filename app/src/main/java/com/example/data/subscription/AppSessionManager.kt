@@ -2,6 +2,7 @@ package com.example.data.subscription
 
 import android.content.Context
 import android.util.Log
+import com.example.util.AuthGuard
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -18,48 +19,40 @@ object AppSessionManager {
     val accessState: StateFlow<SessionAccessState> = _accessState.asStateFlow()
 
     /**
-     * Checks subscriptionStatus and subscriptionExpiryDate against current time.
-     * On launch / foreground resume:
-     * Active States: TRIAL_ACTIVE (within 3 days of ₹1 setup) OR PRO_ACTIVE (recurring ₹79 paid). -> Grant full access to Dashboard.
-     * Expired / Cancelled States: If Autopay is cancelled, revoked, or fails after 3 days, immediately block app access
-     * and set lock reason to "Subscription Expired. Upgrade to Pro to continue using SmartPOS".
+     * Checks subscriptionStatus and subscriptionExpiryDate against current time using AuthGuard.
+     * Active States:
+     * - TRIAL_ACTIVE (strictly within 3 days of ₹1 setup) OR
+     * - PRO_ACTIVE (recurring ₹79 / ₹799 paid and active).
+     *
+     * Expired / Cancelled States:
+     * - If Autopay is expired, cancelled, revoked, or fails after trial/cycle, immediately block app access.
      */
     fun verifyAndEnforceSubscriptionLock(context: Context, userUid: String = ""): SessionAccessState {
         SubscriptionManager.init(context, userUid)
         val info = SubscriptionManager.subscriptionState.value
         val now = System.currentTimeMillis()
 
-        val isPro = info.isProUser
-        val expiry = info.subscriptionExpiryDate
-        val mandateStatus = info.autoPayMandateStatus
+        val isSubscriptionValid = AuthGuard.isSubscriptionValid(info, now)
 
-        // Check active trial or pro plan
-        val isExpired = expiry > 0L && now >= expiry
-        val isMandateRevokedOrFailed = mandateStatus in listOf("CANCELLED", "REVOKED", "FAILED", "HALTED")
-
-        // Active state: isPro is true, not expired, and mandate not failed/cancelled if expiry passed
-        val isAccessGranted = isPro && !isExpired && !(isMandateRevokedOrFailed && isExpired)
-
-        val result = if (isAccessGranted) {
+        val result = if (isSubscriptionValid) {
             SessionAccessState.Granted
         } else {
-            val message = if (isExpired || !isPro) {
-                // Check if 3-day trial notification needs to be dispatched
+            val message = if (info.hasUsedTrial || info.autoPayMandateStatus == "EXPIRED" || (info.subscriptionExpiryDate > 0L && now >= info.subscriptionExpiryDate)) {
                 com.example.worker.TrialTrackerWorker.checkAndNotifyIfExpired(
                     context = context,
                     trialStartDate = info.trialStartDate,
-                    isProActive = info.isProUser,
+                    isProActive = false,
                     tier = info.subscriptionTier
                 )
-                "Subscription Expired. Upgrade to Pro to continue using SmartPOS"
+                "Subscription Expired. Complete payment of ₹79 to unlock all features."
             } else {
-                "Mandate Authorization Required. Upgrade to Pro to continue using SmartPOS"
+                "Mandatory ₹1 Trial Setup required to activate SmartPOS features."
             }
             SessionAccessState.Locked(reason = message)
         }
 
         _accessState.value = result
-        Log.d(TAG, "Subscription lock check result: $result (isPro=$isPro, expiry=$expiry, now=$now, mandate=$mandateStatus)")
+        Log.d(TAG, "Subscription lock check result: $result (valid=$isSubscriptionValid, tier=${info.subscriptionTier}, mandate=${info.autoPayMandateStatus})")
         return result
     }
 
@@ -86,3 +79,4 @@ object AppSessionManager {
         }
     }
 }
+

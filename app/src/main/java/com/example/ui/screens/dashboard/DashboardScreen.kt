@@ -290,6 +290,9 @@ private fun HomeDashboardContent(
     }
 
     val currentUser by viewModel.currentUser.collectAsState()
+    val subscriptionState by viewModel.subscriptionState.collectAsState()
+    val isSubscriptionValid = com.example.util.AuthGuard.isSubscriptionValid(subscriptionState)
+    var showExpiredBillingDialog by remember { mutableStateOf(false) }
     val invoices by viewModel.invoices.collectAsState()
     val totalSales by viewModel.totalSales.collectAsState()
     val invoicesCount by viewModel.invoicesCount.collectAsState()
@@ -377,7 +380,13 @@ private fun HomeDashboardContent(
         },
         floatingActionButton = {
             FloatingActionButton(
-                onClick = { onSelectTab(BottomTab.POS) },
+                onClick = {
+                    if (!isSubscriptionValid) {
+                        showExpiredBillingDialog = true
+                    } else {
+                        onSelectTab(BottomTab.POS)
+                    }
+                },
                 containerColor = EmeraldGreen,
                 contentColor = Color.White,
                 modifier = Modifier
@@ -397,6 +406,63 @@ private fun HomeDashboardContent(
                 .padding(horizontal = 20.dp)
         ) {
             Spacer(modifier = Modifier.height(14.dp))
+
+            // Subscription Expired Warning Banner
+            if (!isSubscriptionValid) {
+                Card(
+                    onClick = { viewModel.openPaywall() },
+                    colors = CardDefaults.cardColors(containerColor = Color(0x33EF4444)),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .border(1.dp, Color(0x66EF4444), RoundedCornerShape(12.dp))
+                        .testTag("dashboard_subscription_expired_banner")
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 14.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Subscription Expired",
+                                tint = Color(0xFFEF4444),
+                                modifier = Modifier.size(22.dp)
+                            )
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Column {
+                                Text(
+                                    text = "Subscription Expired",
+                                    color = Color.White,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 13.sp
+                                )
+                                Text(
+                                    text = "Complete payment of ₹79 to unlock all features.",
+                                    color = Color(0xFFFCA5A5),
+                                    fontSize = 11.sp
+                                )
+                            }
+                        }
+                        Button(
+                            onClick = { viewModel.openPaywall() },
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF4444)),
+                            shape = RoundedCornerShape(8.dp),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                            modifier = Modifier.height(34.dp).testTag("dashboard_renew_subscription_btn")
+                        ) {
+                            Text("Pay ₹79", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(10.dp))
+            }
 
             // Firebase Live Sync Banner
             val isFirebaseAvailable = com.example.data.firebase.FirebaseManager.isFirebaseAvailable
@@ -666,7 +732,13 @@ private fun HomeDashboardContent(
 
             // Quick POS Action Terminal Hero Banner
             Card(
-                onClick = { onSelectTab(BottomTab.POS) },
+                onClick = {
+                    if (!isSubscriptionValid) {
+                        showExpiredBillingDialog = true
+                    } else {
+                        onSelectTab(BottomTab.POS)
+                    }
+                },
                 colors = CardDefaults.cardColors(containerColor = Color(0x3310B981)),
                 shape = RoundedCornerShape(14.dp),
                 modifier = Modifier
@@ -823,6 +895,57 @@ private fun HomeDashboardContent(
                     }
                 }
             }
+        }
+
+        if (showExpiredBillingDialog) {
+            AlertDialog(
+                onDismissRequest = { showExpiredBillingDialog = false },
+                title = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = null,
+                            tint = Color(0xFFEF4444),
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Subscription Expired",
+                            style = MaterialTheme.typography.titleMedium.copy(
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                        )
+                    }
+                },
+                text = {
+                    Text(
+                        text = "Your trial has expired. Please complete payment of ₹79 to continue billing and unlock all features.",
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            color = Color(0xFFCBD5E1)
+                        )
+                    )
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            showExpiredBillingDialog = false
+                            viewModel.openPaywall()
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = EmeraldGreen),
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        Text("Complete Payment (₹79)", fontWeight = FontWeight.Bold, color = Color.White)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showExpiredBillingDialog = false }) {
+                        Text("Cancel", color = Color(0xFF94A3B8))
+                    }
+                },
+                containerColor = Color(0xFF1E293B),
+                shape = RoundedCornerShape(16.dp)
+            )
         }
     }
 }

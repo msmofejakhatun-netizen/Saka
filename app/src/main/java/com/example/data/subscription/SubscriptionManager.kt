@@ -75,22 +75,24 @@ object SubscriptionManager {
 
         val now = System.currentTimeMillis()
         var validPro = isPro
-        if (expiry > 0L && now > expiry) {
-            if (mandateStatus == "ACTIVE" || mandateStatus == "TRIAL_ACTIVE") {
-                val newExpiry = now + TimeUnit.DAYS.toMillis(30)
-                prefs.edit().putLong(KEY_EXPIRY, newExpiry).apply()
-                validPro = true
-            } else {
-                validPro = false
-                prefs.edit().putBoolean(KEY_IS_PRO, false).apply()
-            }
+        var currentMandateStatus = mandateStatus
+        if (expiry > 0L && now >= expiry) {
+            validPro = false
+            currentMandateStatus = "EXPIRED"
+            prefs.edit()
+                .putBoolean(KEY_IS_PRO, false)
+                .putString(KEY_MANDATE_STATUS, "EXPIRED")
+                .apply()
+        } else if (mandateStatus == "FAILED" || mandateStatus == "CANCELLED" || mandateStatus == "EXPIRED") {
+            validPro = false
+            prefs.edit().putBoolean(KEY_IS_PRO, false).apply()
         }
 
         val info = SubscriptionInfo(
             isProUser = validPro,
             subscriptionTier = tier,
             subscriptionExpiryDate = expiry,
-            autoPayMandateStatus = mandateStatus,
+            autoPayMandateStatus = currentMandateStatus,
             autoPayMandateId = mandateId,
             gatewayProvider = provider,
             gatewaySubscriptionId = subId,
@@ -326,12 +328,14 @@ object SubscriptionManager {
             }
             PaymentGatewayHandler.WebhookEventType.RECURRING_DEBIT_FAILED -> {
                 current.copy(
-                    autoPayMandateStatus = "FAILED"
+                    autoPayMandateStatus = "FAILED",
+                    isProUser = false
                 )
             }
             PaymentGatewayHandler.WebhookEventType.SUBSCRIPTION_CANCELLED -> {
                 current.copy(
-                    autoPayMandateStatus = "CANCELLED"
+                    autoPayMandateStatus = "CANCELLED",
+                    isProUser = current.subscriptionExpiryDate > now
                 )
             }
             PaymentGatewayHandler.WebhookEventType.SUBSCRIPTION_HALTED -> {

@@ -140,17 +140,15 @@ class MainActivity : ComponentActivity(), com.razorpay.PaymentResultWithDataList
                 val subscriptionState by viewModel.subscriptionState.collectAsState()
                 val fbUser = com.example.data.firebase.FirebaseManager.auth?.currentUser
 
-                // Strict Route Guard logic
+                // Strict Route Guard logic via centralized AuthGuard
                 val isLoggedIn = (fbUser != null) || (currentUser != null)
-                val isProUser = subscriptionState.isProUser ||
-                        subscriptionState.autoPayMandateStatus == "ACTIVE" ||
-                        subscriptionState.autoPayMandateStatus == "TRIAL_ACTIVE"
+                val isSubscriptionValid = com.example.util.AuthGuard.isSubscriptionValid(subscriptionState)
 
                 val startDestination = remember {
                     when {
                         !isLoggedIn -> Screen.Login.route
-                        isLoggedIn && !isProUser -> Screen.Paywall.route
-                        else -> Screen.Dashboard.route // Force move to dashboard if logged in & pro
+                        isLoggedIn && !isSubscriptionValid -> Screen.Paywall.route
+                        else -> Screen.Dashboard.route // Direct to dashboard if logged in & valid subscription
                     }
                 }
 
@@ -160,20 +158,20 @@ class MainActivity : ComponentActivity(), com.razorpay.PaymentResultWithDataList
                 }
 
                 // Subscription State Verification & Auto-Lock on App Launch and Foreground Resume
-                DisposableEffect(lifecycleOwner, currentUser) {
+                DisposableEffect(lifecycleOwner, currentUser, subscriptionState) {
                     val observer = LifecycleEventObserver { _, event ->
                         if (event == Lifecycle.Event.ON_RESUME || event == Lifecycle.Event.ON_START) {
-                            if (currentUser != null) {
+                            if (currentUser != null || fbUser != null) {
                                 val state = AppSessionManager.verifyAndEnforceSubscriptionLock(
                                     context = context,
-                                    userUid = currentUser?.mobileNumber ?: ""
+                                    userUid = currentUser?.mobileNumber ?: fbUser?.uid ?: ""
                                 )
                                 sessionAccessState = state
                                 if (state is SessionAccessState.Locked) {
                                     val currentRoute = navController.currentBackStackEntry?.destination?.route
-                                    if (currentRoute != Screen.Paywall.route && currentRoute != Screen.Login.route && currentRoute != Screen.ProfileSetup.route) {
+                                    if (currentRoute != Screen.Paywall.route && currentRoute != Screen.Login.route && currentRoute != Screen.ProfileSetup.route && currentRoute != Screen.Signup.route) {
                                         navController.navigate(Screen.Paywall.route) {
-                                            popUpTo(Screen.Dashboard.route) { inclusive = true }
+                                            popUpTo(0) { inclusive = true }
                                             launchSingleTop = true
                                         }
                                     }
@@ -184,6 +182,32 @@ class MainActivity : ComponentActivity(), com.razorpay.PaymentResultWithDataList
                     lifecycleOwner.lifecycle.addObserver(observer)
                     onDispose {
                         lifecycleOwner.lifecycle.removeObserver(observer)
+                    }
+                }
+
+                // Forceful Navigation Route Interceptor for subscription enforcement
+                DisposableEffect(navController, subscriptionState) {
+                    val listener = androidx.navigation.NavController.OnDestinationChangedListener { _, destination, _ ->
+                        val user = viewModel.currentUser.value
+                        val fb = com.example.data.firebase.FirebaseManager.auth?.currentUser
+                        if (user != null || fb != null) {
+                            val valid = com.example.util.AuthGuard.isSubscriptionValid(viewModel.subscriptionState.value)
+                            if (!valid &&
+                                destination.route != Screen.Paywall.route &&
+                                destination.route != Screen.Login.route &&
+                                destination.route != Screen.ProfileSetup.route &&
+                                destination.route != Screen.Signup.route
+                            ) {
+                                navController.navigate(Screen.Paywall.route) {
+                                    popUpTo(0) { inclusive = true }
+                                    launchSingleTop = true
+                                }
+                            }
+                        }
+                    }
+                    navController.addOnDestinationChangedListener(listener)
+                    onDispose {
+                        navController.removeOnDestinationChangedListener(listener)
                     }
                 }
 
@@ -423,15 +447,16 @@ class MainActivity : ComponentActivity(), com.razorpay.PaymentResultWithDataList
                     }
 
                     composable(Screen.Paywall.route) {
-                        val userUid = currentUser?.mobileNumber ?: ""
+                        val userUid = currentUser?.mobileNumber ?: fbUser?.uid ?: ""
                         val accessState = AppSessionManager.verifyAndEnforceSubscriptionLock(
                             context = context,
                             userUid = userUid
                         )
-                        val isLocked = accessState is SessionAccessState.Locked
+                        val isSubscriptionValid = com.example.util.AuthGuard.isSubscriptionValid(viewModel.subscriptionState.value)
+                        val isLocked = accessState is SessionAccessState.Locked || !isSubscriptionValid
                         val isMandatory = isLocked || (navController.previousBackStackEntry?.destination?.route == Screen.ProfileSetup.route)
                         val lockReason = (accessState as? SessionAccessState.Locked)?.reason
-                            ?: "Mandatory Autopay ₹1 Trial Setup required to activate SmartPOS features."
+                            ?: "Subscription Expired. Complete payment of ₹79 to unlock all features."
 
                         val navigateToDashboard = {
                             navController.navigate(Screen.Dashboard.route) {
@@ -443,10 +468,8 @@ class MainActivity : ComponentActivity(), com.razorpay.PaymentResultWithDataList
                         com.example.ui.screens.paywall.PaywallScreen(
                             viewModel = viewModel,
                             onBack = {
-                                val isPro = viewModel.subscriptionState.value.isProUser ||
-                                        viewModel.subscriptionState.value.autoPayMandateStatus == "ACTIVE" ||
-                                        viewModel.subscriptionState.value.autoPayMandateStatus == "TRIAL_ACTIVE"
-                                if (isPro) {
+                                val isSubValid = com.example.util.AuthGuard.isSubscriptionValid(viewModel.subscriptionState.value)
+                                if (isSubValid) {
                                     navigateToDashboard()
                                 } else if (!isMandatory) {
                                     if (navController.previousBackStackEntry != null) {

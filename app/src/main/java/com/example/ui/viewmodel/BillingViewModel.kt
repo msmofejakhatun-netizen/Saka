@@ -448,6 +448,11 @@ class BillingViewModel(val repository: BillingRepository) : ViewModel() {
 
         try {
             val auth = com.google.firebase.auth.FirebaseAuth.getInstance()
+            try {
+                auth.firebaseAuthSettings.forceRecaptchaFlowForTesting(false)
+            } catch (e: Exception) {
+                Log.w("BillingVM", "forceRecaptchaFlowForTesting configuration: ${e.localizedMessage}")
+            }
             val optionsBuilder = com.google.firebase.auth.PhoneAuthOptions.newBuilder(auth)
                 .setPhoneNumber(formattedPhone)
                 .setTimeout(60L, TimeUnit.SECONDS)

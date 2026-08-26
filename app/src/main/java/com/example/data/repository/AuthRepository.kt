@@ -46,6 +46,7 @@ class AuthRepository(
 
     /**
      * Initiates Firebase Phone Number verification via official PhoneAuthProvider.
+     * Passes foreground Activity to allow silent verification via Play Integrity API without browser popups.
      */
     fun verifyPhoneNumber(
         activity: Activity,
@@ -60,7 +61,13 @@ class AuthRepository(
             else -> "+$cleanDigits"
         }
 
-        Log.d(TAG, "Starting Firebase Phone Auth verification for: $formattedPhone")
+        Log.d(TAG, "Starting Firebase Phone Auth verification for: $formattedPhone with activity: ${activity.localClassName}")
+
+        try {
+            firebaseAuth.firebaseAuthSettings.forceRecaptchaFlowForTesting(false)
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to set forceRecaptchaFlowForTesting(false): ${e.localizedMessage}")
+        }
 
         val optionsBuilder = PhoneAuthOptions.newBuilder(firebaseAuth)
             .setPhoneNumber(formattedPhone)
@@ -146,7 +153,58 @@ class AuthRepository(
     }
 
     /**
+     * Represents the server-side persistent trial & subscription status for a user.
+     */
+    data class UserTrialStatus(
+        val hasUsedTrial: Boolean = false,
+        val isProUser: Boolean = false,
+        val subscriptionStatus: String = "FREE",
+        val subscriptionTier: String = "FREE",
+        val trialStartDate: Long = 0L,
+        val trialExpiryDate: Long = 0L,
+        val mandateId: String = ""
+    )
+
+    /**
+     * Fetches the user's Firestore document to verify trial eligibility and subscription status from the server.
+     */
+    suspend fun fetchUserTrialStatus(userId: String): UserTrialStatus = withContext(Dispatchers.IO) {
+        try {
+            val userDoc = firestore.collection("users").document(userId).get().await()
+            val subDoc = firestore.collection("users").document(userId)
+                .collection("subscription").document("current").get().await()
+
+            val hasUsedTrial = (userDoc.getBoolean("hasUsedTrial") ?: false) ||
+                    (subDoc.getBoolean("hasUsedTrial") ?: false) ||
+                    ((userDoc.getLong("trialStartDate") ?: 0L) > 0L) ||
+                    ((subDoc.getLong("trialStartDate") ?: 0L) > 0L) ||
+                    (subDoc.getString("subscriptionTier") == "TRIAL_1_INR")
+
+            val isPro = subDoc.getBoolean("isProUser") ?: userDoc.getBoolean("isProUser") ?: false
+            val status = subDoc.getString("status") ?: userDoc.getString("subscriptionStatus") ?: "FREE"
+            val tier = subDoc.getString("subscriptionTier") ?: userDoc.getString("subscriptionTier") ?: "FREE"
+            val trialStart = userDoc.getLong("trialStartDate") ?: subDoc.getLong("trialStartDate") ?: 0L
+            val trialExpiry = userDoc.getLong("trialExpiryDate") ?: subDoc.getLong("expiryTimestamp") ?: 0L
+            val mandateId = userDoc.getString("mandateId") ?: subDoc.getString("mandateId") ?: ""
+
+            UserTrialStatus(
+                hasUsedTrial = hasUsedTrial,
+                isProUser = isPro,
+                subscriptionStatus = status,
+                subscriptionTier = tier,
+                trialStartDate = trialStart,
+                trialExpiryDate = trialExpiry,
+                mandateId = mandateId
+            )
+        } catch (e: Exception) {
+            Log.e(TAG, "Error fetching user trial status from Firestore: ${e.localizedMessage}")
+            UserTrialStatus()
+        }
+    }
+
+    /**
      * Syncs user details to Firestore under `users/{userId}` and initializes subscription session.
+     * Enforces server-side trial persistence (hasUsedTrial, trialStartDate, trialExpiryDate, mandateId).
      */
     suspend fun syncUserProfileAndSession(
         user: FirebaseUser,
@@ -158,9 +216,15 @@ class AuthRepository(
             val docSnap = userRef.get().await()
             val isNewRegistration = !docSnap.exists()
 
+            var hasAlreadyUsedTrial = false
+            var serverTrialStart = 0L
+            var serverTrialExpiry = 0L
+            var serverMandateId = ""
+            var serverSubStatus = "FREE"
+
             if (isNewRegistration) {
                 val nowTime = System.currentTimeMillis()
-                val profileData = hashMapOf(
+                val profileData = hashMapOf<String, Any>(
                     "uid" to user.uid,
                     "email" to (user.email ?: ""),
                     "phoneNumber" to (user.phoneNumber ?: ""),
@@ -168,11 +232,19 @@ class AuthRepository(
                     "createdAt" to nowTime,
                     "lastLoginAt" to nowTime,
                     "authProvider" to provider,
-                    "role" to "user"
+                    "role" to "user",
+                    "hasUsedTrial" to false,
+                    "subscriptionStatus" to "FREE"
                 )
                 userRef.set(profileData, SetOptions.merge()).await()
-                Log.d(TAG, "Created new user profile document for ${user.uid}")
+                Log.d(TAG, "Created new user profile document for ${user.uid} with hasUsedTrial=false")
             } else {
+                hasAlreadyUsedTrial = docSnap.getBoolean("hasUsedTrial") ?: false
+                serverTrialStart = docSnap.getLong("trialStartDate") ?: 0L
+                serverTrialExpiry = docSnap.getLong("trialExpiryDate") ?: 0L
+                serverMandateId = docSnap.getString("mandateId") ?: ""
+                serverSubStatus = docSnap.getString("subscriptionStatus") ?: docSnap.getString("status") ?: "FREE"
+
                 val updateData = hashMapOf<String, Any>(
                     "lastLoginAt" to System.currentTimeMillis()
                 )
@@ -185,32 +257,43 @@ class AuthRepository(
             // Sync FCM Token to Firestore under users/{userId} as fcmToken
             com.example.service.MyFirebaseMessagingService.syncFcmTokenToFirestore(user.uid)
 
-            // Check / Initialize users/{userId}/subscription/current path for subscription gating
+            // Check / sync users/{userId}/subscription/current path
             val subRef = firestore.collection("users")
                 .document(user.uid)
                 .collection("subscription")
                 .document("current")
 
             val subSnap = subRef.get().await()
-            if (!subSnap.exists()) {
-                val initialSubData = hashMapOf(
-                    "status" to "TRIAL_ACTIVE",
-                    "plan" to "trial",
-                    "createdAt" to System.currentTimeMillis(),
-                    "updatedAt" to System.currentTimeMillis(),
-                    "isTrial" to true,
-                    "isProUser" to true
+            if (subSnap.exists()) {
+                val subHasUsedTrial = subSnap.getBoolean("hasUsedTrial") ?: false
+                val subTrialStart = subSnap.getLong("trialStartDate") ?: 0L
+                val subMandateId = subSnap.getString("mandateId") ?: ""
+                if (subHasUsedTrial || subTrialStart > 0L) {
+                    hasAlreadyUsedTrial = true
+                }
+                if (subTrialStart > 0L) serverTrialStart = subTrialStart
+                if (subMandateId.isNotBlank()) serverMandateId = subMandateId
+            }
+
+            // Ensure root user document maintains hasUsedTrial flag if set in sub-document
+            if (hasAlreadyUsedTrial) {
+                val fixMap = hashMapOf<String, Any>(
+                    "hasUsedTrial" to true
                 )
-                subRef.set(initialSubData, SetOptions.merge()).await()
-                Log.d(TAG, "Initialized subscription session for user ${user.uid}")
+                if (serverTrialStart > 0L) fixMap["trialStartDate"] = serverTrialStart
+                if (serverTrialExpiry > 0L) fixMap["trialExpiryDate"] = serverTrialExpiry
+                if (serverMandateId.isNotBlank()) fixMap["mandateId"] = serverMandateId
+                userRef.set(fixMap, SetOptions.merge()).await()
             }
 
             // OneSignal User Identification & CRM Tagging
             try {
                 com.onesignal.OneSignal.login(user.uid)
-                com.onesignal.OneSignal.User.addTag("subscription_status", "PRO_ACTIVE")
+                val crmStatus = if (hasAlreadyUsedTrial) "TRIAL_CLAIMED" else "NEW_USER"
+                com.onesignal.OneSignal.User.addTag("subscription_status", crmStatus)
                 com.onesignal.OneSignal.User.addTag("user_role", "merchant")
                 com.onesignal.OneSignal.User.addTag("auth_provider", provider)
+                com.onesignal.OneSignal.User.addTag("has_used_trial", if (hasAlreadyUsedTrial) "true" else "false")
 
                 // Welcome Push Notification Trigger & account_created_date tag upon new account registration
                 if (isNewRegistration) {

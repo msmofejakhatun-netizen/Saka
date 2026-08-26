@@ -106,6 +106,7 @@ fun SubscriptionScreenContent(
     val subscriptionState by subscriptionViewModel.subscriptionState.collectAsState()
     val hasUsedTrial by subscriptionViewModel.hasUsedTrial.collectAsState()
     val isSuccessDialogVisible by subscriptionViewModel.isSuccessDialogVisible.collectAsState()
+    val uiState by subscriptionViewModel.uiState.collectAsState()
 
     val currentAuthUser = FirebaseManager.auth?.currentUser
     val userMobile = currentAuthUser?.phoneNumber?.takeLast(10)
@@ -113,13 +114,20 @@ fun SubscriptionScreenContent(
         ?: "9999999999"
     val userId = currentAuthUser?.uid ?: userMobile
 
+    LaunchedEffect(userId) {
+        if (userId.isNotBlank()) {
+            subscriptionViewModel.checkTrialEligibility(userId)
+        }
+    }
+
     // Active subscription flag: Pro user or active mandate strictly verified by AuthGuard
     val isSubscribed = com.example.util.AuthGuard.isSubscriptionValid(subscriptionState)
+    val canShowTrial = uiState.showTrialPlan && !hasUsedTrial && !subscriptionState.hasUsedTrial
 
     // Default selected plan (Monthly if trial was used or expired, otherwise 3-Day trial)
-    var selectedPlan by remember(hasUsedTrial, isSubscribed) {
+    var selectedPlan by remember(hasUsedTrial, canShowTrial, isSubscribed) {
         mutableStateOf(
-            if (hasUsedTrial || !isSubscribed) PaymentGatewayHandler.SubscriptionPlan.MONTHLY_79_INR
+            if (!canShowTrial || !isSubscribed) PaymentGatewayHandler.SubscriptionPlan.MONTHLY_79_INR
             else PaymentGatewayHandler.SubscriptionPlan.TRIAL_3_DAYS_1_INR
         )
     }
@@ -284,7 +292,8 @@ fun SubscriptionScreenContent(
                 // 2. INACTIVE / EXPIRED / NEW SUBSCRIBER PLAN SELECTION VIEW
                 // =========================================================================
                 InactivePlanSelectionView(
-                    hasUsedTrial = hasUsedTrial,
+                    hasUsedTrial = hasUsedTrial || !canShowTrial,
+                    showTrialPlan = canShowTrial,
                     selectedPlan = selectedPlan,
                     onSelectPlan = { selectedPlan = it },
                     onStartSubscription = {
@@ -861,15 +870,18 @@ fun ActiveSubscriptionDetailsCard(
 
 /**
  * Plan Selection view for inactive, new, or expired users.
- * Respects `hasUsedTrial`: completely hides 3-Day trial if `hasUsedTrial == true`.
+ * Respects `hasUsedTrial` and `showTrialPlan`: completely hides 3-Day trial if `hasUsedTrial == true` or `showTrialPlan == false`.
  */
 @Composable
 fun InactivePlanSelectionView(
     hasUsedTrial: Boolean,
+    showTrialPlan: Boolean = !hasUsedTrial,
     selectedPlan: PaymentGatewayHandler.SubscriptionPlan,
     onSelectPlan: (PaymentGatewayHandler.SubscriptionPlan) -> Unit,
     onStartSubscription: () -> Unit
 ) {
+    val canDisplayTrial = showTrialPlan && !hasUsedTrial
+
     Column(
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally
@@ -913,7 +925,7 @@ fun InactivePlanSelectionView(
                 Spacer(modifier = Modifier.height(12.dp))
 
                 Text(
-                    text = if (!hasUsedTrial) {
+                    text = if (canDisplayTrial) {
                         "Start 3-Day Free Trial @ ₹1 Mandate. Direct settlement into Merchant Bank Account (${PaymentGatewayConfig.SETTLEMENT_ACCOUNT_MASKED}). Billed via Razorpay Subscriptions / PhonePe UPI Autopay."
                     } else {
                         "Upgrade to Pro for unlimited billing, thermal receipt printing, WhatsApp ledger reminders & instant merchant settlements."
@@ -941,8 +953,8 @@ fun InactivePlanSelectionView(
 
         Spacer(modifier = Modifier.height(10.dp))
 
-        // Option 1: 3-Day Trial @ ₹1 (Only visible if hasUsedTrial == false)
-        if (!hasUsedTrial) {
+        // Option 1: 3-Day Trial @ ₹1 (Only visible if canDisplayTrial == true)
+        if (canDisplayTrial) {
             PlanCardOption(
                 title = "3-Day Trial @ ₹1",
                 badgeText = "🔥 RAZORPAY / PHONEPE MANDATE",
@@ -958,7 +970,7 @@ fun InactivePlanSelectionView(
         // Option 2: Monthly Pro Plan
         PlanCardOption(
             title = "Monthly Pro Plan",
-            badgeText = if (hasUsedTrial) "POPULAR" else "REGULAR RECURRING",
+            badgeText = if (!canDisplayTrial) "POPULAR" else "REGULAR RECURRING",
             priceText = "₹79 / month",
             subtext = "Instant Bank Settlement. Recurring monthly debit via Razorpay/PhonePe. Cancel anytime.",
             isSelected = selectedPlan == PaymentGatewayHandler.SubscriptionPlan.MONTHLY_79_INR,

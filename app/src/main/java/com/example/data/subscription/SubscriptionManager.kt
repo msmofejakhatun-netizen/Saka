@@ -388,7 +388,7 @@ object SubscriptionManager {
                         "EXPIRED"
                     }
                     val usedTrialFlag = info.hasUsedTrial || info.trialStartDate > 0L || info.subscriptionTier == "TRIAL_1_INR"
-                    val subMap = hashMapOf(
+                    val subMap = hashMapOf<String, Any>(
                         "isProUser" to info.isProUser,
                         "subscriptionTier" to info.subscriptionTier,
                         "status" to statusStr,
@@ -400,23 +400,33 @@ object SubscriptionManager {
                         "gatewaySubscriptionId" to info.gatewaySubscriptionId,
                         "settlementAccount" to info.settlementAccount,
                         "trialStartDate" to info.trialStartDate,
+                        "trialExpiryDate" to info.subscriptionExpiryDate,
                         "paymentMethod" to info.paymentMethod,
                         "hasUsedTrial" to usedTrialFlag
                     )
                     firestore.collection("users").document(targetUid)
                         .collection("subscription").document("current")
                         .set(subMap, com.google.firebase.firestore.SetOptions.merge()).await()
+
+                    val userMap = hashMapOf<String, Any>(
+                        "isProUser" to info.isProUser,
+                        "subscriptionTier" to info.subscriptionTier,
+                        "subscriptionStatus" to statusStr,
+                        "hasUsedTrial" to usedTrialFlag,
+                        "updatedAt" to System.currentTimeMillis()
+                    )
+                    if (info.trialStartDate > 0L) {
+                        userMap["trialStartDate"] = info.trialStartDate
+                    }
+                    if (info.subscriptionExpiryDate > 0L) {
+                        userMap["trialExpiryDate"] = info.subscriptionExpiryDate
+                    }
+                    if (info.autoPayMandateId.isNotBlank()) {
+                        userMap["mandateId"] = info.autoPayMandateId
+                    }
+
                     firestore.collection("users").document(targetUid)
-                        .set(
-                            hashMapOf(
-                                "isProUser" to info.isProUser,
-                                "subscriptionTier" to info.subscriptionTier,
-                                "subscriptionStatus" to statusStr,
-                                "hasUsedTrial" to usedTrialFlag,
-                                "updatedAt" to System.currentTimeMillis()
-                            ),
-                            com.google.firebase.firestore.SetOptions.merge()
-                        ).await()
+                        .set(userMap, com.google.firebase.firestore.SetOptions.merge()).await()
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Error syncing subscription to Firebase: ${e.localizedMessage}")

@@ -299,12 +299,20 @@ fun LoginScreen(
                         Spacer(modifier = Modifier.height(20.dp))
 
                         // Get OTP Button
+                        val currentActivity = context.findActivity() ?: (context as? Activity)
                         Button(
                             onClick = {
-                                viewModel.sendOtp(
-                                    mobileNumber = mobileNumberInput,
-                                    activity = context as Activity
-                                )
+                                if (currentActivity != null) {
+                                    viewModel.sendOtp(
+                                        mobileNumber = mobileNumberInput,
+                                        activity = currentActivity
+                                    )
+                                } else if (context is Activity) {
+                                    viewModel.sendOtp(
+                                        mobileNumber = mobileNumberInput,
+                                        activity = context
+                                    )
+                                }
                             },
                             enabled = mobileNumberInput.length == 10 && !viewModel.isSendingOtp,
                             colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
@@ -562,6 +570,7 @@ fun LoginScreen(
                                 fontWeight = FontWeight.Medium
                             )
                         } else {
+                            val currentActivity = context.findActivity() ?: (context as? Activity)
                             Text(
                                 text = "Resend OTP",
                                 color = EmeraldGreen,
@@ -569,10 +578,17 @@ fun LoginScreen(
                                 fontSize = 14.sp,
                                 modifier = Modifier
                                     .clickable {
-                                        viewModel.sendOtp(
-                                            mobileNumber = mobileNumberInput,
-                                            activity = context as Activity
-                                        )
+                                        if (currentActivity != null) {
+                                            viewModel.sendOtp(
+                                                mobileNumber = mobileNumberInput,
+                                                activity = currentActivity
+                                            )
+                                        } else if (context is Activity) {
+                                            viewModel.sendOtp(
+                                                mobileNumber = mobileNumberInput,
+                                                activity = context
+                                            )
+                                        }
                                     }
                                     .padding(8.dp)
                                     .testTag("login_resend_otp_button")
@@ -666,4 +682,13 @@ fun LegalConsentText(
             }
         }
     )
+}
+
+private fun android.content.Context.findActivity(): Activity? {
+    var ctx: android.content.Context? = this
+    while (ctx is android.content.ContextWrapper) {
+        if (ctx is Activity) return ctx
+        ctx = ctx.baseContext
+    }
+    return null
 }

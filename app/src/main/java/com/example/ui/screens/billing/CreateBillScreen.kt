@@ -1146,31 +1146,11 @@ fun CreateBillScreen(
                     viewModel.updatePOSInvoice { updated ->
                         generatedInvoiceForReceipt = updated
                         showSuccessReceiptDialog = true
-
-                        // Auto-send WhatsApp invoice if enabled and customer phone number is present
-                        if (viewModel.autoSendWhatsAppInvoice && updated.customerMobile.isNotBlank()) {
-                            com.example.util.WhatsAppInvoiceHelper.sendWhatsAppInvoice(
-                                context = context,
-                                customerPhone = updated.customerMobile,
-                                invoice = updated,
-                                businessName = currentUser?.businessName ?: "SmartPOS Store"
-                            )
-                        }
                     }
                 } else {
                     viewModel.generatePOSInvoice { generatedInvoice ->
                         generatedInvoiceForReceipt = generatedInvoice
                         showSuccessReceiptDialog = true
-
-                        // Auto-send WhatsApp invoice if enabled and customer phone number is present
-                        if (viewModel.autoSendWhatsAppInvoice && generatedInvoice.customerMobile.isNotBlank()) {
-                            com.example.util.WhatsAppInvoiceHelper.sendWhatsAppInvoice(
-                                context = context,
-                                customerPhone = generatedInvoice.customerMobile,
-                                invoice = generatedInvoice,
-                                businessName = currentUser?.businessName ?: "SmartPOS Store"
-                            )
-                        }
                     }
                 }
             },
@@ -1273,16 +1253,6 @@ fun CreateBillScreen(
                         showCartReviewModal = false
                         generatedInvoiceForReceipt = updated
                         showSuccessReceiptDialog = true
-
-                        // Auto-send WhatsApp invoice if enabled and customer phone number is present
-                        if (viewModel.autoSendWhatsAppInvoice && updated.customerMobile.isNotBlank()) {
-                            com.example.util.WhatsAppInvoiceHelper.sendWhatsAppInvoice(
-                                context = context,
-                                customerPhone = updated.customerMobile,
-                                invoice = updated,
-                                businessName = currentUser?.businessName ?: "SmartPOS Store"
-                            )
-                        }
                     }
                 } else {
                     viewModel.generatePOSInvoice { generatedInvoice ->
@@ -1290,16 +1260,6 @@ fun CreateBillScreen(
                         showCartReviewModal = false
                         generatedInvoiceForReceipt = generatedInvoice
                         showSuccessReceiptDialog = true
-
-                        // Auto-send WhatsApp invoice if enabled and customer phone number is present
-                        if (viewModel.autoSendWhatsAppInvoice && generatedInvoice.customerMobile.isNotBlank()) {
-                            com.example.util.WhatsAppInvoiceHelper.sendWhatsAppInvoice(
-                                context = context,
-                                customerPhone = generatedInvoice.customerMobile,
-                                invoice = generatedInvoice,
-                                businessName = currentUser?.businessName ?: "SmartPOS Store"
-                            )
-                        }
                     }
                 }
             },

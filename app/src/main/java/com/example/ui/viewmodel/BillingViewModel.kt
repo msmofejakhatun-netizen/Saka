@@ -10,12 +10,20 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.example.data.api.ApiResponse
+import com.example.data.api.InvoiceRequestPayload
+import com.example.data.api.ItemPayload
+import com.example.data.api.WhatsAppApiService
+import com.example.data.repository.WhatsAppInvoiceRepository
 import com.example.data.db.CategoryEntity
 import com.example.data.db.InvoiceEntity
 import com.example.data.db.ProductEntity
 import com.example.data.db.UserEntity
 import com.example.data.repository.BillingRepository
+import java.text.SimpleDateFormat
+import java.util.Date
 import java.util.Locale
+import kotlinx.coroutines.Dispatchers
 
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
@@ -905,6 +913,107 @@ class BillingViewModel(val repository: BillingRepository) : ViewModel() {
         )
     }
 
+    private val whatsAppInvoiceRepository: WhatsAppInvoiceRepository = WhatsAppInvoiceRepository()
+
+    /**
+     * Dispatches digital invoice to customer via central SmartPOS WhatsApp endpoint in background.
+     * Non-blocking, executes on Dispatchers.IO, handles result silently without opening external apps,
+     * and shows a subtle in-app toast upon successful dispatch.
+     */
+    fun dispatchCentralWhatsAppInvoice(
+        customerPhone: String,
+        storeName: String,
+        invoiceNumber: String,
+        totalAmount: Double,
+        date: String,
+        items: List<ItemPayload>,
+        paymentMode: String = "Cash",
+        customerName: String = "",
+        subtotal: Double = totalAmount,
+        discountAmount: Double = 0.0,
+        taxAmount: Double = 0.0
+    ) {
+        val cleanPhone = customerPhone.replace("[^0-9]".toRegex(), "").takeLast(10)
+        if (cleanPhone.length != 10) {
+            Log.d("BillingVM", "Central WhatsApp invoice skipped: invalid customer phone '$customerPhone'")
+            return
+        }
+
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val payload = InvoiceRequestPayload(
+                    customerPhone = cleanPhone,
+                    storeName = storeName.ifBlank { currentUser.value?.businessName ?: "SmartPOS Store" },
+                    invoiceNumber = invoiceNumber,
+                    totalAmount = totalAmount.toString(),
+                    date = date,
+                    items = items,
+                    paymentMode = paymentMode,
+                    customerName = customerName,
+                    subtotal = subtotal,
+                    discountAmount = discountAmount,
+                    taxAmount = taxAmount
+                )
+
+                // Call WhatsAppApiService.getInstance().sendInvoice(...)
+                val response = WhatsAppApiService.getInstance().sendInvoice(payload)
+                if (response.isSuccessful) {
+                    val body = response.body()
+                    Log.d("BillingVM", "Central WhatsApp invoice dispatched: ${body?.message ?: "Success"}")
+                    _toastMessage.emit("Bill sent on customer's WhatsApp 🚀")
+                } else {
+                    val err = response.errorBody()?.string() ?: "HTTP ${response.code()}"
+                    Log.w("BillingVM", "Central WhatsApp invoice API response error: $err")
+                }
+            } catch (e: Exception) {
+                // Silently handle error without disrupting POS flow or blocking UI
+                Log.e("BillingVM", "Silent exception during central WhatsApp dispatch: ${e.localizedMessage}")
+            }
+        }
+    }
+
+    /**
+     * Convenience method to dispatch central WhatsApp invoice from an existing InvoiceEntity.
+     */
+    fun dispatchCentralWhatsAppInvoiceForInvoice(
+        invoice: InvoiceEntity,
+        storeName: String? = null
+    ) {
+        val cleanPhone = invoice.customerMobile.replace("[^0-9]".toRegex(), "").takeLast(10)
+        if (cleanPhone.length != 10) return
+
+        val effectiveStore = storeName?.ifBlank { currentUser.value?.businessName }
+            ?: currentUser.value?.businessName
+            ?: "SmartPOS Store"
+
+        val extractedItems = com.example.util.WhatsAppInvoiceHelper.extractItemsFromInvoice(invoice).map { item ->
+            ItemPayload(
+                name = item.name,
+                quantity = item.quantity,
+                price = item.price,
+                unit = item.unit.ifBlank { "Pcs" },
+                total = item.totalAmount
+            )
+        }
+        val dateFormat = SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault())
+        val dateString = dateFormat.format(Date(if (invoice.timestamp > 0) invoice.timestamp else System.currentTimeMillis()))
+        val invoiceNum = if (invoice.id > 0) "BILL-${invoice.id}" else "BILL-${(1000..9999).random()}"
+
+        dispatchCentralWhatsAppInvoice(
+            customerPhone = cleanPhone,
+            storeName = effectiveStore,
+            invoiceNumber = invoiceNum,
+            totalAmount = invoice.amount,
+            date = dateString,
+            items = extractedItems,
+            paymentMode = invoice.paymentMode,
+            customerName = invoice.customerName,
+            subtotal = if (invoice.subtotal > 0) invoice.subtotal else invoice.amount,
+            discountAmount = invoice.discountAmount,
+            taxAmount = invoice.taxAmount
+        )
+    }
+
     // Editing POS Invoice state
     var editingInvoice by mutableStateOf<InvoiceEntity?>(null)
     var originalPurchasedItems by mutableStateOf<List<Pair<ProductEntity, Double>>>(emptyList())
@@ -1209,6 +1318,37 @@ class BillingViewModel(val repository: BillingRepository) : ViewModel() {
                 _toastMessage.emit("Bill #${currentEdit.id} updated successfully! Stock adjusted.")
                 cancelEditingBill()
                 onSuccess(updatedInvoice)
+
+                // Dispatch central WhatsApp invoice in background if customer phone number is present
+                val editCleanPhone = mobile.replace("[^0-9]".toRegex(), "").takeLast(10)
+                if (editCleanPhone.length == 10) {
+                    val invoiceNum = if (updatedInvoice.id > 0) "BILL-${updatedInvoice.id}" else "BILL-${(1000..9999).random()}"
+                    val dateFormatted = SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault()).format(Date(updatedInvoice.lastEditedTimestamp))
+                    val currentStoreName = currentUser.value?.businessName ?: "SmartPOS Store"
+                    val payloadItems = newPurchasedList.map { pair ->
+                        ItemPayload(
+                            name = pair.first.name,
+                            quantity = pair.second,
+                            price = pair.first.salePrice,
+                            unit = pair.first.unit.ifBlank { "Pcs" },
+                            total = pair.second * pair.first.salePrice
+                        )
+                    }
+
+                    dispatchCentralWhatsAppInvoice(
+                        customerPhone = editCleanPhone,
+                        storeName = currentStoreName,
+                        invoiceNumber = invoiceNum,
+                        totalAmount = finalAmount,
+                        date = dateFormatted,
+                        items = payloadItems,
+                        paymentMode = posPaymentMode,
+                        customerName = name,
+                        subtotal = posSubtotal,
+                        discountAmount = posDiscountAmount,
+                        taxAmount = posTaxAmount
+                    )
+                }
             } catch (e: Exception) {
                 isGeneratingPOSInvoice = false
                 Log.e("BillingVM", "Update POS invoice error: ${e.localizedMessage}")
@@ -1339,6 +1479,37 @@ class BillingViewModel(val repository: BillingRepository) : ViewModel() {
                 _toastMessage.emit("Invoice generated successfully! Stock auto-deducted.")
                 clearPOSCart()
                 onSuccess(savedInvoice)
+
+                // Dispatch central WhatsApp invoice in background if customer phone number is present
+                val newCleanPhone = mobile.replace("[^0-9]".toRegex(), "").takeLast(10)
+                if (newCleanPhone.length == 10) {
+                    val invoiceNum = if (savedInvoice.id > 0) "BILL-${savedInvoice.id}" else "BILL-${(1000..9999).random()}"
+                    val dateFormatted = SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault()).format(Date(savedInvoice.timestamp))
+                    val currentStoreName = currentUser.value?.businessName ?: "SmartPOS Store"
+                    val payloadItems = purchasedList.map { pair ->
+                        ItemPayload(
+                            name = pair.first.name,
+                            quantity = pair.second,
+                            price = pair.first.salePrice,
+                            unit = pair.first.unit.ifBlank { "Pcs" },
+                            total = pair.second * pair.first.salePrice
+                        )
+                    }
+
+                    dispatchCentralWhatsAppInvoice(
+                        customerPhone = newCleanPhone,
+                        storeName = currentStoreName,
+                        invoiceNumber = invoiceNum,
+                        totalAmount = finalAmount,
+                        date = dateFormatted,
+                        items = payloadItems,
+                        paymentMode = posPaymentMode,
+                        customerName = name,
+                        subtotal = posSubtotal,
+                        discountAmount = posDiscountAmount,
+                        taxAmount = posTaxAmount
+                    )
+                }
             } catch (e: Exception) {
                 isGeneratingPOSInvoice = false
                 Log.e("BillingVM", "Generate POS invoice error: ${e.localizedMessage}")

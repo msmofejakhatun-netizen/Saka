@@ -941,11 +941,11 @@ class BillingViewModel(val repository: BillingRepository) : ViewModel() {
                     customerPhone = cleanPhone,
                     storeName = storeName.ifBlank { currentUser.value?.businessName ?: "SmartPOS Store" },
                     invoiceNumber = invoiceNumber,
-                    totalAmount = totalAmount.toString(),
+                    totalAmount = totalAmount,
                     date = date,
-                    items = items,
                     paymentMode = paymentMode,
                     customerName = customerName,
+                    items = items,
                     subtotal = subtotal,
                     discountAmount = discountAmount,
                     taxAmount = taxAmount
@@ -986,14 +986,20 @@ class BillingViewModel(val repository: BillingRepository) : ViewModel() {
             ItemPayload(
                 name = item.name,
                 quantity = item.quantity,
-                price = item.price,
                 unit = item.unit.ifBlank { "Pcs" },
-                total = item.totalAmount
+                unitPrice = item.price,
+                totalPrice = item.totalAmount
             )
         }
         val dateFormat = SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault())
         val dateString = dateFormat.format(Date(if (invoice.timestamp > 0) invoice.timestamp else System.currentTimeMillis()))
-        val invoiceNum = if (invoice.id > 0) "BILL-${invoice.id}" else "BILL-${(1000..9999).random()}"
+        val invoiceNum = if (invoice.firestoreId.isNotBlank()) {
+            "#${invoice.firestoreId.take(8).uppercase()}"
+        } else if (invoice.id > 0) {
+            "#BILL-${invoice.id}"
+        } else {
+            "#BILL-${(1000..9999).random()}"
+        }
 
         dispatchCentralWhatsAppInvoice(
             customerPhone = cleanPhone,
@@ -1318,16 +1324,22 @@ class BillingViewModel(val repository: BillingRepository) : ViewModel() {
                 // Dispatch central WhatsApp invoice in background if customer phone number is present
                 val editCleanPhone = mobile.replace("[^0-9]".toRegex(), "").takeLast(10)
                 if (editCleanPhone.length == 10) {
-                    val invoiceNum = if (updatedInvoice.id > 0) "BILL-${updatedInvoice.id}" else "BILL-${(1000..9999).random()}"
+                    val invoiceNum = if (updatedInvoice.firestoreId.isNotBlank()) {
+                        "#${updatedInvoice.firestoreId.take(8).uppercase()}"
+                    } else if (updatedInvoice.id > 0) {
+                        "#BILL-${updatedInvoice.id}"
+                    } else {
+                        "#BILL-${(1000..9999).random()}"
+                    }
                     val dateFormatted = SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault()).format(Date(updatedInvoice.lastEditedTimestamp))
                     val currentStoreName = currentUser.value?.businessName ?: "SmartPOS Store"
                     val payloadItems = newPurchasedList.map { pair ->
                         ItemPayload(
                             name = pair.first.name,
                             quantity = pair.second,
-                            price = pair.first.salePrice,
                             unit = pair.first.unit.ifBlank { "Pcs" },
-                            total = pair.second * pair.first.salePrice
+                            unitPrice = pair.first.salePrice,
+                            totalPrice = pair.second * pair.first.salePrice
                         )
                     }
 
@@ -1479,16 +1491,22 @@ class BillingViewModel(val repository: BillingRepository) : ViewModel() {
                 // Dispatch central WhatsApp invoice in background if customer phone number is present
                 val newCleanPhone = mobile.replace("[^0-9]".toRegex(), "").takeLast(10)
                 if (newCleanPhone.length == 10) {
-                    val invoiceNum = if (savedInvoice.id > 0) "BILL-${savedInvoice.id}" else "BILL-${(1000..9999).random()}"
+                    val invoiceNum = if (savedInvoice.firestoreId.isNotBlank()) {
+                        "#${savedInvoice.firestoreId.take(8).uppercase()}"
+                    } else if (savedInvoice.id > 0) {
+                        "#BILL-${savedInvoice.id}"
+                    } else {
+                        "#BILL-${(1000..9999).random()}"
+                    }
                     val dateFormatted = SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault()).format(Date(savedInvoice.timestamp))
                     val currentStoreName = currentUser.value?.businessName ?: "SmartPOS Store"
                     val payloadItems = purchasedList.map { pair ->
                         ItemPayload(
                             name = pair.first.name,
                             quantity = pair.second,
-                            price = pair.first.salePrice,
                             unit = pair.first.unit.ifBlank { "Pcs" },
-                            total = pair.second * pair.first.salePrice
+                            unitPrice = pair.first.salePrice,
+                            totalPrice = pair.second * pair.first.salePrice
                         )
                     }
 

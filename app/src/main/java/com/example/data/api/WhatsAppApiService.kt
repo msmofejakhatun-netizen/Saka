@@ -13,9 +13,9 @@ import retrofit2.http.POST
 data class ItemPayload(
     @Json(name = "name") val name: String,
     @Json(name = "quantity") val quantity: Double,
-    @Json(name = "price") val price: Double,
     @Json(name = "unit") val unit: String = "Pcs",
-    @Json(name = "total") val total: Double = quantity * price
+    @Json(name = "unitPrice") val unitPrice: Double = 0.0,
+    @Json(name = "totalPrice") val totalPrice: Double = quantity * unitPrice
 )
 
 /**
@@ -26,12 +26,12 @@ data class InvoiceRequestPayload(
     @Json(name = "customerPhone") val customerPhone: String,
     @Json(name = "storeName") val storeName: String,
     @Json(name = "invoiceNumber") val invoiceNumber: String,
-    @Json(name = "totalAmount") val totalAmount: String,
+    @Json(name = "totalAmount") val totalAmount: Double,
     @Json(name = "date") val date: String,
-    @Json(name = "items") val items: List<ItemPayload> = emptyList(),
     @Json(name = "paymentMode") val paymentMode: String = "Cash",
     @Json(name = "customerName") val customerName: String = "",
-    @Json(name = "subtotal") val subtotal: Double = 0.0,
+    @Json(name = "items") val items: List<ItemPayload> = emptyList(),
+    @Json(name = "subtotal") val subtotal: Double = totalAmount,
     @Json(name = "discountAmount") val discountAmount: Double = 0.0,
     @Json(name = "taxAmount") val taxAmount: Double = 0.0
 )

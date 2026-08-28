@@ -51,11 +51,11 @@ class WhatsAppInvoiceRepository(
                 customerPhone = cleanPhone,
                 storeName = storeName.ifBlank { "SmartPOS Retail Store" },
                 invoiceNumber = invoiceNumber,
-                totalAmount = totalAmount.toString(),
+                totalAmount = totalAmount,
                 date = date,
-                items = items,
                 paymentMode = paymentMode,
                 customerName = customerName,
+                items = items,
                 subtotal = subtotal,
                 discountAmount = discountAmount,
                 taxAmount = taxAmount
@@ -90,14 +90,20 @@ class WhatsAppInvoiceRepository(
             ItemPayload(
                 name = item.name,
                 quantity = item.quantity,
-                price = item.price,
                 unit = item.unit.ifBlank { "Pcs" },
-                total = item.totalAmount
+                unitPrice = item.price,
+                totalPrice = item.totalAmount
             )
         }
         val dateFormat = SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault())
         val dateString = dateFormat.format(Date(if (invoice.timestamp > 0) invoice.timestamp else System.currentTimeMillis()))
-        val invoiceNum = if (invoice.id > 0) "BILL-${invoice.id}" else "BILL-${(1000..9999).random()}"
+        val invoiceNum = if (invoice.firestoreId.isNotBlank()) {
+            "#${invoice.firestoreId.take(8).uppercase()}"
+        } else if (invoice.id > 0) {
+            "#BILL-${invoice.id}"
+        } else {
+            "#BILL-${(1000..9999).random()}"
+        }
 
         return sendCentralInvoice(
             customerPhone = invoice.customerMobile,

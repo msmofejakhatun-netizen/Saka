@@ -46,7 +46,7 @@ class AuthRepository(
 
     /**
      * Initiates Firebase Phone Number verification via official PhoneAuthProvider.
-     * Passes foreground Activity to allow silent verification via Play Integrity API without browser popups.
+     * Passes foreground Activity to allow silent verification via Play Integrity API / safety handshake without failing.
      */
     fun verifyPhoneNumber(
         activity: Activity,
@@ -55,31 +55,26 @@ class AuthRepository(
         resendToken: PhoneAuthProvider.ForceResendingToken? = null
     ) {
         val cleanDigits = phoneNumber.replace("\\D".toRegex(), "")
-        val formattedPhone = when {
+        val formattedPhoneNumber = when {
             phoneNumber.startsWith("+") -> phoneNumber
             cleanDigits.length == 10 -> "+91$cleanDigits"
             else -> "+$cleanDigits"
         }
 
-        Log.d(TAG, "Starting Firebase Phone Auth verification for: $formattedPhone with activity: ${activity.localClassName}")
-
-        try {
-            firebaseAuth.firebaseAuthSettings.forceRecaptchaFlowForTesting(false)
-        } catch (e: Exception) {
-            Log.w(TAG, "Failed to set forceRecaptchaFlowForTesting(false): ${e.localizedMessage}")
-        }
+        Log.d(TAG, "Starting Firebase Phone Auth verification for: $formattedPhoneNumber with activity: ${activity.localClassName}")
 
         val optionsBuilder = PhoneAuthOptions.newBuilder(firebaseAuth)
-            .setPhoneNumber(formattedPhone)
+            .setPhoneNumber(formattedPhoneNumber) // Must include country code, e.g. +91XXXXXXXXXX
             .setTimeout(60L, TimeUnit.SECONDS)
-            .setActivity(activity)
+            .setActivity(activity) // Required for app verification
             .setCallbacks(callbacks)
 
         if (resendToken != null) {
             optionsBuilder.setForceResendingToken(resendToken)
         }
 
-        PhoneAuthProvider.verifyPhoneNumber(optionsBuilder.build())
+        val options = optionsBuilder.build()
+        PhoneAuthProvider.verifyPhoneNumber(options)
     }
 
     /**

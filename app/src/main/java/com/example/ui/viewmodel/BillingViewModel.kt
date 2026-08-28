@@ -456,22 +456,18 @@ class BillingViewModel(val repository: BillingRepository) : ViewModel() {
 
         try {
             val auth = com.google.firebase.auth.FirebaseAuth.getInstance()
-            try {
-                auth.firebaseAuthSettings.forceRecaptchaFlowForTesting(false)
-            } catch (e: Exception) {
-                Log.w("BillingVM", "forceRecaptchaFlowForTesting configuration: ${e.localizedMessage}")
-            }
             val optionsBuilder = com.google.firebase.auth.PhoneAuthOptions.newBuilder(auth)
-                .setPhoneNumber(formattedPhone)
+                .setPhoneNumber(formattedPhone) // Must include country code, e.g. +91XXXXXXXXXX
                 .setTimeout(60L, TimeUnit.SECONDS)
-                .setActivity(activity)
+                .setActivity(activity) // Required for app verification
                 .setCallbacks(callbacks)
 
             if (resendToken != null) {
                 optionsBuilder.setForceResendingToken(resendToken!!)
             }
 
-            com.google.firebase.auth.PhoneAuthProvider.verifyPhoneNumber(optionsBuilder.build())
+            val options = optionsBuilder.build()
+            com.google.firebase.auth.PhoneAuthProvider.verifyPhoneNumber(options)
         } catch (e: Exception) {
             isSendingOtp = false
             authError = "Failed to start phone verification: ${e.localizedMessage}"

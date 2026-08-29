@@ -9,6 +9,8 @@ import com.example.data.subscription.AppSessionManager
 import com.example.data.subscription.PaymentGatewayConfig
 import com.example.data.subscription.SubscriptionInfo
 import com.example.data.subscription.SubscriptionManager
+import com.example.data.subscription.SubscriptionModel
+import com.example.data.subscription.SubscriptionRepository
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
@@ -32,6 +34,10 @@ data class SubscriptionUiState(
     val hasUsedTrial: Boolean = false,
     val isProUser: Boolean = false,
     val subscriptionStatus: String = "FREE",
+    val planType: String = "FREE",
+    val planName: String = "Free Plan",
+    val daysLeft: Long = 0L,
+    val displayBadgeTitle: String = "Free Plan",
     val isLoading: Boolean = false,
     val errorMessage: String? = null
 )
@@ -51,7 +57,11 @@ class SubscriptionViewModel : ViewModel() {
             showTrialPlan = !SubscriptionManager.subscriptionState.value.hasUsedTrial,
             hasUsedTrial = SubscriptionManager.subscriptionState.value.hasUsedTrial,
             isProUser = SubscriptionManager.subscriptionState.value.isProUser,
-            subscriptionStatus = SubscriptionManager.subscriptionState.value.autoPayMandateStatus
+            subscriptionStatus = SubscriptionManager.subscriptionState.value.status,
+            planType = SubscriptionManager.subscriptionState.value.planType,
+            planName = SubscriptionManager.subscriptionState.value.planName,
+            daysLeft = SubscriptionManager.subscriptionState.value.daysLeft,
+            displayBadgeTitle = SubscriptionManager.subscriptionState.value.displayBadgeTitle
         )
     )
     val uiState: StateFlow<SubscriptionUiState> = _uiState.asStateFlow()
@@ -73,6 +83,18 @@ class SubscriptionViewModel : ViewModel() {
         .distinctUntilChanged()
         .let { flow ->
             val initial = subscriptionState.value.subscriptionTier
+            val stateFlow = MutableStateFlow(initial)
+            viewModelScope.launch {
+                flow.collect { stateFlow.value = it }
+            }
+            stateFlow
+        }
+
+    val planType: StateFlow<String> = subscriptionState
+        .map { it.planType }
+        .distinctUntilChanged()
+        .let { flow ->
+            val initial = subscriptionState.value.planType
             val stateFlow = MutableStateFlow(initial)
             viewModelScope.launch {
                 flow.collect { stateFlow.value = it }
@@ -107,13 +129,17 @@ class SubscriptionViewModel : ViewModel() {
 
         viewModelScope.launch {
             subscriptionState.collect { info ->
-                val usedTrial = info.hasUsedTrial || info.trialStartDate > 0L || info.subscriptionTier == "TRIAL_1_INR"
+                val usedTrial = info.hasUsedTrial || info.trialStartDate > 0L || info.subscriptionTier == "TRIAL_1_INR" || info.planType != "FREE"
                 _uiState.update {
                     it.copy(
                         showTrialPlan = !usedTrial,
                         hasUsedTrial = usedTrial,
                         isProUser = info.isProUser,
-                        subscriptionStatus = info.autoPayMandateStatus
+                        subscriptionStatus = info.status,
+                        planType = info.planType,
+                        planName = info.planName,
+                        daysLeft = info.daysLeft,
+                        displayBadgeTitle = info.displayBadgeTitle
                     )
                 }
             }
@@ -130,6 +156,7 @@ class SubscriptionViewModel : ViewModel() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
             try {
+                val subModel = SubscriptionRepository.fetchSubscription(userId)
                 val userDoc = firestore.collection("users").document(userId).get().await()
                 val subDoc = firestore.collection("users").document(userId)
                     .collection("subscription").document("current").get().await()
@@ -138,37 +165,37 @@ class SubscriptionViewModel : ViewModel() {
                         (subDoc.getBoolean("hasUsedTrial") ?: false) ||
                         ((userDoc.getLong("trialStartDate") ?: 0L) > 0L) ||
                         ((subDoc.getLong("trialStartDate") ?: 0L) > 0L) ||
-                        (subDoc.getString("subscriptionTier") == "TRIAL_1_INR")
+                        (subDoc.getString("subscriptionTier") == "TRIAL_1_INR") ||
+                        (subModel?.hasUsedTrial == true) ||
+                        (subModel?.planType != null && subModel.planType != "FREE")
 
-                val status = subDoc.getString("status")
+                val status = subModel?.status
+                    ?: subDoc.getString("status")
                     ?: userDoc.getString("subscriptionStatus")
                     ?: userDoc.getString("status")
                     ?: "FREE"
-                val isPro = subDoc.getBoolean("isProUser") ?: userDoc.getBoolean("isProUser") ?: false
+                val isPro = subModel?.isProUser
+                    ?: subDoc.getBoolean("isProUser")
+                    ?: userDoc.getBoolean("isProUser")
+                    ?: false
 
-                if (hasAlreadyUsedTrial) {
-                    // Hide the 3-Day Trial option completely
-                    // Show only Regular Monthly (₹79) and Annual (₹799) plans
-                    _uiState.update {
-                        it.copy(
-                            showTrialPlan = false,
-                            hasUsedTrial = true,
-                            subscriptionStatus = status,
-                            isProUser = isPro,
-                            isLoading = false
-                        )
-                    }
-                } else {
-                    // Allow trial only if never used before
-                    _uiState.update {
-                        it.copy(
-                            showTrialPlan = true,
-                            hasUsedTrial = false,
-                            subscriptionStatus = status,
-                            isProUser = isPro,
-                            isLoading = false
-                        )
-                    }
+                val planT = subModel?.planType ?: "FREE"
+                val planN = subModel?.planName ?: "Free Plan"
+                val daysL = subModel?.daysLeft ?: 0L
+                val badge = subModel?.displayBadgeTitle ?: "Free Plan"
+
+                _uiState.update {
+                    it.copy(
+                        showTrialPlan = !hasAlreadyUsedTrial,
+                        hasUsedTrial = hasAlreadyUsedTrial,
+                        subscriptionStatus = status,
+                        isProUser = isPro,
+                        planType = planT,
+                        planName = planN,
+                        daysLeft = daysL,
+                        displayBadgeTitle = badge,
+                        isLoading = false
+                    )
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Error checking trial eligibility: ${e.localizedMessage}")
@@ -185,13 +212,21 @@ class SubscriptionViewModel : ViewModel() {
         _isSuccessDialogVisible.value = false
     }
 
-    fun onSubscriptionSuccess(context: Context, userUid: String, paymentId: String) {
+    fun onSubscriptionSuccess(
+        context: Context,
+        userUid: String,
+        paymentId: String,
+        planType: String? = null,
+        amountPaid: Double? = null
+    ) {
         viewModelScope.launch {
             _isSuccessDialogVisible.value = true
             PaymentGatewayConfig.handlePaymentSuccess(
                 context = context,
                 userUid = userUid,
                 razorpayPaymentId = paymentId,
+                planType = planType,
+                amountPaid = amountPaid,
                 onComplete = {
                     checkTrialEligibility(userUid)
                 }

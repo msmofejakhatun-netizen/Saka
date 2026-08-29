@@ -92,6 +92,7 @@ object PaymentGatewayHandler {
         subscriptionId: String = ""
     ) {
         try {
+            SubscriptionManager.pendingPlan = plan
             val checkout = com.razorpay.Checkout()
             checkout.setKeyID(PaymentGatewayConfig.razorpayKeyId)
 
@@ -144,6 +145,7 @@ object PaymentGatewayHandler {
         userUid: String = "",
         onResult: (GatewayTransactionResult) -> Unit
     ) {
+        SubscriptionManager.pendingPlan = plan
         Log.d(TAG, "Initiating subscription mandate via $provider for plan: ${plan.title}")
 
         Handler(Looper.getMainLooper()).postDelayed({

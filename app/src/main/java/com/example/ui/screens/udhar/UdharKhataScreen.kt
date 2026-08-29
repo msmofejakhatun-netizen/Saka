@@ -143,37 +143,6 @@ fun UdharKhataScreen(
                 modifier = Modifier.testTag("udhar_khata_top_bar")
             )
         },
-        floatingActionButton = {
-            Column(
-                horizontalAlignment = Alignment.End,
-                verticalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                FloatingActionButton(
-                    onClick = triggerSpeechToText,
-                    containerColor = GoldYellow,
-                    contentColor = Color.Black,
-                    modifier = Modifier.testTag("udhar_khata_voice_entry_fab")
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(imageVector = Icons.Default.Mic, contentDescription = "Voice Entry")
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("Voice Entry", fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                    }
-                }
-
-                ExtendedFloatingActionButton(
-                    onClick = { showAddUdharDialog = true },
-                    containerColor = RoseRed,
-                    contentColor = Color.White,
-                    icon = { Icon(imageVector = Icons.Default.Add, contentDescription = "Add Udhar") },
-                    text = { Text("New Udhar Entry", fontWeight = FontWeight.Bold) },
-                    modifier = Modifier.testTag("udhar_khata_add_entry_fab")
-                )
-            }
-        },
         containerColor = Color.Transparent
     ) { innerPadding ->
         Box(
@@ -345,7 +314,7 @@ fun UdharKhataScreen(
                                 .weight(1f)
                                 .testTag("udhar_khata_customer_list"),
                             verticalArrangement = Arrangement.spacedBy(10.dp),
-                            contentPadding = PaddingValues(bottom = 80.dp)
+                            contentPadding = PaddingValues(bottom = 16.dp)
                         ) {
                             items(customers) { customer ->
                                 CustomerBalanceCard(

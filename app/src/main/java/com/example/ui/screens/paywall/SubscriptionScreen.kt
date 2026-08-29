@@ -503,32 +503,35 @@ fun ActiveSubscriptionDetailsCard(
 ) {
     val context = LocalContext.current
     val now = System.currentTimeMillis()
-    val isTrial = info.subscriptionTier == "TRIAL_1_INR" || info.autoPayMandateStatus == "TRIAL_ACTIVE"
-    val isAnnual = info.subscriptionTier == "ANNUAL_799_INR"
+    val isTrial = info.planType.equals("TRIAL", ignoreCase = true) || info.subscriptionTier == "TRIAL_1_INR" || info.autoPayMandateStatus == "TRIAL_ACTIVE"
+    val isAnnual = info.planType.equals("ANNUAL", ignoreCase = true) || info.subscriptionTier == "ANNUAL_799_INR"
+    val isMonthly = info.planType.equals("MONTHLY", ignoreCase = true) || info.subscriptionTier == "MONTHLY_79_INR"
 
     // Plan Title
     val planTitle = when {
-        isTrial -> "3-Day Free Trial (AutoPay Enabled)"
+        isTrial -> "3-Day Free Trial (₹1 Mandate Active)"
         isAnnual -> "Annual Pro Pass (₹799 / Year)"
+        isMonthly -> "Monthly Pro Plan (₹79 / Month)"
+        info.planName.isNotBlank() && info.planName != "Free Plan" -> info.planName
         else -> "Monthly Pro Plan (₹79 / Month)"
     }
 
     // Expiry & Countdown calculations
-    val expiryTimestamp = info.subscriptionExpiryDate
+    val expiryTimestamp = if (info.expiryDate > 0L) info.expiryDate else info.subscriptionExpiryDate
+    val daysLeft = if (expiryTimestamp > 0L) ((expiryTimestamp - now) / (1000 * 60 * 60 * 24)).coerceAtLeast(0L) else 0L
     val remainingMs = (expiryTimestamp - now).coerceAtLeast(0L)
-    val remainingDays = TimeUnit.MILLISECONDS.toDays(remainingMs)
     val remainingHours = TimeUnit.MILLISECONDS.toHours(remainingMs) % 24
 
     val countdownText = when {
         expiryTimestamp <= 0L -> "Lifetime Active"
         remainingMs <= 0L -> "Cycle Expired (Pending Auto-Debit)"
         isTrial -> {
-            if (remainingDays > 0) "$remainingDays Day${if (remainingDays > 1) "s" else ""} Left in Free Trial"
-            else "$remainingHours Hour${if (remainingHours > 1) "s" else ""} Left in Free Trial"
+            if (daysLeft > 0) "$daysLeft Days Left in Free Trial"
+            else "$remainingHours Hours Left in Free Trial"
         }
         else -> {
-            if (remainingDays > 0) "$remainingDays Day${if (remainingDays > 1) "s" else ""} Remaining in Cycle"
-            else "$remainingHours Hour${if (remainingHours > 1) "s" else ""} Remaining in Cycle"
+            if (daysLeft > 0) "$daysLeft Days Left (Active)"
+            else "$remainingHours Hours Remaining in Cycle"
         }
     }
 

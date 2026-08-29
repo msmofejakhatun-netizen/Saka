@@ -42,6 +42,8 @@ object PaymentGatewayConfig {
         userUid: String,
         razorpayPaymentId: String,
         paymentData: Any? = null,
+        planType: String? = null,
+        amountPaid: Double? = null,
         onComplete: (() -> Unit)? = null
     ) {
         SubscriptionManager.onPaymentSuccess(
@@ -49,6 +51,8 @@ object PaymentGatewayConfig {
             userUid = userUid,
             razorpayPaymentId = razorpayPaymentId,
             paymentData = paymentData,
+            planType = planType,
+            amountPaid = amountPaid,
             onComplete = onComplete
         )
     }

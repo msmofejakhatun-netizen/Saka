@@ -462,6 +462,72 @@ private fun HomeDashboardContent(
                     }
                 }
                 Spacer(modifier = Modifier.height(10.dp))
+            } else {
+                // Active Subscription Status Banner
+                val subBadgeTitle = when (subscriptionState.planType.uppercase()) {
+                    "MONTHLY", "MONTHLY_79_INR" -> "Monthly Pro Plan (Active)"
+                    "ANNUAL", "ANNUAL_799_INR" -> "Annual Pro Plan (Active)"
+                    "TRIAL", "TRIAL_1_INR" -> "3-Day Free Trial (Active)"
+                    else -> if (subscriptionState.isProUser) "Pro Plan (Active)" else "Free Plan"
+                }
+                val subDaysText = "${subscriptionState.daysLeft} Days Left"
+
+                Card(
+                    onClick = { viewModel.openPaywall() },
+                    colors = CardDefaults.cardColors(containerColor = Color(0x2210B981)),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .border(1.dp, Color(0x4410B981), RoundedCornerShape(12.dp))
+                        .testTag("dashboard_active_subscription_banner")
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 14.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.WorkspacePremium,
+                                contentDescription = "Active Plan",
+                                tint = EmeraldGreen,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Column {
+                                Text(
+                                    text = subBadgeTitle,
+                                    color = Color.White,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 12.sp
+                                )
+                                Text(
+                                    text = "Validity: $subDaysText",
+                                    color = EmeraldLight,
+                                    fontSize = 11.sp
+                                )
+                            }
+                        }
+                        Surface(
+                            color = EmeraldGreen.copy(alpha = 0.2f),
+                            shape = RoundedCornerShape(6.dp)
+                        ) {
+                            Text(
+                                text = "PRO",
+                                color = EmeraldGreen,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(10.dp))
             }
 
             // Firebase Live Sync Banner

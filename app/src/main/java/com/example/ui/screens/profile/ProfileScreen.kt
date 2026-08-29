@@ -9,15 +9,18 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountBalanceWallet
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Business
+import androidx.compose.material.icons.filled.Cancel
 import androidx.compose.material.icons.filled.Category
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.WorkspacePremium
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -95,8 +98,90 @@ fun ProfileScreen(
                 style = MaterialTheme.typography.bodyMedium,
                 color = Color(0xFF94A3B8),
                 textAlign = TextAlign.Center,
-                modifier = Modifier.padding(top = 4.dp, bottom = 24.dp)
+                modifier = Modifier.padding(top = 4.dp, bottom = 16.dp)
             )
+
+            // Dynamic Subscription Membership Badge Card
+            val subscriptionState by com.example.data.subscription.SubscriptionManager.subscriptionState.collectAsState()
+            val isSubValid = com.example.util.AuthGuard.isSubscriptionValid(subscriptionState)
+            val subBadgeTitle = when (subscriptionState.planType.uppercase()) {
+                "MONTHLY", "MONTHLY_79_INR" -> "Monthly Pro (Active)"
+                "ANNUAL", "ANNUAL_799_INR" -> "Annual Pro (Active)"
+                "TRIAL", "TRIAL_1_INR" -> "Free Trial (3 Days)"
+                else -> if (subscriptionState.isProUser) "Pro Plan (Active)" else "Free Plan"
+            }
+            val subDaysText = "${subscriptionState.daysLeft} Days Left"
+
+            Card(
+                colors = CardDefaults.cardColors(
+                    containerColor = if (isSubValid) Color(0x2210B981) else Color(0x22EF4444)
+                ),
+                shape = RoundedCornerShape(14.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 20.dp)
+                    .border(
+                        1.dp,
+                        if (isSubValid) Color(0x4410B981) else Color(0x44EF4444),
+                        RoundedCornerShape(14.dp)
+                    )
+                    .testTag("profile_subscription_status_card")
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .size(40.dp)
+                                .background(
+                                    if (isSubValid) EmeraldGreen.copy(alpha = 0.2f) else Color(0x33EF4444),
+                                    CircleShape
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = if (isSubValid) Icons.Default.WorkspacePremium else Icons.Default.Cancel,
+                                contentDescription = "Plan Badge",
+                                tint = if (isSubValid) EmeraldGreen else Color(0xFFEF4444),
+                                modifier = Modifier.size(22.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column {
+                            Text(
+                                text = subBadgeTitle,
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.sp
+                            )
+                            Text(
+                                text = if (isSubValid) subDaysText else "Plan Expired - Renew to unlock",
+                                color = if (isSubValid) EmeraldLight else Color(0xFFFCA5A5),
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    }
+
+                    Surface(
+                        color = if (isSubValid) EmeraldGreen else Color(0xFFEF4444),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Text(
+                            text = if (isSubValid) "ACTIVE" else "RENEW",
+                            color = Color.White,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        )
+                    }
+                }
+            }
 
             GlassmorphicCard(
                 modifier = Modifier

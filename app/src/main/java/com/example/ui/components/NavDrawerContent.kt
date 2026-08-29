@@ -210,11 +210,21 @@ fun NavDrawerContent(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = if (isSubscribed) "My Subscription Status" else "Pro Membership & ₹1 Trial",
-                        fontWeight = FontWeight.Bold,
-                        color = if (isSubscribed) EmeraldLight else GoldYellow
-                    )
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = if (isSubscribed) subscriptionState.displayBadgeTitle else "Pro Membership & ₹1 Trial",
+                            fontWeight = FontWeight.Bold,
+                            color = if (isSubscribed) EmeraldLight else GoldYellow,
+                            fontSize = 13.sp
+                        )
+                        if (isSubscribed && subscriptionState.effectiveExpiry > 0L) {
+                            Text(
+                                text = "${subscriptionState.daysLeft} days left",
+                                color = Color(0xFF94A3B8),
+                                fontSize = 11.sp
+                            )
+                        }
+                    }
                     Surface(
                         color = if (isSubscribed) EmeraldGreen else GoldYellow,
                         shape = RoundedCornerShape(8.dp)

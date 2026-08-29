@@ -1940,6 +1940,36 @@ private fun PaymentAndCheckoutModalDialog(
                                                     .testTag("udhar_customer_mobile_input")
                                             )
                                         }
+
+                                        val cleanUdharPhone = viewModel.posCustomerMobile.replace("[^0-9]".toRegex(), "").takeLast(10)
+                                        val matchingCustomer = viewModel.customers.value.find {
+                                            cleanUdharPhone.isNotEmpty() && it.mobileNumber.replace("[^0-9]".toRegex(), "").takeLast(10) == cleanUdharPhone
+                                        }
+                                        val prevDue = matchingCustomer?.totalPendingBalance ?: 0.0
+                                        val totalOutstanding = prevDue + viewModel.posFinalTotal
+
+                                        if (prevDue > 0) {
+                                            Spacer(modifier = Modifier.height(4.dp))
+                                            Surface(
+                                                color = Color(0x33F59E0B),
+                                                shape = RoundedCornerShape(8.dp),
+                                                modifier = Modifier.fillMaxWidth()
+                                            ) {
+                                                Row(
+                                                    modifier = Modifier
+                                                        .fillMaxWidth()
+                                                        .padding(horizontal = 10.dp, vertical = 6.dp),
+                                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                                    verticalAlignment = Alignment.CenterVertically
+                                                ) {
+                                                    Column {
+                                                        Text("Previous Udhar: ₹${String.format(Locale.US, "%.2f", prevDue)}", color = Color(0xFFFCD34D), fontSize = 11.sp)
+                                                        Text("Total Outstanding: ₹${String.format(Locale.US, "%.2f", totalOutstanding)}", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                                    }
+                                                    Text("Udhar Khata", color = Color(0xFF94A3B8), fontSize = 10.sp)
+                                                }
+                                            }
+                                        }
                                     }
                                 }
                             }

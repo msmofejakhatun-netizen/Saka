@@ -37,7 +37,10 @@ class WhatsAppInvoiceRepository(
         customerName: String = "",
         subtotal: Double = totalAmount,
         discountAmount: Double = 0.0,
-        taxAmount: Double = 0.0
+        taxAmount: Double = 0.0,
+        storePhone: String = "",
+        previousUdhar: Double = 0.0,
+        totalOutstanding: Double = 0.0
     ): Result<ApiResponse> = withContext(Dispatchers.IO) {
         try {
             val cleanPhone = customerPhone.replace("[^0-9]".toRegex(), "").takeLast(10)
@@ -50,12 +53,15 @@ class WhatsAppInvoiceRepository(
             val payload = InvoiceRequestPayload(
                 customerPhone = cleanPhone,
                 storeName = storeName.ifBlank { "SmartPOS Retail Store" },
+                storePhone = storePhone,
                 invoiceNumber = invoiceNumber,
                 totalAmount = totalAmount,
-                date = date,
                 paymentMode = paymentMode,
-                customerName = customerName,
+                previousUdhar = previousUdhar,
+                totalOutstanding = totalOutstanding,
+                date = date,
                 items = items,
+                customerName = customerName,
                 subtotal = subtotal,
                 discountAmount = discountAmount,
                 taxAmount = taxAmount

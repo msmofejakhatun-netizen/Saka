@@ -927,7 +927,10 @@ class BillingViewModel(val repository: BillingRepository) : ViewModel() {
         customerName: String = "",
         subtotal: Double = totalAmount,
         discountAmount: Double = 0.0,
-        taxAmount: Double = 0.0
+        taxAmount: Double = 0.0,
+        storePhone: String = "",
+        previousUdhar: Double? = null,
+        totalOutstanding: Double? = null
     ) {
         val cleanPhone = customerPhone.replace("[^0-9]".toRegex(), "").takeLast(10)
         if (cleanPhone.length != 10) {
@@ -935,17 +938,44 @@ class BillingViewModel(val repository: BillingRepository) : ViewModel() {
             return
         }
 
+        val effectiveStorePhone = if (storePhone.isNotBlank()) {
+            storePhone
+        } else {
+            currentUser.value?.mobileNumber?.takeIf { it.isNotBlank() }
+                ?: com.example.data.firebase.FirebaseManager.auth?.currentUser?.phoneNumber.orEmpty()
+        }
+
+        val isCreditPayment = paymentMode.contains("Credit", ignoreCase = true) ||
+                paymentMode.contains("Udhar", ignoreCase = true)
+
+        val (calcPreviousUdhar, calcTotalOutstanding) = if (isCreditPayment) {
+            if (previousUdhar != null && totalOutstanding != null) {
+                Pair(previousUdhar, totalOutstanding)
+            } else {
+                val existingCustomer = customers.value.find { cust ->
+                    cust.mobileNumber.replace("[^0-9]".toRegex(), "").takeLast(10) == cleanPhone
+                }
+                val prev = existingCustomer?.totalPendingBalance ?: 0.0
+                Pair(prev, prev + totalAmount)
+            }
+        } else {
+            Pair(0.0, 0.0)
+        }
+
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 val payload = InvoiceRequestPayload(
                     customerPhone = cleanPhone,
                     storeName = storeName.ifBlank { currentUser.value?.businessName ?: "SmartPOS Store" },
+                    storePhone = effectiveStorePhone,
                     invoiceNumber = invoiceNumber,
                     totalAmount = totalAmount,
-                    date = date,
                     paymentMode = paymentMode,
-                    customerName = customerName,
+                    previousUdhar = calcPreviousUdhar,
+                    totalOutstanding = calcTotalOutstanding,
+                    date = date,
                     items = items,
+                    customerName = customerName,
                     subtotal = subtotal,
                     discountAmount = discountAmount,
                     taxAmount = taxAmount
@@ -973,7 +1003,8 @@ class BillingViewModel(val repository: BillingRepository) : ViewModel() {
      */
     fun dispatchCentralWhatsAppInvoiceForInvoice(
         invoice: InvoiceEntity,
-        storeName: String? = null
+        storeName: String? = null,
+        storePhone: String? = null
     ) {
         val cleanPhone = invoice.customerMobile.replace("[^0-9]".toRegex(), "").takeLast(10)
         if (cleanPhone.length != 10) return
@@ -981,6 +1012,10 @@ class BillingViewModel(val repository: BillingRepository) : ViewModel() {
         val effectiveStore = storeName?.ifBlank { currentUser.value?.businessName }
             ?: currentUser.value?.businessName
             ?: "SmartPOS Store"
+
+        val effectiveStorePhone = storePhone?.ifBlank { currentUser.value?.mobileNumber }
+            ?: currentUser.value?.mobileNumber
+            ?: com.example.data.firebase.FirebaseManager.auth?.currentUser?.phoneNumber.orEmpty()
 
         val extractedItems = com.example.util.WhatsAppInvoiceHelper.extractItemsFromInvoice(invoice).map { item ->
             ItemPayload(
@@ -1001,14 +1036,25 @@ class BillingViewModel(val repository: BillingRepository) : ViewModel() {
             "#BILL-${(1000..9999).random()}"
         }
 
+        val isCredit = invoice.paymentMode.contains("Credit", ignoreCase = true) ||
+                invoice.paymentMode.contains("Udhar", ignoreCase = true)
+        val existingCustomer = customers.value.find { cust ->
+            cust.mobileNumber.replace("[^0-9]".toRegex(), "").takeLast(10) == cleanPhone
+        }
+        val previousUdhar = if (isCredit) existingCustomer?.totalPendingBalance ?: 0.0 else 0.0
+        val totalOutstanding = if (isCredit) previousUdhar + invoice.amount else 0.0
+
         dispatchCentralWhatsAppInvoice(
             customerPhone = cleanPhone,
             storeName = effectiveStore,
+            storePhone = effectiveStorePhone,
             invoiceNumber = invoiceNum,
             totalAmount = invoice.amount,
             date = dateString,
             items = extractedItems,
             paymentMode = invoice.paymentMode,
+            previousUdhar = previousUdhar,
+            totalOutstanding = totalOutstanding,
             customerName = invoice.customerName,
             subtotal = if (invoice.subtotal > 0) invoice.subtotal else invoice.amount,
             discountAmount = invoice.discountAmount,
@@ -1333,6 +1379,16 @@ class BillingViewModel(val repository: BillingRepository) : ViewModel() {
                     }
                     val dateFormatted = SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault()).format(Date(updatedInvoice.lastEditedTimestamp))
                     val currentStoreName = currentUser.value?.businessName ?: "SmartPOS Store"
+                    val currentStorePhone = currentUser.value?.mobileNumber?.takeIf { it.isNotBlank() }
+                        ?: com.example.data.firebase.FirebaseManager.auth?.currentUser?.phoneNumber.orEmpty()
+
+                    val isCredit = posPaymentMode.contains("Credit", ignoreCase = true) || posPaymentMode.contains("Udhar", ignoreCase = true)
+                    val existingCustomer = customers.value.find { cust ->
+                        cust.mobileNumber.replace("[^0-9]".toRegex(), "").takeLast(10) == editCleanPhone
+                    }
+                    val previousUdhar = if (isCredit) existingCustomer?.totalPendingBalance ?: 0.0 else 0.0
+                    val totalOutstanding = if (isCredit) previousUdhar + finalAmount else 0.0
+
                     val payloadItems = newPurchasedList.map { pair ->
                         ItemPayload(
                             name = pair.first.name,
@@ -1346,11 +1402,14 @@ class BillingViewModel(val repository: BillingRepository) : ViewModel() {
                     dispatchCentralWhatsAppInvoice(
                         customerPhone = editCleanPhone,
                         storeName = currentStoreName,
+                        storePhone = currentStorePhone,
                         invoiceNumber = invoiceNum,
                         totalAmount = finalAmount,
                         date = dateFormatted,
                         items = payloadItems,
                         paymentMode = posPaymentMode,
+                        previousUdhar = previousUdhar,
+                        totalOutstanding = totalOutstanding,
                         customerName = name,
                         subtotal = posSubtotal,
                         discountAmount = posDiscountAmount,
@@ -1500,6 +1559,16 @@ class BillingViewModel(val repository: BillingRepository) : ViewModel() {
                     }
                     val dateFormatted = SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault()).format(Date(savedInvoice.timestamp))
                     val currentStoreName = currentUser.value?.businessName ?: "SmartPOS Store"
+                    val currentStorePhone = currentUser.value?.mobileNumber?.takeIf { it.isNotBlank() }
+                        ?: com.example.data.firebase.FirebaseManager.auth?.currentUser?.phoneNumber.orEmpty()
+
+                    val isCredit = posPaymentMode.contains("Credit", ignoreCase = true) || posPaymentMode.contains("Udhar", ignoreCase = true)
+                    val existingCustomer = customers.value.find { cust ->
+                        cust.mobileNumber.replace("[^0-9]".toRegex(), "").takeLast(10) == newCleanPhone
+                    }
+                    val previousUdhar = if (isCredit) existingCustomer?.totalPendingBalance ?: 0.0 else 0.0
+                    val totalOutstanding = if (isCredit) previousUdhar + finalAmount else 0.0
+
                     val payloadItems = purchasedList.map { pair ->
                         ItemPayload(
                             name = pair.first.name,
@@ -1513,11 +1582,14 @@ class BillingViewModel(val repository: BillingRepository) : ViewModel() {
                     dispatchCentralWhatsAppInvoice(
                         customerPhone = newCleanPhone,
                         storeName = currentStoreName,
+                        storePhone = currentStorePhone,
                         invoiceNumber = invoiceNum,
                         totalAmount = finalAmount,
                         date = dateFormatted,
                         items = payloadItems,
                         paymentMode = posPaymentMode,
+                        previousUdhar = previousUdhar,
+                        totalOutstanding = totalOutstanding,
                         customerName = name,
                         subtotal = posSubtotal,
                         discountAmount = posDiscountAmount,

@@ -25,12 +25,15 @@ data class ItemPayload(
 data class InvoiceRequestPayload(
     @Json(name = "customerPhone") val customerPhone: String,
     @Json(name = "storeName") val storeName: String,
+    @Json(name = "storePhone") val storePhone: String = "",
     @Json(name = "invoiceNumber") val invoiceNumber: String,
     @Json(name = "totalAmount") val totalAmount: Double,
-    @Json(name = "date") val date: String,
     @Json(name = "paymentMode") val paymentMode: String = "Cash",
-    @Json(name = "customerName") val customerName: String = "",
+    @Json(name = "previousUdhar") val previousUdhar: Double = 0.0,
+    @Json(name = "totalOutstanding") val totalOutstanding: Double = 0.0,
+    @Json(name = "date") val date: String,
     @Json(name = "items") val items: List<ItemPayload> = emptyList(),
+    @Json(name = "customerName") val customerName: String = "",
     @Json(name = "subtotal") val subtotal: Double = totalAmount,
     @Json(name = "discountAmount") val discountAmount: Double = 0.0,
     @Json(name = "taxAmount") val taxAmount: Double = 0.0

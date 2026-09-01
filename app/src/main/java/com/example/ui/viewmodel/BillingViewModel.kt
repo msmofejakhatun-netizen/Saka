@@ -376,6 +376,105 @@ class BillingViewModel(val repository: BillingRepository) : ViewModel() {
         }
     }
 
+    fun scheduleCustomerAutoReminder(
+        context: android.content.Context,
+        customer: com.example.data.db.CustomerEntity,
+        scheduledEpochMillis: Long,
+        reminderType: com.example.util.ReminderType = com.example.util.ReminderType.URGENT,
+        customMessage: String = ""
+    ) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val storeName = currentUser.value?.businessName?.takeIf { it.isNotBlank() }
+                    ?: currentUser.value?.merchantName?.takeIf { it.isNotBlank() }
+                    ?: "SmartPOS Store"
+                val storePhone = currentUser.value?.mobileNumber?.takeIf { it.isNotBlank() }
+                    ?: com.example.data.firebase.FirebaseManager.auth?.currentUser?.phoneNumber.orEmpty()
+                val upiId = currentUser.value?.upiId?.takeIf { it.isNotBlank() } ?: "merchant@upi"
+                val dateFormat = SimpleDateFormat("dd MMM, yyyy", Locale.getDefault())
+                val lastTxnDate = if (customer.lastTransactionTimestamp > 0) {
+                    dateFormat.format(Date(customer.lastTransactionTimestamp))
+                } else "Recent"
+
+                val finalMessage = if (customMessage.isNotBlank()) {
+                    customMessage
+                } else {
+                    com.example.util.WhatsAppReminderUtils.buildReminderMessage(
+                        customerName = customer.name,
+                        businessName = storeName,
+                        pendingAmount = customer.totalPendingBalance,
+                        lastTransactionTimestamp = customer.lastTransactionTimestamp,
+                        reminderType = reminderType,
+                        upiId = upiId,
+                        merchantPhone = storePhone
+                    )
+                }
+
+                val upiLink = com.example.util.WhatsAppReminderHelper.buildUpiPaymentUrl(
+                    upiId = upiId,
+                    merchantName = storeName,
+                    amount = customer.totalPendingBalance,
+                    customerName = customer.name
+                )
+                val userId = currentUser.value?.id?.toString()
+                    ?: (com.example.data.firebase.FirebaseManager.auth?.currentUser?.uid ?: "")
+
+                com.example.worker.UdharReminderWorker.schedule(
+                    context = context,
+                    scheduledEpochMillis = scheduledEpochMillis,
+                    customerMobile = customer.mobileNumber,
+                    customerName = customer.name,
+                    storeName = storeName,
+                    storePhone = storePhone,
+                    merchantUpiId = upiId,
+                    pendingBalance = customer.totalPendingBalance,
+                    lastTxnDate = lastTxnDate,
+                    message = finalMessage,
+                    upiLink = upiLink,
+                    userId = userId
+                )
+
+                repository.updateCustomerReminderSchedule(
+                    userUid = userId,
+                    customerMobile = customer.mobileNumber,
+                    date = scheduledEpochMillis,
+                    status = "SCHEDULED"
+                )
+
+                val scheduledDateStr = SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault()).format(Date(scheduledEpochMillis))
+                _toastMessage.emit("⏰ Auto Reminder scheduled for ${customer.name} on $scheduledDateStr")
+            } catch (e: Exception) {
+                Log.e("BillingVM", "scheduleCustomerAutoReminder error: ${e.localizedMessage}")
+                _toastMessage.emit("Failed to schedule auto reminder: ${e.localizedMessage}")
+            }
+        }
+    }
+
+    fun cancelCustomerAutoReminder(
+        context: android.content.Context,
+        customer: com.example.data.db.CustomerEntity
+    ) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                com.example.worker.UdharReminderWorker.cancel(context, customer.mobileNumber)
+
+                val userId = currentUser.value?.id?.toString()
+                    ?: (com.example.data.firebase.FirebaseManager.auth?.currentUser?.uid ?: "")
+                repository.updateCustomerReminderSchedule(
+                    userUid = userId,
+                    customerMobile = customer.mobileNumber,
+                    date = 0L,
+                    status = "NONE"
+                )
+
+                _toastMessage.emit("Auto reminder cancelled for ${customer.name}")
+            } catch (e: Exception) {
+                Log.e("BillingVM", "cancelCustomerAutoReminder error: ${e.localizedMessage}")
+                _toastMessage.emit("Failed to cancel auto reminder: ${e.localizedMessage}")
+            }
+        }
+    }
+
     // --- Admin Category Editing State ---
     var adminCategoryName by mutableStateOf("")
     var adminCategoryDescription by mutableStateOf("")

@@ -110,6 +110,12 @@ interface CustomerDao {
     @Delete
     suspend fun deleteCustomer(customer: CustomerEntity)
 
+    @Query("UPDATE customers SET reminderScheduledDate = :date, reminderStatus = :status WHERE mobileNumber = :mobile")
+    suspend fun updateReminderSchedule(mobile: String, date: Long, status: String)
+
+    @Query("UPDATE customers SET reminderStatus = :status WHERE mobileNumber = :mobile")
+    suspend fun updateReminderStatus(mobile: String, status: String)
+
     @Query("SELECT COUNT(*) FROM customers")
     suspend fun getCustomerCount(): Int
 

@@ -10,18 +10,24 @@ object WhatsAppReminderHelper {
 
     /**
      * Builds a standard deep-linked UPI Payment URL.
-     * Example: upi://pay?pa=merchant@upi&pn=Kirana%20Store&am=150.00&cu=INR&tn=Udhar%20Payment
+     * Example: upi://pay?pa={merchantUpiId}&pn={merchantStoreName}&am={pendingBalance}&cu=INR&tn=Udhar%20Payment%20({customerName})
      */
     fun buildUpiPaymentUrl(
         upiId: String,
         merchantName: String,
         amount: Double,
-        note: String = "Udhar Payment Clearance"
+        customerName: String = "",
+        note: String = ""
     ): String {
         val cleanUpi = if (upiId.isNotBlank()) upiId.trim() else "merchant@upi"
-        val cleanName = Uri.encode(if (merchantName.isNotBlank()) merchantName.trim() else "Kirana & Retail Store")
+        val cleanName = Uri.encode(if (merchantName.isNotBlank()) merchantName.trim() else "SmartPOS Store")
         val formattedAmount = String.format(Locale.US, "%.2f", amount)
-        val cleanNote = Uri.encode(if (note.isNotBlank()) note.trim() else "Udhar Payment Clearance")
+        val txnNote = when {
+            note.isNotBlank() -> note.trim()
+            customerName.isNotBlank() -> "Udhar Payment ($customerName)"
+            else -> "Udhar Payment"
+        }
+        val cleanNote = Uri.encode(txnNote)
 
         return "upi://pay?pa=$cleanUpi&pn=$cleanName&am=$formattedAmount&cu=INR&tn=$cleanNote"
     }
@@ -34,16 +40,18 @@ object WhatsAppReminderHelper {
         upiId: String,
         merchantName: String,
         amount: Double,
-        note: String = "Udhar Payment"
+        customerName: String = "",
+        note: String = ""
     ): String {
-        val upiUrl = buildUpiPaymentUrl(upiId, merchantName, amount, note)
+        val upiUrl = buildUpiPaymentUrl(upiId, merchantName, amount, customerName, note)
         val cleanUpi = if (upiId.isNotBlank()) upiId.trim() else "merchant@upi"
 
         val paymentBlock = "\n\n" +
-            "📲 CLICK TO PAY INSTANTLY VIA UPI / GPAY / PHONEPE:\n" +
+            "📲 *Click to Pay Instantly:*\n" +
             "$upiUrl\n\n" +
-            "• Merchant UPI ID: $cleanUpi\n" +
-            "(Tap the link above directly in WhatsApp to settle your balance using GPay, PhonePe, or Paytm!)"
+            "• Merchant UPI ID: $cleanUpi\n\n" +
+            "⚡ _Powered by SmartPOS_\n" +
+            "🔗 https://smartpos-ashen.vercel.app/"
 
         return originalMessage.trim() + paymentBlock
     }

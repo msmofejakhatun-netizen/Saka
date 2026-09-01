@@ -82,7 +82,9 @@ data class CustomerEntity(
     val name: String,
     val mobileNumber: String,
     val totalPendingBalance: Double = 0.0,
-    val lastTransactionTimestamp: Long = System.currentTimeMillis()
+    val lastTransactionTimestamp: Long = System.currentTimeMillis(),
+    val reminderScheduledDate: Long = 0L,
+    val reminderStatus: String = "NONE" // NONE, SCHEDULED, SENT
 )
 
 @Entity(tableName = "customer_transactions")

@@ -173,7 +173,9 @@ class FirestoreRepository(
                             name = doc.getString("name") ?: "",
                             mobileNumber = doc.getString("mobileNumber") ?: "",
                             totalPendingBalance = doc.getDouble("totalPendingBalance") ?: 0.0,
-                            lastTransactionTimestamp = doc.getLong("lastTransactionTimestamp") ?: System.currentTimeMillis()
+                            lastTransactionTimestamp = doc.getLong("lastTransactionTimestamp") ?: System.currentTimeMillis(),
+                            reminderScheduledDate = doc.getLong("reminderScheduledDate") ?: 0L,
+                            reminderStatus = doc.getString("reminderStatus") ?: "NONE"
                         )
                     }
                     trySend(list)

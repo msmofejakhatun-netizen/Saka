@@ -869,12 +869,37 @@ class BillingRepository(
                         "name" to customer.name,
                         "mobileNumber" to customer.mobileNumber,
                         "totalPendingBalance" to customer.totalPendingBalance,
-                        "lastTransactionTimestamp" to customer.lastTransactionTimestamp
+                        "lastTransactionTimestamp" to customer.lastTransactionTimestamp,
+                        "reminderScheduledDate" to customer.reminderScheduledDate,
+                        "reminderStatus" to customer.reminderStatus
                     )
                     userRef.collection("customers").document(docId).set(customerData, com.google.firebase.firestore.SetOptions.merge()).await()
                     userRef.collection("udhar_ledger").document(docId).set(customerData, com.google.firebase.firestore.SetOptions.merge()).await()
                 } catch (e: Exception) {
                     Log.e(TAG, "Firestore saveCustomer error: ${e.localizedMessage}")
+                }
+            }
+        }
+    }
+
+    suspend fun updateCustomerReminderSchedule(userUid: String, customerMobile: String, date: Long, status: String) {
+        val activeUid = if (userUid.isNotBlank()) userUid else (FirebaseManager.auth?.currentUser?.uid ?: "")
+        val docId = customerMobile.replace("+", "").replace(" ", "").replace("-", "")
+        customerDao.updateReminderSchedule(customerMobile, date, status)
+
+        if (FirebaseManager.isFirebaseAvailable && activeUid.isNotBlank()) {
+            val firestore = FirebaseManager.firestore
+            if (firestore != null) {
+                try {
+                    val userRef = firestore.collection("users").document(activeUid)
+                    val reminderData = mapOf(
+                        "reminderScheduledDate" to date,
+                        "reminderStatus" to status
+                    )
+                    userRef.collection("customers").document(docId).set(reminderData, com.google.firebase.firestore.SetOptions.merge()).await()
+                    userRef.collection("udhar_ledger").document(docId).set(reminderData, com.google.firebase.firestore.SetOptions.merge()).await()
+                } catch (e: Exception) {
+                    Log.e(TAG, "Firestore updateCustomerReminderSchedule error: ${e.localizedMessage}")
                 }
             }
         }
@@ -911,7 +936,9 @@ class BillingRepository(
                                 name = doc.getString("name") ?: "",
                                 mobileNumber = doc.getString("mobileNumber") ?: "",
                                 totalPendingBalance = doc.getDouble("totalPendingBalance") ?: 0.0,
-                                lastTransactionTimestamp = doc.getLong("lastTransactionTimestamp") ?: System.currentTimeMillis()
+                                lastTransactionTimestamp = doc.getLong("lastTransactionTimestamp") ?: System.currentTimeMillis(),
+                                reminderScheduledDate = doc.getLong("reminderScheduledDate") ?: 0L,
+                                reminderStatus = doc.getString("reminderStatus") ?: "NONE"
                             )
                         }
                         trySend(customerList)
@@ -1236,6 +1263,27 @@ class BillingRepository(
 
             customerDao.insertCustomer(updatedCustomer)
             customerTransactionDao.insertTransaction(txEntity)
+        }
+    }
+
+    companion object {
+        @Volatile
+        private var instance: BillingRepository? = null
+
+        fun getInstance(context: android.content.Context): BillingRepository {
+            return instance ?: synchronized(this) {
+                instance ?: run {
+                    val db = com.example.data.db.AppDatabase.getDatabase(context.applicationContext)
+                    BillingRepository(
+                        userDao = db.userDao(),
+                        categoryDao = db.categoryDao(),
+                        invoiceDao = db.invoiceDao(),
+                        productDao = db.productDao(),
+                        customerDao = db.customerDao(),
+                        customerTransactionDao = db.customerTransactionDao()
+                    ).also { instance = it }
+                }
+            }
         }
     }
 }

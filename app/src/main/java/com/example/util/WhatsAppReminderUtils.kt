@@ -24,43 +24,73 @@ object WhatsAppReminderUtils {
         businessName: String,
         pendingAmount: Double,
         lastTransactionTimestamp: Long,
-        reminderType: ReminderType,
+        reminderType: ReminderType = ReminderType.URGENT,
         transactions: List<CustomerTransactionEntity> = emptyList(),
-        upiId: String = "merchant@upi"
+        upiId: String = "merchant@upi",
+        merchantPhone: String = ""
     ): String {
         val dateFormat = SimpleDateFormat("dd MMM, yyyy", Locale.getDefault())
         val dateStr = if (lastTransactionTimestamp > 0) dateFormat.format(Date(lastTransactionTimestamp)) else "Recent"
         val formattedAmount = String.format(Locale.US, "%.2f", pendingAmount)
-        val bizName = if (businessName.isNotBlank()) businessName else "Kirana Store"
+        val bizName = if (businessName.isNotBlank()) businessName.trim() else "SmartPOS Store"
+        val cleanUpi = if (upiId.isNotBlank()) upiId.trim() else "merchant@upi"
+        val phoneContact = if (merchantPhone.isNotBlank()) merchantPhone.trim() else ""
 
-        val baseMsg = when (reminderType) {
-            ReminderType.POLITE -> {
-                "Dear $customerName,\n" +
-                "This is a polite reminder from $bizName regarding your pending udhar balance of ₹$formattedAmount.\n\n" +
-                "Last Transaction Date: $dateStr\n\n" +
-                "Kindly clear your balance at your earliest convenience. You can pay via Cash, UPI, or QR.\n" +
-                "Thank you for your business!"
+        val upiPaymentLink = WhatsAppReminderHelper.buildUpiPaymentUrl(
+            upiId = cleanUpi,
+            merchantName = bizName,
+            amount = pendingAmount,
+            customerName = customerName
+        )
+
+        return when (reminderType) {
+            ReminderType.URGENT -> {
+                val sb = StringBuilder()
+                sb.append("⚠️ *PAYMENT REMINDER*\n\n")
+                sb.append("Dear $customerName,\n")
+                sb.append("Your pending udhar balance at *$bizName* is *₹$formattedAmount*.\n")
+                if (phoneContact.isNotBlank()) {
+                    sb.append("📞 Contact: $phoneContact\n")
+                }
+                sb.append("📅 Last Transaction: $dateStr\n\n")
+                sb.append("Please clear your balance via UPI, QR, or Cash.\n\n")
+                sb.append("📲 *Click to Pay Instantly:*\n")
+                sb.append("$upiPaymentLink\n\n")
+                sb.append("⚡ _Powered by SmartPOS_\n")
+                sb.append("🔗 https://smartpos-ashen.vercel.app/")
+                sb.toString()
             }
 
-            ReminderType.URGENT -> {
-                "⚠️ URGENT PAYMENT REMINDER\n\n" +
-                "Dear $customerName,\n" +
-                "Your pending udhar balance at $bizName is ₹$formattedAmount, which is overdue.\n\n" +
-                "Last Transaction Date: $dateStr\n\n" +
-                "Please clear your balance as soon as possible via Cash, UPI, or QR code.\n" +
-                "Thank you!"
+            ReminderType.POLITE -> {
+                val sb = StringBuilder()
+                sb.append("💬 *PAYMENT REMINDER*\n\n")
+                sb.append("Dear $customerName,\n")
+                sb.append("This is a polite reminder from *$bizName* regarding your pending balance of *₹$formattedAmount*.\n")
+                if (phoneContact.isNotBlank()) {
+                    sb.append("📞 Contact: $phoneContact\n")
+                }
+                sb.append("📅 Last Transaction: $dateStr\n\n")
+                sb.append("Kindly clear your balance at your convenience via UPI or Cash.\n\n")
+                sb.append("📲 *Click to Pay Instantly:*\n")
+                sb.append("$upiPaymentLink\n\n")
+                sb.append("⚡ _Powered by SmartPOS_\n")
+                sb.append("🔗 https://smartpos-ashen.vercel.app/")
+                sb.toString()
             }
 
             ReminderType.STATEMENT -> {
                 val sb = StringBuilder()
-                sb.append("📄 CREDIT LEDGER STATEMENT\n\n")
-                sb.append("Store: $bizName\n")
+                sb.append("📄 *CREDIT LEDGER STATEMENT*\n\n")
+                sb.append("Store: *$bizName*\n")
+                if (phoneContact.isNotBlank()) {
+                    sb.append("📞 Contact: $phoneContact\n")
+                }
                 sb.append("Customer: $customerName\n")
-                sb.append("Total Pending Balance: ₹$formattedAmount\n")
-                sb.append("Last Active: $dateStr\n\n")
+                sb.append("Total Pending Balance: *₹$formattedAmount*\n")
+                sb.append("Last Transaction: $dateStr\n\n")
 
                 if (transactions.isNotEmpty()) {
-                    sb.append("--- RECENT TRANSACTIONS ---\n")
+                    sb.append("--- *RECENT TRANSACTIONS* ---\n")
                     transactions.take(5).forEach { tx ->
                         val txDate = dateFormat.format(Date(tx.timestamp))
                         val sign = if (tx.type == "CREDIT") "Jama (-)" else "Udhar (+)"
@@ -70,19 +100,13 @@ object WhatsAppReminderUtils {
                     sb.append("\n")
                 }
 
-                sb.append("Payment Accepted: Cash, UPI, PhonePe, GooglePay\n")
-                sb.append("Thank you for shopping with us!")
+                sb.append("📲 *Click to Pay Instantly:*\n")
+                sb.append("$upiPaymentLink\n\n")
+                sb.append("⚡ _Powered by SmartPOS_\n")
+                sb.append("🔗 https://smartpos-ashen.vercel.app/")
                 sb.toString()
             }
         }
-
-        return WhatsAppReminderHelper.appendInteractiveUpiPaymentLink(
-            originalMessage = baseMsg,
-            upiId = upiId,
-            merchantName = bizName,
-            amount = pendingAmount,
-            note = "Udhar Payment ($customerName)"
-        )
     }
 
     fun sendWhatsAppReminder(context: Context, mobile: String, message: String) {

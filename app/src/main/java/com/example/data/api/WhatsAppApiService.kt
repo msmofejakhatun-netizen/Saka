@@ -40,6 +40,22 @@ data class InvoiceRequestPayload(
 )
 
 /**
+ * Request payload for central server-side automated Udhar Payment Reminders.
+ */
+@JsonClass(generateAdapter = true)
+data class UdharReminderRequestPayload(
+    @Json(name = "customerPhone") val customerPhone: String,
+    @Json(name = "customerName") val customerName: String,
+    @Json(name = "storeName") val storeName: String,
+    @Json(name = "storePhone") val storePhone: String = "",
+    @Json(name = "merchantUpiId") val merchantUpiId: String = "",
+    @Json(name = "pendingBalance") val pendingBalance: Double,
+    @Json(name = "lastTxnDate") val lastTxnDate: String = "",
+    @Json(name = "message") val message: String = "",
+    @Json(name = "upiLink") val upiLink: String = ""
+)
+
+/**
  * Server response model for WhatsApp dispatch endpoint.
  */
 @JsonClass(generateAdapter = true)
@@ -51,7 +67,7 @@ data class ApiResponse(
 )
 
 /**
- * Retrofit API interface for automated central WhatsApp invoice messaging.
+ * Retrofit API interface for automated central WhatsApp invoice and reminder messaging.
  */
 interface WhatsAppApiService {
 
@@ -64,6 +80,11 @@ interface WhatsAppApiService {
     suspend fun sendCentralInvoice(
         @Body request: InvoiceRequestPayload
     ): Response<ApiResponse> = sendInvoice(request)
+
+    @POST("api/send-udhar-reminder")
+    suspend fun sendUdharReminder(
+        @Body request: UdharReminderRequestPayload
+    ): Response<ApiResponse>
 
     companion object {
         fun getInstance(): WhatsAppApiService = RetrofitClient.whatsAppApiService

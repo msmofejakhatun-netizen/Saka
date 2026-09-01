@@ -327,6 +327,10 @@ fun UdharKhataScreen(
                                         reminderTargetCustomer = cust
                                         selectedReminderTypeForModal = ReminderType.POLITE
                                         showWhatsAppReminderModal = true
+                                    },
+                                    onCancelAutoReminder = { cust ->
+                                        val ctx = context
+                                        viewModel.cancelCustomerAutoReminder(ctx, cust)
                                     }
                                 )
                             }
@@ -378,13 +382,38 @@ fun UdharKhataScreen(
             if (showWhatsAppReminderModal && reminderTargetCustomer != null) {
                 val currentUser by viewModel.currentUser.collectAsState()
                 val transactions by viewModel.selectedCustomerTransactions.collectAsState()
+                val context = LocalContext.current
+                val dynamicStoreName = currentUser?.businessName?.takeIf { it.isNotBlank() }
+                    ?: currentUser?.merchantName?.takeIf { it.isNotBlank() }
+                    ?: "SmartPOS Store"
+                val dynamicStorePhone = currentUser?.mobileNumber?.takeIf { it.isNotBlank() }
+                    ?: com.example.data.firebase.FirebaseManager.auth?.currentUser?.phoneNumber.orEmpty()
+                val dynamicUpiId = currentUser?.upiId?.takeIf { it.isNotBlank() } ?: "merchant@upi"
 
                 WhatsAppReminderModalDialog(
                     customer = reminderTargetCustomer!!,
-                    businessName = currentUser?.businessName ?: "Kirana Store",
-                    upiId = currentUser?.upiId ?: "merchant@upi",
+                    businessName = dynamicStoreName,
+                    merchantPhone = dynamicStorePhone,
+                    upiId = dynamicUpiId,
                     initialType = selectedReminderTypeForModal,
                     transactions = transactions,
+                    onScheduleAuto = { scheduledEpoch, customMsg ->
+                        viewModel.scheduleCustomerAutoReminder(
+                            context = context,
+                            customer = reminderTargetCustomer!!,
+                            scheduledEpochMillis = scheduledEpoch,
+                            reminderType = selectedReminderTypeForModal,
+                            customMessage = customMsg
+                        )
+                        showWhatsAppReminderModal = false
+                        reminderTargetCustomer = null
+                    },
+                    onCancelAuto = {
+                        viewModel.cancelCustomerAutoReminder(
+                            context = context,
+                            customer = reminderTargetCustomer!!
+                        )
+                    },
                     onDismiss = {
                         showWhatsAppReminderModal = false
                         reminderTargetCustomer = null
@@ -427,7 +456,8 @@ fun UdharKhataScreen(
 private fun CustomerBalanceCard(
     customer: CustomerEntity,
     onSelect: () -> Unit,
-    onOpenReminder: (CustomerEntity) -> Unit
+    onOpenReminder: (CustomerEntity) -> Unit,
+    onCancelAutoReminder: ((CustomerEntity) -> Unit)? = null
 ) {
     val formattedDate = remember(customer.lastTransactionTimestamp) {
         val sdf = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault())
@@ -521,6 +551,54 @@ private fun CustomerBalanceCard(
                 }
             }
 
+            // Scheduled Auto Reminder Badge
+            if (customer.reminderScheduledDate > 0 && customer.reminderStatus == "SCHEDULED") {
+                Spacer(modifier = Modifier.height(8.dp))
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = Color(0x22F59E0B)),
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 10.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.Schedule,
+                                contentDescription = "Scheduled",
+                                tint = Color(0xFFFBBF24),
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            val scheduleStr = SimpleDateFormat("dd MMM, hh:mm a", Locale.getDefault()).format(Date(customer.reminderScheduledDate))
+                            Text(
+                                text = "Auto Reminder: $scheduleStr",
+                                color = Color(0xFFFDE68A),
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                        if (onCancelAutoReminder != null) {
+                            IconButton(
+                                onClick = { onCancelAutoReminder(customer) },
+                                modifier = Modifier.size(24.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = "Cancel Auto Reminder",
+                                    tint = Color(0xFFFCA5A5),
+                                    modifier = Modifier.size(14.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
             // WhatsApp Payment Reminder Action Bar
             if (customer.totalPendingBalance > 0) {
                 Spacer(modifier = Modifier.height(10.dp))
@@ -532,6 +610,32 @@ private fun CustomerBalanceCard(
                     horizontalArrangement = Arrangement.End,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+                    OutlinedButton(
+                        onClick = { onOpenReminder(customer) },
+                        border = BorderStroke(1.dp, Color(0x44F59E0B)),
+                        shape = RoundedCornerShape(8.dp),
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                        modifier = Modifier
+                            .height(34.dp)
+                            .testTag("udhar_auto_reminder_button_${customer.mobileNumber}")
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Schedule,
+                            contentDescription = "Schedule Auto",
+                            tint = Color(0xFFFBBF24),
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = if (customer.reminderScheduledDate > 0 && customer.reminderStatus == "SCHEDULED") "Reschedule" else "Auto Schedule",
+                            color = Color(0xFFFDE68A),
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(8.dp))
+
                     Button(
                         onClick = { onOpenReminder(customer) },
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF10B981)),
@@ -712,6 +816,28 @@ private fun CustomerLedgerDetailView(
                         Icon(imageVector = Icons.Default.RemoveCircle, contentDescription = "Add Udhar", modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(6.dp))
                         Text("Add Udhar (+)", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                    }
+                }
+
+                // Scheduled Reminder Alert Banner
+                if (customer.reminderScheduledDate > 0 && customer.reminderStatus == "SCHEDULED") {
+                    Spacer(modifier = Modifier.height(10.dp))
+                    val scheduleStr = SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault()).format(Date(customer.reminderScheduledDate))
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = Color(0x22F59E0B)),
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 10.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(Icons.Default.Schedule, contentDescription = "Scheduled", tint = Color(0xFFFBBF24), modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("⏰ Auto Reminder scheduled for $scheduleStr", color = Color(0xFFFDE68A), fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                        }
                     }
                 }
 
@@ -1371,15 +1497,22 @@ private fun UdharBillReceiptModalDialog(
 private fun WhatsAppReminderModalDialog(
     customer: CustomerEntity,
     businessName: String,
+    merchantPhone: String = "",
     upiId: String = "merchant@upi",
     initialType: ReminderType,
     transactions: List<CustomerTransactionEntity>,
+    onScheduleAuto: ((Long, String) -> Unit)? = null,
+    onCancelAuto: (() -> Unit)? = null,
     onDismiss: () -> Unit
 ) {
     val context = LocalContext.current
     var selectedType by remember { mutableStateOf(initialType) }
 
-    var messageText by remember(selectedType, customer, businessName, upiId) {
+    var selectedScheduledEpoch by remember {
+        mutableStateOf(customer.reminderScheduledDate.takeIf { it > System.currentTimeMillis() } ?: 0L)
+    }
+
+    var messageText by remember(selectedType, customer, businessName, merchantPhone, upiId) {
         mutableStateOf(
             WhatsAppReminderUtils.buildReminderMessage(
                 customerName = customer.name,
@@ -1388,7 +1521,8 @@ private fun WhatsAppReminderModalDialog(
                 lastTransactionTimestamp = customer.lastTransactionTimestamp,
                 reminderType = selectedType,
                 transactions = transactions,
-                upiId = upiId
+                upiId = upiId,
+                merchantPhone = merchantPhone
             )
         )
     }
@@ -1422,7 +1556,10 @@ private fun WhatsAppReminderModalDialog(
             }
         },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
                 // Outstanding Summary Badge
                 Card(
                     colors = CardDefaults.cardColors(containerColor = Color(0x22EF4444)),
@@ -1446,6 +1583,27 @@ private fun WhatsAppReminderModalDialog(
                     }
                 }
 
+                // Dynamic Merchant Profile Verification Badge
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = Color(0x2238BDF8)),
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(10.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(imageVector = Icons.Default.Store, contentDescription = "Store", tint = Color(0xFF38BDF8), modifier = Modifier.size(14.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(text = "Sender: $businessName", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        }
+                        if (merchantPhone.isNotBlank()) {
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(text = "📞 Contact: $merchantPhone", color = Color(0xFF94A3B8), fontSize = 11.sp)
+                        }
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(text = "💳 UPI ID: $upiId", color = Color(0xFF38BDF8), fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                    }
+                }
+
                 // Interactive UPI Link Banner Card
                 Card(
                     colors = CardDefaults.cardColors(containerColor = Color(0x2210B981)),
@@ -1463,13 +1621,13 @@ private fun WhatsAppReminderModalDialog(
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(imageVector = Icons.Default.QrCode, contentDescription = "UPI", tint = EmeraldLight, modifier = Modifier.size(16.dp))
                                 Spacer(modifier = Modifier.width(6.dp))
-                                Text("Embedded Interactive UPI Link", color = EmeraldLight, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                Text("Dynamic UPI Payment Link", color = EmeraldLight, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                             }
                             Text(text = upiId, color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Medium)
                         }
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "Customers can tap the upi:// link in WhatsApp to pay instantly via GPay/PhonePe.",
+                            text = "Customers can tap the interactive UPI link in WhatsApp to pay ₹${String.format(Locale.US, "%.2f", customer.totalPendingBalance)} directly.",
                             color = Color(0xFF94A3B8),
                             fontSize = 10.sp
                         )
@@ -1493,6 +1651,117 @@ private fun WhatsAppReminderModalDialog(
                             Icon(imageVector = Icons.Default.Payment, contentDescription = "Test Pay", modifier = Modifier.size(12.dp))
                             Spacer(modifier = Modifier.width(4.dp))
                             Text("Test Pay via UPI App", fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+
+                // Automatic Scheduled Reminder Section
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = Color(0x22F59E0B)),
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .border(1.dp, Color(0x44F59E0B), RoundedCornerShape(10.dp))
+                ) {
+                    Column(modifier = Modifier.padding(10.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(imageVector = Icons.Default.Schedule, contentDescription = "Auto Reminder", tint = Color(0xFFFBBF24), modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Scheduled Automatic Reminder", color = Color(0xFFFBBF24), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        }
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "Pick a date & time for SmartPOS to automatically dispatch this WhatsApp reminder in the background.",
+                            color = Color(0xFF94A3B8),
+                            fontSize = 10.sp
+                        )
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        if (selectedScheduledEpoch > System.currentTimeMillis()) {
+                            val scheduledDateFormatted = SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault()).format(Date(selectedScheduledEpoch))
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .background(Color(0x33F59E0B), RoundedCornerShape(6.dp))
+                                    .padding(8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                    text = "⏰ $scheduledDateFormatted",
+                                    color = Color(0xFFFDE68A),
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                TextButton(
+                                    onClick = {
+                                        showDatePickerAndSchedule(context, selectedScheduledEpoch) { newEpoch ->
+                                            selectedScheduledEpoch = newEpoch
+                                        }
+                                    },
+                                    contentPadding = PaddingValues(horizontal = 6.dp, vertical = 0.dp)
+                                ) {
+                                    Text("Change", color = Color(0xFF38BDF8), fontSize = 11.sp)
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Button(
+                                    onClick = {
+                                        onScheduleAuto?.invoke(selectedScheduledEpoch, messageText)
+                                    },
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF59E0B)),
+                                    shape = RoundedCornerShape(8.dp),
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .height(34.dp)
+                                        .testTag("confirm_schedule_auto_reminder_button")
+                                ) {
+                                    Icon(imageVector = Icons.Default.Check, contentDescription = "Confirm", modifier = Modifier.size(14.dp), tint = Color.Black)
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("Save Schedule", color = Color.Black, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                }
+
+                                if (customer.reminderScheduledDate > 0 && customer.reminderStatus == "SCHEDULED") {
+                                    OutlinedButton(
+                                        onClick = {
+                                            onCancelAuto?.invoke()
+                                            selectedScheduledEpoch = 0L
+                                        },
+                                        border = BorderStroke(1.dp, Color(0xFFEF4444)),
+                                        shape = RoundedCornerShape(8.dp),
+                                        modifier = Modifier
+                                            .height(34.dp)
+                                            .testTag("cancel_schedule_auto_reminder_button")
+                                    ) {
+                                        Text("Cancel Auto", color = Color(0xFFF87171), fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                    }
+                                }
+                            }
+                        } else {
+                            OutlinedButton(
+                                onClick = {
+                                    showDatePickerAndSchedule(context, System.currentTimeMillis() + 86400000L) { newEpoch ->
+                                        selectedScheduledEpoch = newEpoch
+                                    }
+                                },
+                                border = BorderStroke(1.dp, Color(0x66F59E0B)),
+                                shape = RoundedCornerShape(8.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(34.dp)
+                                    .testTag("pick_auto_reminder_datetime_button")
+                            ) {
+                                Icon(imageVector = Icons.Default.CalendarMonth, contentDescription = "Pick Date", tint = Color(0xFFFBBF24), modifier = Modifier.size(14.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("📅 Pick Auto-Send Date & Time", color = Color(0xFFFDE68A), fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                            }
                         }
                     }
                 }
@@ -1555,7 +1824,7 @@ private fun WhatsAppReminderModalDialog(
                 ) {
                     Icon(imageVector = Icons.Default.Send, contentDescription = "Send WhatsApp", modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Send via WhatsApp", fontWeight = FontWeight.Bold, color = Color.White)
+                    Text("Send Now via WhatsApp", fontWeight = FontWeight.Bold, color = Color.White)
                 }
 
                 OutlinedButton(
@@ -1585,6 +1854,60 @@ private fun WhatsAppReminderModalDialog(
         containerColor = Color(0xFF0F172A),
         shape = RoundedCornerShape(16.dp)
     )
+}
+
+/**
+ * Helper to show DatePickerDialog and TimePickerDialog sequentially.
+ */
+private fun showDatePickerAndSchedule(
+    context: android.content.Context,
+    initialEpoch: Long,
+    onDateTimeSelected: (Long) -> Unit
+) {
+    val cal = Calendar.getInstance()
+    if (initialEpoch > System.currentTimeMillis()) {
+        cal.timeInMillis = initialEpoch
+    } else {
+        cal.add(Calendar.DAY_OF_YEAR, 1)
+        cal.set(Calendar.HOUR_OF_DAY, 10)
+        cal.set(Calendar.MINUTE, 0)
+        cal.set(Calendar.SECOND, 0)
+    }
+
+    val datePicker = android.app.DatePickerDialog(
+        context,
+        { _, year, month, dayOfMonth ->
+            cal.set(Calendar.YEAR, year)
+            cal.set(Calendar.MONTH, month)
+            cal.set(Calendar.DAY_OF_MONTH, dayOfMonth)
+
+            val timePicker = android.app.TimePickerDialog(
+                context,
+                { _, hourOfDay, minute ->
+                    cal.set(Calendar.HOUR_OF_DAY, hourOfDay)
+                    cal.set(Calendar.MINUTE, minute)
+                    cal.set(Calendar.SECOND, 0)
+                    cal.set(Calendar.MILLISECOND, 0)
+
+                    val target = cal.timeInMillis
+                    if (target <= System.currentTimeMillis()) {
+                        android.widget.Toast.makeText(context, "Please select a future time", android.widget.Toast.LENGTH_SHORT).show()
+                    } else {
+                        onDateTimeSelected(target)
+                    }
+                },
+                cal.get(Calendar.HOUR_OF_DAY),
+                cal.get(Calendar.MINUTE),
+                false
+            )
+            timePicker.show()
+        },
+        cal.get(Calendar.YEAR),
+        cal.get(Calendar.MONTH),
+        cal.get(Calendar.DAY_OF_MONTH)
+    )
+    datePicker.datePicker.minDate = System.currentTimeMillis()
+    datePicker.show()
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

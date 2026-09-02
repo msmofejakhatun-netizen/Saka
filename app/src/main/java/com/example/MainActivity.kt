@@ -10,7 +10,11 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.PointOfSale
+import androidx.compose.material3.*
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -18,8 +22,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -38,6 +47,8 @@ import com.example.ui.navigation.Screen
 import com.example.ui.screens.admin.AdminScreen
 import com.example.ui.screens.dashboard.DashboardScreen
 import com.example.ui.screens.login.LoginScreen
+import com.example.ui.theme.EmeraldGreen
+import com.example.ui.theme.EmeraldLight
 import com.example.ui.theme.MyApplicationTheme
 import com.example.ui.viewmodel.BillingViewModel
 import com.example.ui.viewmodel.BillingViewModelFactory
@@ -140,11 +151,40 @@ class MainActivity : ComponentActivity(), com.razorpay.PaymentResultWithDataList
                 val subscriptionState by viewModel.subscriptionState.collectAsState()
                 val fbUser = com.example.data.firebase.FirebaseManager.auth?.currentUser
 
+                // Initial Cloud Sync State: wait for Firestore subscription and profile to restore on launch
+                var isInitialSyncing by remember { mutableStateOf(fbUser != null) }
+
+                LaunchedEffect(Unit) {
+                    if (fbUser != null) {
+                        try {
+                            // 1. Restore subscription directly from Firestore
+                            com.example.data.subscription.SubscriptionRepository.restoreSubscriptionFromFirestore(
+                                context = context,
+                                userId = fbUser.uid,
+                                mobileNumber = fbUser.phoneNumber ?: ""
+                            )
+                            // 2. Load merchant profile
+                            viewModel.loadUserProfile(fbUser.uid)
+                            // 3. Enforce session check
+                            AppSessionManager.verifyAndEnforceSubscriptionLock(
+                                context = context,
+                                userUid = fbUser.phoneNumber ?: fbUser.uid
+                            )
+                        } catch (e: Exception) {
+                            android.util.Log.e("MainActivity", "Initial cloud sync error: ${e.localizedMessage}")
+                        } finally {
+                            isInitialSyncing = false
+                        }
+                    } else {
+                        isInitialSyncing = false
+                    }
+                }
+
                 // Strict Route Guard logic via centralized AuthGuard
                 val isLoggedIn = (fbUser != null) || (currentUser != null)
                 val isSubscriptionValid = com.example.util.AuthGuard.isSubscriptionValid(subscriptionState)
 
-                val startDestination = remember {
+                val startDestination = remember(isInitialSyncing, isLoggedIn, isSubscriptionValid) {
                     when {
                         !isLoggedIn -> Screen.Login.route
                         isLoggedIn && !isSubscriptionValid -> Screen.Paywall.route
@@ -158,9 +198,9 @@ class MainActivity : ComponentActivity(), com.razorpay.PaymentResultWithDataList
                 }
 
                 // Subscription State Verification & Auto-Lock on App Launch and Foreground Resume
-                DisposableEffect(lifecycleOwner, currentUser, subscriptionState) {
+                DisposableEffect(lifecycleOwner, currentUser, subscriptionState, isInitialSyncing) {
                     val observer = LifecycleEventObserver { _, event ->
-                        if (event == Lifecycle.Event.ON_RESUME || event == Lifecycle.Event.ON_START) {
+                        if (!isInitialSyncing && (event == Lifecycle.Event.ON_RESUME || event == Lifecycle.Event.ON_START)) {
                             if (currentUser != null || fbUser != null) {
                                 val state = AppSessionManager.verifyAndEnforceSubscriptionLock(
                                     context = context,
@@ -186,21 +226,23 @@ class MainActivity : ComponentActivity(), com.razorpay.PaymentResultWithDataList
                 }
 
                 // Forceful Navigation Route Interceptor for subscription enforcement
-                DisposableEffect(navController, subscriptionState) {
+                DisposableEffect(navController, subscriptionState, isInitialSyncing) {
                     val listener = androidx.navigation.NavController.OnDestinationChangedListener { _, destination, _ ->
-                        val user = viewModel.currentUser.value
-                        val fb = com.example.data.firebase.FirebaseManager.auth?.currentUser
-                        if (user != null || fb != null) {
-                            val valid = com.example.util.AuthGuard.isSubscriptionValid(viewModel.subscriptionState.value)
-                            if (!valid &&
-                                destination.route != Screen.Paywall.route &&
-                                destination.route != Screen.Login.route &&
-                                destination.route != Screen.ProfileSetup.route &&
-                                destination.route != Screen.Signup.route
-                            ) {
-                                navController.navigate(Screen.Paywall.route) {
-                                    popUpTo(0) { inclusive = true }
-                                    launchSingleTop = true
+                        if (!isInitialSyncing) {
+                            val user = viewModel.currentUser.value
+                            val fb = com.example.data.firebase.FirebaseManager.auth?.currentUser
+                            if (user != null || fb != null) {
+                                val valid = com.example.util.AuthGuard.isSubscriptionValid(viewModel.subscriptionState.value)
+                                if (!valid &&
+                                    destination.route != Screen.Paywall.route &&
+                                    destination.route != Screen.Login.route &&
+                                    destination.route != Screen.ProfileSetup.route &&
+                                    destination.route != Screen.Signup.route
+                                ) {
+                                    navController.navigate(Screen.Paywall.route) {
+                                        popUpTo(0) { inclusive = true }
+                                        launchSingleTop = true
+                                    }
                                 }
                             }
                         }
@@ -258,11 +300,50 @@ class MainActivity : ComponentActivity(), com.razorpay.PaymentResultWithDataList
                     )
                 }
 
-                NavHost(
-                    navController = navController,
-                    startDestination = startDestination,
-                    modifier = Modifier.fillMaxSize()
-                ) {
+                if (isInitialSyncing) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(Color(0xFF0D1333)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.PointOfSale,
+                                contentDescription = null,
+                                tint = EmeraldGreen,
+                                modifier = Modifier.size(64.dp)
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text(
+                                text = "SmartPOS",
+                                color = Color.White,
+                                fontSize = 24.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            CircularProgressIndicator(
+                                color = EmeraldLight,
+                                modifier = Modifier.size(24.dp),
+                                strokeWidth = 2.5.dp
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = "Synchronizing profile & subscription...",
+                                color = Color(0xFF94A3B8),
+                                fontSize = 12.sp
+                            )
+                        }
+                    }
+                } else {
+                    NavHost(
+                        navController = navController,
+                        startDestination = startDestination,
+                        modifier = Modifier.fillMaxSize()
+                    ) {
                     composable(Screen.Login.route) {
                         LoginScreen(
                             viewModel = viewModel,
@@ -488,6 +569,7 @@ class MainActivity : ComponentActivity(), com.razorpay.PaymentResultWithDataList
             }
         }
     }
+}
 
     /**
      * Razorpay Payment Result Callback on Payment Success.

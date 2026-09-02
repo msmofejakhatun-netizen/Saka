@@ -252,6 +252,43 @@ class SubscriptionViewModel : ViewModel() {
         checkTrialEligibility(userUid)
     }
 
+    /**
+     * Restores subscription status from Firestore upon fresh install/login or via manual Restore button.
+     */
+    fun restoreSubscription(
+        context: Context,
+        mobileNumberOrUid: String = "",
+        onResult: (Boolean, String) -> Unit
+    ) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true) }
+            try {
+                val currentAuthUser = FirebaseManager.auth?.currentUser
+                val uid = currentAuthUser?.uid ?: mobileNumberOrUid
+                val phone = currentAuthUser?.phoneNumber ?: mobileNumberOrUid
+
+                val restored = SubscriptionRepository.restoreSubscriptionFromFirestore(
+                    context = context,
+                    userId = uid,
+                    mobileNumber = phone
+                )
+
+                _uiState.update { it.copy(isLoading = false) }
+
+                if (restored != null && com.example.util.AuthGuard.isSubscriptionValid(restored)) {
+                    AppSessionManager.verifyAndEnforceSubscriptionLock(context, uid)
+                    onResult(true, "Active subscription (${restored.planName}) restored successfully!")
+                } else {
+                    onResult(false, "No active paid subscription found for this account.")
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error in restoreSubscription: ${e.localizedMessage}")
+                _uiState.update { it.copy(isLoading = false) }
+                onResult(false, "Failed to restore: ${e.localizedMessage}")
+            }
+        }
+    }
+
     fun triggerDashboardNavigation() {
         viewModelScope.launch {
             _navigationChannel.send(SubscriptionNavEvent.NavigateToDashboard)

@@ -19,6 +19,9 @@ class SmartPOSApplication : Application() {
         private const val TAG = "SmartPOSApplication"
         const val ONESIGNAL_APP_ID = "d6171499-98f7-4dbb-af43-c07e7587423d"
 
+        lateinit var instance: SmartPOSApplication
+            private set
+
         private val _deepLinkRoute = MutableStateFlow<String?>(null)
         val deepLinkRoute = _deepLinkRoute.asStateFlow()
 
@@ -65,6 +68,7 @@ class SmartPOSApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        instance = this
         initOneSignal()
         com.example.worker.TrialTrackerWorker.schedule(this)
     }

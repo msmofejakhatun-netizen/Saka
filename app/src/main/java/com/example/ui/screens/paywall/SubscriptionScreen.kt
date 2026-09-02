@@ -134,6 +134,7 @@ fun SubscriptionScreenContent(
 
     var showPaymentBottomSheet by remember { mutableStateOf(false) }
     var isProcessingPayment by remember { mutableStateOf(false) }
+    var isRestoringSubscription by remember { mutableStateOf(false) }
     var showCancelMandateConfirmDialog by remember { mutableStateOf(false) }
 
     val scrollState = rememberScrollState()
@@ -295,7 +296,22 @@ fun SubscriptionScreenContent(
                     hasUsedTrial = hasUsedTrial || !canShowTrial,
                     showTrialPlan = canShowTrial,
                     selectedPlan = selectedPlan,
+                    isRestoring = isRestoringSubscription,
                     onSelectPlan = { selectedPlan = it },
+                    onRestoreSubscription = {
+                        isRestoringSubscription = true
+                        subscriptionViewModel.restoreSubscription(
+                            context = context,
+                            mobileNumberOrUid = userId
+                        ) { success, msg ->
+                            isRestoringSubscription = false
+                            Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
+                            if (success) {
+                                billingViewModel?.closePaywall()
+                                onNavigateToDashboard()
+                            }
+                        }
+                    },
                     onStartSubscription = {
                         if (activity != null) {
                             PaymentGatewayHandler.launchRazorpayCheckout(
@@ -880,7 +896,9 @@ fun InactivePlanSelectionView(
     hasUsedTrial: Boolean,
     showTrialPlan: Boolean = !hasUsedTrial,
     selectedPlan: PaymentGatewayHandler.SubscriptionPlan,
+    isRestoring: Boolean = false,
     onSelectPlan: (PaymentGatewayHandler.SubscriptionPlan) -> Unit,
+    onRestoreSubscription: (() -> Unit)? = null,
     onStartSubscription: () -> Unit
 ) {
     val canDisplayTrial = showTrialPlan && !hasUsedTrial
@@ -1071,6 +1089,53 @@ fun InactivePlanSelectionView(
                         fontSize = 16.sp
                     )
                 }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // Restore Purchase Button
+        OutlinedButton(
+            onClick = { onRestoreSubscription?.invoke() },
+            enabled = !isRestoring,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(48.dp)
+                .testTag("restore_subscription_button"),
+            shape = RoundedCornerShape(14.dp),
+            border = BorderStroke(1.dp, Color(0x5510B981)),
+            colors = ButtonDefaults.outlinedButtonColors(
+                containerColor = Color(0x1810B981),
+                contentColor = EmeraldLight
+            )
+        ) {
+            if (isRestoring) {
+                CircularProgressIndicator(
+                    color = EmeraldLight,
+                    modifier = Modifier.size(18.dp),
+                    strokeWidth = 2.dp
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Restoring Subscription from Cloud...",
+                    color = Color.White,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium
+                )
+            } else {
+                Icon(
+                    Icons.Default.CloudDownload,
+                    contentDescription = "Restore Subscription",
+                    tint = EmeraldLight,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Already Paid? Restore Subscription",
+                    color = Color.White,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
             }
         }
 

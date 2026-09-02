@@ -81,8 +81,8 @@ fun DashboardScreen(
             gesturesEnabled = true,
             drawerContent = {
                 ModalDrawerSheet(
-                    drawerContainerColor = Color(0xFF0F172A),
-                    drawerContentColor = Color.White,
+                    drawerContainerColor = Color.White,
+                    drawerContentColor = VyaparTextPrimary,
                     modifier = Modifier
                         .width(300.dp)
                         .testTag("side_navigation_drawer_sheet")
@@ -144,15 +144,15 @@ fun DashboardScreen(
             Scaffold(
                 bottomBar = {
                     NavigationBar(
-                        containerColor = Color(0xF00D1333),
+                        containerColor = Color.White,
                         tonalElevation = 8.dp,
                         modifier = Modifier
                             .border(
                                 width = 1.dp,
-                                color = Color(0x2210B981),
-                                shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)
+                                color = VyaparBorder,
+                                shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
                             )
-                            .clip(RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp))
+                            .clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))
                             .testTag("main_bottom_navigation_bar")
                     ) {
                         BottomTab.values().forEach { tab ->
@@ -168,7 +168,7 @@ fun DashboardScreen(
                                     Icon(
                                         imageVector = tab.icon,
                                         contentDescription = tab.title,
-                                        tint = if (selected) EmeraldGreen else Color(0xFF94A3B8),
+                                        tint = if (selected) VyaparRed else VyaparTextSecondary,
                                         modifier = Modifier.size(22.dp)
                                     )
                                 },
@@ -177,11 +177,11 @@ fun DashboardScreen(
                                         text = tab.title,
                                         fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
                                         fontSize = 11.sp,
-                                        color = if (selected) EmeraldLight else Color(0xFF94A3B8)
+                                        color = if (selected) VyaparRed else VyaparTextSecondary
                                     )
                                 },
                                 colors = NavigationBarItemDefaults.colors(
-                                    indicatorColor = Color(0x3310B981)
+                                    indicatorColor = Color(0xFFFFEBEE)
                                 ),
                                 modifier = Modifier.testTag(tab.testTag)
                             )
@@ -349,12 +349,12 @@ private fun HomeDashboardContent(
                 title = {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
-                            text = currentUser?.businessName ?: "Kirana Billing",
-                            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold, color = Color.White)
+                            text = currentUser?.businessName ?: "SmartPOS Billing",
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, color = Color.White)
                         )
                         Text(
-                            text = "Category: ${currentUser?.category ?: "Retail"}",
-                            style = MaterialTheme.typography.bodySmall.copy(color = EmeraldGreen, fontWeight = FontWeight.SemiBold)
+                            text = "Category: ${currentUser?.category ?: "Retail Kirana"}",
+                            style = MaterialTheme.typography.bodySmall.copy(color = Color(0xFFFFCDD2), fontWeight = FontWeight.Medium)
                         )
                     }
                 },
@@ -363,17 +363,17 @@ private fun HomeDashboardContent(
                         onClick = { viewModel.openPaywall() },
                         modifier = Modifier.testTag("dashboard_pro_paywall_button")
                     ) {
-                        Icon(imageVector = Icons.Default.WorkspacePremium, contentDescription = "Upgrade Pro", tint = GoldYellow)
+                        Icon(imageVector = Icons.Default.WorkspacePremium, contentDescription = "Upgrade Pro", tint = Color(0xFFFFD54F))
                     }
                     IconButton(
                         onClick = onLogout,
                         modifier = Modifier.testTag("dashboard_logout_button")
                     ) {
-                        Icon(imageVector = Icons.Default.Logout, contentDescription = "Logout", tint = AccentPink)
+                        Icon(imageVector = Icons.Default.Logout, contentDescription = "Logout", tint = Color.White)
                     }
                 },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = Color(0x99090D22)
+                    containerColor = VyaparRed
                 ),
                 modifier = Modifier.testTag("dashboard_top_bar")
             )
@@ -387,7 +387,7 @@ private fun HomeDashboardContent(
                         onSelectTab(BottomTab.POS)
                     }
                 },
-                containerColor = EmeraldGreen,
+                containerColor = VyaparRed,
                 contentColor = Color.White,
                 modifier = Modifier
                     .testTag("dashboard_add_bill_fab")
@@ -403,19 +403,19 @@ private fun HomeDashboardContent(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .padding(horizontal = 20.dp)
+                .padding(horizontal = 16.dp)
         ) {
-            Spacer(modifier = Modifier.height(14.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
             // Subscription Expired Warning Banner
             if (!isSubscriptionValid) {
                 Card(
                     onClick = { viewModel.openPaywall() },
-                    colors = CardDefaults.cardColors(containerColor = Color(0x33EF4444)),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFFFEBEE)),
                     shape = RoundedCornerShape(12.dp),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .border(1.dp, Color(0x66EF4444), RoundedCornerShape(12.dp))
+                        .border(1.dp, Color(0xFFFFCDD2), RoundedCornerShape(12.dp))
                         .testTag("dashboard_subscription_expired_banner")
                 ) {
                     Row(
@@ -430,29 +430,29 @@ private fun HomeDashboardContent(
                             modifier = Modifier.weight(1f)
                         ) {
                             Icon(
-                                imageVector = Icons.Default.Close,
+                                imageVector = Icons.Default.Warning,
                                 contentDescription = "Subscription Expired",
-                                tint = Color(0xFFEF4444),
+                                tint = VyaparRed,
                                 modifier = Modifier.size(22.dp)
                             )
                             Spacer(modifier = Modifier.width(10.dp))
                             Column {
                                 Text(
                                     text = "Subscription Expired",
-                                    color = Color.White,
+                                    color = VyaparRedDark,
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 13.sp
                                 )
                                 Text(
                                     text = "Complete payment of ₹79 to unlock all features.",
-                                    color = Color(0xFFFCA5A5),
+                                    color = VyaparTextSecondary,
                                     fontSize = 11.sp
                                 )
                             }
                         }
                         Button(
                             onClick = { viewModel.openPaywall() },
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF4444)),
+                            colors = ButtonDefaults.buttonColors(containerColor = VyaparRed),
                             shape = RoundedCornerShape(8.dp),
                             contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
                             modifier = Modifier.height(34.dp).testTag("dashboard_renew_subscription_btn")
@@ -474,11 +474,11 @@ private fun HomeDashboardContent(
 
                 Card(
                     onClick = { viewModel.openPaywall() },
-                    colors = CardDefaults.cardColors(containerColor = Color(0x2210B981)),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFE8F5E9)),
                     shape = RoundedCornerShape(12.dp),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .border(1.dp, Color(0x4410B981), RoundedCornerShape(12.dp))
+                        .border(1.dp, Color(0xFFC8E6C9), RoundedCornerShape(12.dp))
                         .testTag("dashboard_active_subscription_banner")
                 ) {
                     Row(
@@ -495,31 +495,31 @@ private fun HomeDashboardContent(
                             Icon(
                                 imageVector = Icons.Default.WorkspacePremium,
                                 contentDescription = "Active Plan",
-                                tint = EmeraldGreen,
+                                tint = VyaparSuccess,
                                 modifier = Modifier.size(20.dp)
                             )
                             Spacer(modifier = Modifier.width(10.dp))
                             Column {
                                 Text(
                                     text = subBadgeTitle,
-                                    color = Color.White,
+                                    color = Color(0xFF1B5E20),
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 12.sp
                                 )
                                 Text(
                                     text = "Validity: $subDaysText",
-                                    color = EmeraldLight,
+                                    color = VyaparSuccess,
                                     fontSize = 11.sp
                                 )
                             }
                         }
                         Surface(
-                            color = EmeraldGreen.copy(alpha = 0.2f),
+                            color = VyaparSuccess,
                             shape = RoundedCornerShape(6.dp)
                         ) {
                             Text(
                                 text = "PRO",
-                                color = EmeraldGreen,
+                                color = Color.White,
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.ExtraBold,
                                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
@@ -534,14 +534,14 @@ private fun HomeDashboardContent(
             val isFirebaseAvailable = com.example.data.firebase.FirebaseManager.isFirebaseAvailable
             Card(
                 colors = CardDefaults.cardColors(
-                    containerColor = if (isFirebaseAvailable) Color(0x1A10B981) else Color(0x1AEF4444)
+                    containerColor = if (isFirebaseAvailable) Color(0xFFF0FDF4) else Color(0xFFFEF2F2)
                 ),
                 shape = RoundedCornerShape(10.dp),
                 modifier = Modifier
                     .fillMaxWidth()
                     .border(
                         1.dp,
-                        if (isFirebaseAvailable) Color(0x2210B981) else Color(0x22EF4444),
+                        if (isFirebaseAvailable) Color(0xFFBBF7D0) else Color(0xFFFECACA),
                         RoundedCornerShape(10.dp)
                     )
                     .testTag("dashboard_firebase_status")
@@ -554,25 +554,25 @@ private fun HomeDashboardContent(
                         modifier = Modifier
                             .size(8.dp)
                             .background(
-                                if (isFirebaseAvailable) EmeraldGreen else Color(0xFFEF4444),
+                                if (isFirebaseAvailable) VyaparSuccess else VyaparRed,
                                 CircleShape
                             )
                     )
                     Spacer(modifier = Modifier.width(10.dp))
                     Text(
                         text = if (isFirebaseAvailable) {
-                            "Live Firebase DB Synced"
+                            "Live Cloud DB Synced"
                         } else {
                             "Running in Offline Room-fallback mode"
                         },
-                        color = if (isFirebaseAvailable) EmeraldLight else Color(0xFFF87171),
+                        color = if (isFirebaseAvailable) VyaparSuccess else VyaparRed,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.SemiBold
                     )
                     Spacer(modifier = Modifier.weight(1f))
                     Text(
                         text = if (isFirebaseAvailable) "SECURE" else "LOCAL",
-                        color = if (isFirebaseAvailable) EmeraldLight else Color(0xFFF87171),
+                        color = if (isFirebaseAvailable) VyaparSuccess else VyaparRed,
                         fontSize = 9.sp,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 0.5.sp
@@ -580,26 +580,26 @@ private fun HomeDashboardContent(
                 }
             }
 
-            Spacer(modifier = Modifier.height(14.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
             // Near Expiry Risk & Smart Reorder Warning Banner
             if (totalExpiryRiskCount > 0 || lowStockCount > 0) {
                 Card(
                     onClick = { onSelectTab(BottomTab.INVENTORY) },
                     colors = CardDefaults.cardColors(
-                        containerColor = if (criticalExpiryCount > 0) Color(0x22EF4444) else Color(0x22F59E0B)
+                        containerColor = if (criticalExpiryCount > 0) Color(0xFFFFEBEE) else Color(0xFFFFFBEB)
                     ),
-                    shape = RoundedCornerShape(14.dp),
+                    shape = RoundedCornerShape(12.dp),
                     modifier = Modifier
                         .fillMaxWidth()
                         .border(
                             width = 1.dp,
-                            color = if (criticalExpiryCount > 0) Color(0x66EF4444) else Color(0x66F59E0B),
-                            shape = RoundedCornerShape(14.dp)
+                            color = if (criticalExpiryCount > 0) Color(0xFFFFCDD2) else Color(0xFFFDE68A),
+                            shape = RoundedCornerShape(12.dp)
                         )
                         .testTag("dashboard_expiry_risk_warning_banner")
                 ) {
-                    Column(modifier = Modifier.padding(14.dp)) {
+                    Column(modifier = Modifier.padding(12.dp)) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             verticalAlignment = Alignment.CenterVertically,
@@ -609,34 +609,34 @@ private fun HomeDashboardContent(
                                 Icon(
                                     imageVector = Icons.Default.Warning,
                                     contentDescription = "Expiry Risk Alert",
-                                    tint = if (criticalExpiryCount > 0) Color(0xFFEF4444) else Color(0xFFF59E0B),
-                                    modifier = Modifier.size(20.dp)
+                                    tint = if (criticalExpiryCount > 0) VyaparRed else Color(0xFFD97706),
+                                    modifier = Modifier.size(18.dp)
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
-                                    text = "NEAR EXPIRY & REORDER RISK",
-                                    color = Color.White,
-                                    fontSize = 12.sp,
+                                    text = "STOCK & EXPIRY ALERTS",
+                                    color = VyaparTextPrimary,
+                                    fontSize = 11.sp,
                                     fontWeight = FontWeight.Bold,
                                     letterSpacing = 0.5.sp
                                 )
                             }
 
                             Surface(
-                                color = Color(0x33FFFFFF),
-                                shape = RoundedCornerShape(12.dp)
+                                color = if (criticalExpiryCount > 0) VyaparRed else Color(0xFFD97706),
+                                shape = RoundedCornerShape(10.dp)
                             ) {
                                 Text(
-                                    text = "Inspect Risk ➔",
+                                    text = "Inspect ➔",
                                     color = Color.White,
-                                    fontSize = 11.sp,
+                                    fontSize = 10.sp,
                                     fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                                 )
                             }
                         }
 
-                        Spacer(modifier = Modifier.height(10.dp))
+                        Spacer(modifier = Modifier.height(8.dp))
 
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -644,8 +644,9 @@ private fun HomeDashboardContent(
                         ) {
                             if (criticalExpiryCount > 0) {
                                 Surface(
-                                    color = Color(0x33EF4444),
-                                    shape = RoundedCornerShape(8.dp),
+                                    color = Color.White,
+                                    shape = RoundedCornerShape(6.dp),
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFFFCDD2)),
                                     modifier = Modifier.weight(1f)
                                 ) {
                                     Row(
@@ -653,16 +654,17 @@ private fun HomeDashboardContent(
                                         verticalAlignment = Alignment.CenterVertically,
                                         horizontalArrangement = Arrangement.Center
                                     ) {
-                                        Text("🚨 Critical (<15d): ", color = Color(0xFFF87171), fontSize = 11.sp, fontWeight = FontWeight.Medium)
-                                        Text("$criticalExpiryCount", color = Color(0xFFEF4444), fontSize = 12.sp, fontWeight = FontWeight.ExtraBold)
+                                        Text("Critical: ", color = VyaparTextSecondary, fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                                        Text("$criticalExpiryCount", color = VyaparRed, fontSize = 12.sp, fontWeight = FontWeight.ExtraBold)
                                     }
                                 }
                             }
 
                             if (warningExpiryCount > 0) {
                                 Surface(
-                                    color = Color(0x33F59E0B),
-                                    shape = RoundedCornerShape(8.dp),
+                                    color = Color.White,
+                                    shape = RoundedCornerShape(6.dp),
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFFDE68A)),
                                     modifier = Modifier.weight(1f)
                                 ) {
                                     Row(
@@ -670,16 +672,17 @@ private fun HomeDashboardContent(
                                         verticalAlignment = Alignment.CenterVertically,
                                         horizontalArrangement = Arrangement.Center
                                     ) {
-                                        Text("⚠️ Warning (15-30d): ", color = Color(0xFFFCD34D), fontSize = 11.sp, fontWeight = FontWeight.Medium)
-                                        Text("$warningExpiryCount", color = Color(0xFFF59E0B), fontSize = 12.sp, fontWeight = FontWeight.ExtraBold)
+                                        Text("Warning: ", color = VyaparTextSecondary, fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                                        Text("$warningExpiryCount", color = Color(0xFFD97706), fontSize = 12.sp, fontWeight = FontWeight.ExtraBold)
                                     }
                                 }
                             }
 
                             if (lowStockCount > 0) {
                                 Surface(
-                                    color = Color(0x333B82F6),
-                                    shape = RoundedCornerShape(8.dp),
+                                    color = Color.White,
+                                    shape = RoundedCornerShape(6.dp),
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFBFDBFE)),
                                     modifier = Modifier.weight(1f)
                                 ) {
                                     Row(
@@ -687,8 +690,8 @@ private fun HomeDashboardContent(
                                         verticalAlignment = Alignment.CenterVertically,
                                         horizontalArrangement = Arrangement.Center
                                     ) {
-                                        Text("📦 Reorder: ", color = Color(0xFF93C5FD), fontSize = 11.sp, fontWeight = FontWeight.Medium)
-                                        Text("$lowStockCount", color = Color(0xFF60A5FA), fontSize = 12.sp, fontWeight = FontWeight.ExtraBold)
+                                        Text("Reorder: ", color = VyaparTextSecondary, fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                                        Text("$lowStockCount", color = VyaparDeepBlue, fontSize = 12.sp, fontWeight = FontWeight.ExtraBold)
                                     }
                                 }
                             }
@@ -696,16 +699,16 @@ private fun HomeDashboardContent(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(14.dp))
+                Spacer(modifier = Modifier.height(12.dp))
             }
 
-            // High-Level KPI Summary Card
+            // High-Level KPI Summary Card (Pure White Card with Light Border)
             GlassmorphicCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .testTag("dashboard_stats_card")
             ) {
-                Column(modifier = Modifier.padding(12.dp)) {
+                Column(modifier = Modifier.padding(14.dp)) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -713,39 +716,39 @@ private fun HomeDashboardContent(
                     ) {
                         // KPI 1: Revenue
                         Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
-                            Icon(imageVector = Icons.Default.MonetizationOn, contentDescription = "Sales", tint = EmeraldGreen, modifier = Modifier.size(20.dp))
+                            Icon(imageVector = Icons.Default.MonetizationOn, contentDescription = "Sales", tint = VyaparRed, modifier = Modifier.size(20.dp))
                             Spacer(modifier = Modifier.height(2.dp))
-                            Text("Revenue", color = Color(0xFF94A3B8), fontSize = 10.sp, fontWeight = FontWeight.Medium)
+                            Text("Revenue", color = VyaparTextSecondary, fontSize = 10.sp, fontWeight = FontWeight.Medium)
                             Text(
                                 text = "₹${String.format(Locale.US, "%.2f", totalSales ?: 0.0)}",
-                                color = Color.White,
+                                color = VyaparTextPrimary,
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Bold,
                                 modifier = Modifier.testTag("dashboard_total_sales_value")
                             )
                         }
 
-                        Box(modifier = Modifier.width(1.dp).height(32.dp).background(Color(0x22FFFFFF)))
+                        Box(modifier = Modifier.width(1.dp).height(32.dp).background(VyaparBorder))
 
                         // KPI 2: Net Profit & Profit Margin
                         Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1.2f)) {
-                            Icon(imageVector = Icons.Default.TrendingUp, contentDescription = "Profit", tint = EmeraldLight, modifier = Modifier.size(20.dp))
+                            Icon(imageVector = Icons.Default.TrendingUp, contentDescription = "Profit", tint = VyaparSuccess, modifier = Modifier.size(20.dp))
                             Spacer(modifier = Modifier.height(2.dp))
-                            Text("Net Profit", color = Color(0xFF94A3B8), fontSize = 10.sp, fontWeight = FontWeight.Medium)
+                            Text("Net Profit", color = VyaparTextSecondary, fontSize = 10.sp, fontWeight = FontWeight.Medium)
                             Text(
                                 text = "₹${String.format(Locale.US, "%.2f", profitAnalytics.todayNetProfit)}",
-                                color = EmeraldLight,
+                                color = VyaparSuccess,
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Bold,
                                 modifier = Modifier.testTag("dashboard_net_profit_value")
                             )
                             Surface(
-                                color = Color(0x3310B981),
+                                color = VyaparSuccessLight,
                                 shape = RoundedCornerShape(4.dp)
                             ) {
                                 Text(
                                     text = "${String.format(Locale.US, "%.1f", profitAnalytics.todayProfitMarginPercentage)}% Margin",
-                                    color = EmeraldLight,
+                                    color = VyaparSuccess,
                                     fontSize = 8.sp,
                                     fontWeight = FontWeight.ExtraBold,
                                     modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp).testTag("dashboard_profit_margin_tag")
@@ -753,23 +756,23 @@ private fun HomeDashboardContent(
                             }
                         }
 
-                        Box(modifier = Modifier.width(1.dp).height(32.dp).background(Color(0x22FFFFFF)))
+                        Box(modifier = Modifier.width(1.dp).height(32.dp).background(VyaparBorder))
 
                         // KPI 3: Total Invoices
                         Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(0.9f)) {
-                            Icon(imageVector = Icons.Default.ReceiptLong, contentDescription = "Receipts", tint = ElectricVioletLight, modifier = Modifier.size(20.dp))
+                            Icon(imageVector = Icons.Default.ReceiptLong, contentDescription = "Receipts", tint = VyaparDeepBlue, modifier = Modifier.size(20.dp))
                             Spacer(modifier = Modifier.height(2.dp))
-                            Text("Invoices", color = Color(0xFF94A3B8), fontSize = 10.sp, fontWeight = FontWeight.Medium)
+                            Text("Invoices", color = VyaparTextSecondary, fontSize = 10.sp, fontWeight = FontWeight.Medium)
                             Text(
                                 text = "$invoicesCount",
-                                color = Color.White,
+                                color = VyaparTextPrimary,
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Bold,
                                 modifier = Modifier.testTag("dashboard_invoices_count_value")
                             )
                         }
 
-                        Box(modifier = Modifier.width(1.dp).height(32.dp).background(Color(0x22FFFFFF)))
+                        Box(modifier = Modifier.width(1.dp).height(32.dp).background(VyaparBorder))
 
                         // KPI 4: Total Inventory Items
                         Column(
@@ -779,12 +782,12 @@ private fun HomeDashboardContent(
                                 .testTag("dashboard_products_cta")
                                 .clickable { onSelectTab(BottomTab.INVENTORY) }
                         ) {
-                            Icon(imageVector = Icons.Default.Inventory2, contentDescription = "Inventory", tint = GoldYellow, modifier = Modifier.size(20.dp))
+                            Icon(imageVector = Icons.Default.Inventory2, contentDescription = "Inventory", tint = Color(0xFFD97706), modifier = Modifier.size(20.dp))
                             Spacer(modifier = Modifier.height(2.dp))
-                            Text("Items", color = Color(0xFF94A3B8), fontSize = 10.sp, fontWeight = FontWeight.Medium)
+                            Text("Items", color = VyaparTextSecondary, fontSize = 10.sp, fontWeight = FontWeight.Medium)
                             Text(
                                 text = "${products.size}",
-                                color = Color.White,
+                                color = VyaparTextPrimary,
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Bold,
                                 modifier = Modifier.testTag("dashboard_products_count_value")
@@ -794,9 +797,9 @@ private fun HomeDashboardContent(
                 }
             }
 
-            Spacer(modifier = Modifier.height(14.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
-            // Quick POS Action Terminal Hero Banner
+            // Quick POS Action Terminal Hero Banner (Vyapar Red Accent Button Card)
             Card(
                 onClick = {
                     if (!isSubscriptionValid) {
@@ -805,11 +808,10 @@ private fun HomeDashboardContent(
                         onSelectTab(BottomTab.POS)
                     }
                 },
-                colors = CardDefaults.cardColors(containerColor = Color(0x3310B981)),
-                shape = RoundedCornerShape(14.dp),
+                colors = CardDefaults.cardColors(containerColor = VyaparRed),
+                shape = RoundedCornerShape(12.dp),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .border(1.dp, Color(0x6610B981), RoundedCornerShape(14.dp))
                     .testTag("dashboard_create_bill_cta")
             ) {
                 Row(
@@ -822,27 +824,27 @@ private fun HomeDashboardContent(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Box(
                             modifier = Modifier
-                                .size(42.dp)
-                                .background(EmeraldGreen, CircleShape),
+                                .size(40.dp)
+                                .background(Color.White, CircleShape),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
                                 imageVector = Icons.Default.PointOfSale,
                                 contentDescription = "POS Billing",
-                                tint = Color.White,
-                                modifier = Modifier.size(24.dp)
+                                tint = VyaparRed,
+                                modifier = Modifier.size(22.dp)
                             )
                         }
                         Spacer(modifier = Modifier.width(12.dp))
                         Column {
                             Text("Open POS Terminal", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                            Text("Fast billing with loose quantity (Kg/Gm/Ltr)", color = EmeraldLight, fontSize = 11.sp)
+                            Text("Fast billing with barcode & loose quantity", color = Color(0xFFFFCDD2), fontSize = 11.sp)
                         }
                     }
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                         contentDescription = "Open POS",
-                        tint = EmeraldLight,
+                        tint = Color.White,
                         modifier = Modifier.size(20.dp)
                     )
                 }
@@ -853,16 +855,16 @@ private fun HomeDashboardContent(
                 Spacer(modifier = Modifier.height(10.dp))
                 Card(
                     onClick = { onSelectTab(BottomTab.INVENTORY) },
-                    colors = CardDefaults.cardColors(containerColor = Color(0x22F59E0B)),
-                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFFFFBEB)),
+                    shape = RoundedCornerShape(10.dp),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .border(1.dp, Color(0x44F59E0B), RoundedCornerShape(12.dp))
+                        .border(1.dp, Color(0xFFFDE68A), RoundedCornerShape(10.dp))
                 ) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(12.dp),
+                            .padding(10.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
@@ -870,20 +872,20 @@ private fun HomeDashboardContent(
                             Icon(
                                 imageVector = Icons.Default.Warning,
                                 contentDescription = "Low Stock Alert",
-                                tint = GoldYellow,
-                                modifier = Modifier.size(22.dp)
+                                tint = Color(0xFFD97706),
+                                modifier = Modifier.size(20.dp)
                             )
-                            Spacer(modifier = Modifier.width(10.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
                             Text(
                                 text = "$lowStockCount products low in stock!",
-                                color = GoldYellow,
+                                color = Color(0xFF92400E),
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 12.sp
                             )
                         }
                         Text(
                             text = "Restock →",
-                            color = GoldYellow,
+                            color = Color(0xFFD97706),
                             fontWeight = FontWeight.Bold,
                             fontSize = 11.sp
                         )
@@ -894,7 +896,7 @@ private fun HomeDashboardContent(
             // Invisible/Compact trigger tag for admin testTag
             Box(modifier = Modifier.size(1.dp).testTag("dashboard_admin_cta"))
 
-            Spacer(modifier = Modifier.height(14.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
             // Peak Hours & Smart Business Insights Analytics Card
             PeakHoursAnalyticsSection(
@@ -903,19 +905,19 @@ private fun HomeDashboardContent(
                 weeklySalesTrends = weeklySalesTrends
             )
 
-            Spacer(modifier = Modifier.height(18.dp))
+            Spacer(modifier = Modifier.height(14.dp))
 
             // Recent Transactions Header
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(bottom = 8.dp),
+                    .padding(bottom = 6.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
                     text = "Recent Transactions",
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, color = Color.White)
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, color = VyaparTextPrimary)
                 )
                 TextButton(
                     onClick = { onSelectTab(BottomTab.HISTORY) },
@@ -923,7 +925,7 @@ private fun HomeDashboardContent(
                         .testTag("dashboard_view_all_history_button")
                         .testTag("dashboard_history_cta")
                 ) {
-                    Text("View All", color = EmeraldLight, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    Text("View All", color = VyaparRed, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                 }
             }
 
@@ -939,12 +941,12 @@ private fun HomeDashboardContent(
                         Icon(
                             imageVector = Icons.Default.Inbox,
                             contentDescription = "Empty",
-                            tint = Color(0x44FFFFFF),
-                            modifier = Modifier.size(54.dp)
+                            tint = VyaparTextSecondary.copy(alpha = 0.4f),
+                            modifier = Modifier.size(48.dp)
                         )
                         Spacer(modifier = Modifier.height(8.dp))
-                        Text("No invoices generated yet", color = Color(0xFF94A3B8), fontSize = 13.sp)
-                        Text("Tap 'POS Bill' tab below to start billing", color = Color(0xFF64748B), fontSize = 11.sp)
+                        Text("No invoices generated yet", color = VyaparTextSecondary, fontSize = 13.sp)
+                        Text("Tap 'POS Bill' tab below to start billing", color = VyaparTextSecondary.copy(alpha = 0.7f), fontSize = 11.sp)
                     }
                 }
             } else {
@@ -953,7 +955,7 @@ private fun HomeDashboardContent(
                         .fillMaxWidth()
                         .weight(1f)
                         .testTag("dashboard_invoices_list"),
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
                     contentPadding = PaddingValues(bottom = 16.dp)
                 ) {
                     items(invoices.take(10)) { invoice ->
@@ -971,7 +973,7 @@ private fun HomeDashboardContent(
                         Icon(
                             imageVector = Icons.Default.Close,
                             contentDescription = null,
-                            tint = Color(0xFFEF4444),
+                            tint = VyaparRed,
                             modifier = Modifier.size(24.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
@@ -979,7 +981,7 @@ private fun HomeDashboardContent(
                             text = "Subscription Expired",
                             style = MaterialTheme.typography.titleMedium.copy(
                                 fontWeight = FontWeight.Bold,
-                                color = Color.White
+                                color = VyaparTextPrimary
                             )
                         )
                     }
@@ -988,7 +990,7 @@ private fun HomeDashboardContent(
                     Text(
                         text = "Your trial has expired. Please complete payment of ₹79 to continue billing and unlock all features.",
                         style = MaterialTheme.typography.bodyMedium.copy(
-                            color = Color(0xFFCBD5E1)
+                            color = VyaparTextSecondary
                         )
                     )
                 },
@@ -998,7 +1000,7 @@ private fun HomeDashboardContent(
                             showExpiredBillingDialog = false
                             viewModel.openPaywall()
                         },
-                        colors = ButtonDefaults.buttonColors(containerColor = EmeraldGreen),
+                        colors = ButtonDefaults.buttonColors(containerColor = VyaparRed),
                         shape = RoundedCornerShape(10.dp)
                     ) {
                         Text("Complete Payment (₹79)", fontWeight = FontWeight.Bold, color = Color.White)
@@ -1006,10 +1008,10 @@ private fun HomeDashboardContent(
                 },
                 dismissButton = {
                     TextButton(onClick = { showExpiredBillingDialog = false }) {
-                        Text("Cancel", color = Color(0xFF94A3B8))
+                        Text("Cancel", color = VyaparTextSecondary)
                     }
                 },
-                containerColor = Color(0xFF1E293B),
+                containerColor = Color.White,
                 shape = RoundedCornerShape(16.dp)
             )
         }
@@ -1024,48 +1026,48 @@ fun InvoiceItemRow(invoice: InvoiceEntity) {
     }
 
     Card(
-        colors = CardDefaults.cardColors(containerColor = Color(0x1F1E295D)),
-        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        shape = RoundedCornerShape(10.dp),
         modifier = Modifier
             .fillMaxWidth()
-            .border(1.dp, Color(0x11FFFFFF), RoundedCornerShape(14.dp))
+            .border(1.dp, VyaparBorder, RoundedCornerShape(10.dp))
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(14.dp),
+                .padding(12.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
                     modifier = Modifier
-                        .size(40.dp)
-                        .background(Color(0x2210B981), CircleShape),
+                        .size(38.dp)
+                        .background(Color(0xFFFFEBEE), CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = Icons.Default.Receipt,
                         contentDescription = "Receipt",
-                        tint = EmeraldGreen,
-                        modifier = Modifier.size(20.dp)
+                        tint = VyaparRed,
+                        modifier = Modifier.size(18.dp)
                     )
                 }
 
-                Spacer(modifier = Modifier.width(12.dp))
+                Spacer(modifier = Modifier.width(10.dp))
 
                 Column {
                     Text(
                         text = invoice.customerName,
-                        color = Color.White,
+                        color = VyaparTextPrimary,
                         fontWeight = FontWeight.Bold,
-                        fontSize = 14.sp,
+                        fontSize = 13.sp,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
                     Text(
                         text = "$dateString · ${invoice.itemsCount} ${if (invoice.itemsCount == 1) "item" else "items"}",
-                        color = Color(0xFF94A3B8),
+                        color = VyaparTextSecondary,
                         fontSize = 11.sp
                     )
                 }
@@ -1074,19 +1076,19 @@ fun InvoiceItemRow(invoice: InvoiceEntity) {
             Column(horizontalAlignment = Alignment.End) {
                 Text(
                     text = "₹${String.format(Locale.US, "%.2f", invoice.amount)}",
-                    color = EmeraldLight,
+                    color = VyaparTextPrimary,
                     fontWeight = FontWeight.Bold,
                     fontSize = 14.sp
                 )
                 Box(
                     modifier = Modifier
-                        .padding(top = 4.dp)
-                        .background(Color(0x2210B981), RoundedCornerShape(6.dp))
+                        .padding(top = 2.dp)
+                        .background(VyaparSuccessLight, RoundedCornerShape(4.dp))
                         .padding(horizontal = 6.dp, vertical = 2.dp)
                 ) {
                     Text(
                         text = invoice.status,
-                        color = EmeraldLight,
+                        color = VyaparSuccess,
                         fontSize = 9.sp,
                         fontWeight = FontWeight.SemiBold
                     )
@@ -1105,11 +1107,11 @@ private fun PeakHoursAnalyticsSection(
     var selectedTrendTab by remember { mutableStateOf("Hourly Peak") }
 
     Card(
-        colors = CardDefaults.cardColors(containerColor = Color(0x220F172A)),
-        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        shape = RoundedCornerShape(12.dp),
         modifier = Modifier
             .fillMaxWidth()
-            .border(1.dp, Color(0x3310B981), RoundedCornerShape(16.dp))
+            .border(1.dp, VyaparBorder, RoundedCornerShape(12.dp))
             .testTag("dashboard_peak_hours_analytics_card")
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
@@ -1122,29 +1124,29 @@ private fun PeakHoursAnalyticsSection(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(
                         modifier = Modifier
-                            .size(32.dp)
-                            .background(Color(0x33F59E0B), CircleShape),
+                            .size(30.dp)
+                            .background(Color(0xFFE8EAF6), CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             imageVector = Icons.Default.BarChart,
                             contentDescription = "Analytics",
-                            tint = GoldYellow,
-                            modifier = Modifier.size(18.dp)
+                            tint = VyaparDeepBlue,
+                            modifier = Modifier.size(16.dp)
                         )
                     }
-                    Spacer(modifier = Modifier.width(10.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
                     Column {
                         Text(
                             text = "SMART BUSINESS INSIGHTS",
-                            color = Color.White,
+                            color = VyaparTextPrimary,
                             fontWeight = FontWeight.Bold,
-                            fontSize = 13.sp,
+                            fontSize = 12.sp,
                             letterSpacing = 0.5.sp
                         )
                         Text(
                             text = "Live Profit Margin & Peak Hour Trends",
-                            color = Color(0xFF94A3B8),
+                            color = VyaparTextSecondary,
                             fontSize = 10.sp
                         )
                     }
@@ -1153,7 +1155,7 @@ private fun PeakHoursAnalyticsSection(
                 Row(
                     modifier = Modifier
                         .clip(RoundedCornerShape(8.dp))
-                        .background(Color(0x22FFFFFF))
+                        .background(Color(0xFFF1F5F9))
                         .padding(2.dp)
                 ) {
                     listOf("Hourly Peak", "7-Day Trend").forEach { tab ->
@@ -1161,13 +1163,13 @@ private fun PeakHoursAnalyticsSection(
                         Box(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(6.dp))
-                                .background(if (isSelected) EmeraldGreen else Color.Transparent)
+                                .background(if (isSelected) VyaparRed else Color.Transparent)
                                 .clickable { selectedTrendTab = tab }
                                 .padding(horizontal = 8.dp, vertical = 4.dp)
                         ) {
                             Text(
                                 text = tab,
-                                color = if (isSelected) Color.White else Color(0xFF94A3B8),
+                                color = if (isSelected) Color.White else VyaparTextSecondary,
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.Bold
                             )
@@ -1176,13 +1178,13 @@ private fun PeakHoursAnalyticsSection(
                 }
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
             // Peak Sales Time Hero Banner
             Surface(
-                color = Color(0x1AF59E0B),
-                shape = RoundedCornerShape(12.dp),
-                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0x33F59E0B)),
+                color = Color(0xFFFFFBEB),
+                shape = RoundedCornerShape(10.dp),
+                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFFDE68A)),
                 modifier = Modifier.fillMaxWidth().testTag("dashboard_peak_time_hero_banner")
             ) {
                 Row(
@@ -1194,20 +1196,20 @@ private fun PeakHoursAnalyticsSection(
                         Icon(
                             imageVector = Icons.Default.Schedule,
                             contentDescription = "Peak Time",
-                            tint = GoldYellow,
-                            modifier = Modifier.size(20.dp)
+                            tint = Color(0xFFD97706),
+                            modifier = Modifier.size(18.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Column {
                             Text(
                                 text = peakHoursAnalytics.peakWindowFormatted,
-                                color = GoldYellow,
+                                color = Color(0xFF92400E),
                                 fontWeight = FontWeight.ExtraBold,
                                 fontSize = 12.sp
                             )
                             Text(
-                                text = "Highest volume window (${String.format(Locale.US, "%.1f", peakHoursAnalytics.peakPercentage)}% of total daily traffic)",
-                                color = Color(0xFFE2E8F0),
+                                text = "Highest volume window (${String.format(Locale.US, "%.1f", peakHoursAnalytics.peakPercentage)}% of daily sales)",
+                                color = VyaparTextSecondary,
                                 fontSize = 10.sp
                             )
                         }
@@ -1216,25 +1218,25 @@ private fun PeakHoursAnalyticsSection(
                     Column(horizontalAlignment = Alignment.End) {
                         Text(
                             text = "₹${String.format(Locale.US, "%.0f", peakHoursAnalytics.peakSlotSales)}",
-                            color = Color.White,
+                            color = VyaparTextPrimary,
                             fontWeight = FontWeight.Bold,
                             fontSize = 12.sp
                         )
                         Text(
                             text = "${peakHoursAnalytics.peakSlotTransactions} bills",
-                            color = Color(0xFF94A3B8),
+                            color = VyaparTextSecondary,
                             fontSize = 9.sp
                         )
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.height(14.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
             if (selectedTrendTab == "Hourly Peak") {
                 Text(
                     text = "HOURLY TRANSACTION BREAKDOWN",
-                    color = Color(0xFF64748B),
+                    color = VyaparTextSecondary,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 0.5.sp
@@ -1248,7 +1250,7 @@ private fun PeakHoursAnalyticsSection(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(100.dp)
+                        .height(90.dp)
                         .testTag("dashboard_hourly_bar_chart"),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.Bottom
@@ -1265,29 +1267,29 @@ private fun PeakHoursAnalyticsSection(
                             if (slot.totalSales > 0) {
                                 Text(
                                     text = "₹${String.format(Locale.US, "%.0f", slot.totalSales)}",
-                                    color = if (isPeak) GoldYellow else EmeraldLight,
+                                    color = if (isPeak) VyaparRed else VyaparDeepBlue,
                                     fontSize = 8.sp,
                                     fontWeight = FontWeight.Bold
                                 )
                             } else {
-                                Text(text = "-", color = Color(0xFF64748B), fontSize = 8.sp)
+                                Text(text = "-", color = VyaparTextSecondary, fontSize = 8.sp)
                             }
                             Spacer(modifier = Modifier.height(2.dp))
 
                             Box(
                                 modifier = Modifier
-                                    .width(20.dp)
+                                    .width(18.dp)
                                     .fillMaxHeight(heightFraction)
                                     .clip(RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp))
                                     .background(
-                                        if (isPeak) GoldYellow else if (slot.totalSales > 0) EmeraldGreen else Color(0x33FFFFFF)
+                                        if (isPeak) VyaparRed else if (slot.totalSales > 0) VyaparDeepBlue else Color(0xFFE2E8F0)
                                     )
                             )
 
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
                                 text = slot.slotLabel.replace(" AM", "A").replace(" PM", "P"),
-                                color = Color(0xFF94A3B8),
+                                color = VyaparTextSecondary,
                                 fontSize = 8.sp,
                                 fontWeight = FontWeight.SemiBold
                             )
@@ -1297,7 +1299,7 @@ private fun PeakHoursAnalyticsSection(
             } else {
                 Text(
                     text = "LAST 7 DAYS REVENUE & NET PROFIT TREND",
-                    color = Color(0xFF64748B),
+                    color = VyaparTextSecondary,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 0.5.sp
@@ -1311,7 +1313,7 @@ private fun PeakHoursAnalyticsSection(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(100.dp)
+                        .height(90.dp)
                         .testTag("dashboard_weekly_trend_chart"),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.Bottom
@@ -1328,21 +1330,21 @@ private fun PeakHoursAnalyticsSection(
                             if (dayTrend.totalSales > 0) {
                                 Text(
                                     text = "₹${String.format(Locale.US, "%.0f", dayTrend.totalSales)}",
-                                    color = Color.White,
+                                    color = VyaparTextPrimary,
                                     fontSize = 8.sp,
                                     fontWeight = FontWeight.Bold
                                 )
                             } else {
-                                Text(text = "₹0", color = Color(0xFF64748B), fontSize = 8.sp)
+                                Text(text = "₹0", color = VyaparTextSecondary, fontSize = 8.sp)
                             }
                             Spacer(modifier = Modifier.height(2.dp))
 
                             Box(
                                 modifier = Modifier
-                                    .width(22.dp)
+                                    .width(20.dp)
                                     .fillMaxHeight(salesFraction)
                                     .clip(RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp))
-                                    .background(Color(0x3310B981)),
+                                    .background(Color(0xFFE8EAF6)),
                                 contentAlignment = Alignment.BottomCenter
                             ) {
                                 Box(
@@ -1350,14 +1352,14 @@ private fun PeakHoursAnalyticsSection(
                                         .fillMaxWidth()
                                         .fillMaxHeight(if (salesFraction > 0) profitFraction / salesFraction else 0f)
                                         .clip(RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp))
-                                        .background(EmeraldGreen)
+                                        .background(VyaparSuccess)
                                 )
                             }
 
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
                                 text = dayTrend.dayLabel,
-                                color = Color(0xFF94A3B8),
+                                color = VyaparTextSecondary,
                                 fontSize = 9.sp,
                                 fontWeight = FontWeight.SemiBold
                             )
@@ -1371,15 +1373,16 @@ private fun PeakHoursAnalyticsSection(
                     horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Box(modifier = Modifier.size(8.dp).background(Color(0x3310B981), CircleShape))
+                    Box(modifier = Modifier.size(8.dp).background(Color(0xFFC5CAE9), CircleShape))
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("Total Revenue", color = Color(0xFF94A3B8), fontSize = 9.sp)
+                    Text("Total Revenue", color = VyaparTextSecondary, fontSize = 9.sp)
                     Spacer(modifier = Modifier.width(12.dp))
-                    Box(modifier = Modifier.size(8.dp).background(EmeraldGreen, CircleShape))
+                    Box(modifier = Modifier.size(8.dp).background(VyaparSuccess, CircleShape))
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("Net Profit", color = EmeraldLight, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                    Text("Net Profit", color = VyaparSuccess, fontSize = 9.sp, fontWeight = FontWeight.Bold)
                 }
             }
         }
     }
 }
+

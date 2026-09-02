@@ -648,19 +648,44 @@ class BillingViewModel(val repository: BillingRepository) : ViewModel() {
         provider: String,
         onNavigate: (route: String) -> Unit
     ) {
-        // Query profile document
+        // 1. Immediately restore subscription state from Firestore on login
+        try {
+            val appCtx = com.example.SmartPOSApplication.instance
+            com.example.data.subscription.SubscriptionRepository.restoreSubscriptionFromFirestore(
+                context = appCtx,
+                userId = uid,
+                mobileNumber = mobileOrEmail
+            )
+            com.example.data.subscription.AppSessionManager.verifyAndEnforceSubscriptionLock(
+                context = appCtx,
+                userUid = mobileOrEmail.ifBlank { uid }
+            )
+        } catch (e: Exception) {
+            Log.e("Auth", "Error restoring subscription on auth: ${e.localizedMessage}")
+        }
+
+        // 2. Query profile document
         val existingUser = if (com.example.data.firebase.FirebaseManager.isFirebaseAvailable) {
             repository.getUserByUid(uid)
         } else {
             repository.getUserByMobile(mobileOrEmail)
         }
 
+        val isSubscriptionValid = com.example.util.AuthGuard.isSubscriptionValid(
+            com.example.data.subscription.SubscriptionManager.subscriptionState.value
+        )
+
         if (existingUser != null) {
+            repository.insertUser(existingUser)
             _currentUser.value = existingUser
             isVerifyingOtp = false
             _toastMessage.emit("Welcome back, ${existingUser.fullName}!")
             resetAuthState()
-            onNavigate(com.example.ui.navigation.Screen.Dashboard.route)
+            if (isSubscriptionValid) {
+                onNavigate(com.example.ui.navigation.Screen.Dashboard.route)
+            } else {
+                onNavigate(com.example.ui.navigation.Screen.Paywall.route)
+            }
         } else {
             tempUid = uid
             tempAuthProvider = provider

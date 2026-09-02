@@ -90,6 +90,20 @@ class AuthViewModel(
                     isVerifyingOtp = false
                     result.onSuccess { authResult ->
                         val userId = authResult.user?.uid ?: ""
+                        val phone = authResult.user?.phoneNumber ?: authMobile
+                        try {
+                            com.example.data.subscription.SubscriptionRepository.restoreSubscriptionFromFirestore(
+                                context = com.example.SmartPOSApplication.instance,
+                                userId = userId,
+                                mobileNumber = phone
+                            )
+                            com.example.data.subscription.AppSessionManager.verifyAndEnforceSubscriptionLock(
+                                context = com.example.SmartPOSApplication.instance,
+                                userUid = phone.ifBlank { userId }
+                            )
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Error restoring sub on auto-verify: ${e.localizedMessage}")
+                        }
                         _toastMessage.emit("Phone number verified automatically!")
                         resetAuthState()
                         onAutoVerified?.invoke(userId)
@@ -161,6 +175,20 @@ class AuthViewModel(
             isVerifyingOtp = false
             result.onSuccess { authResult ->
                 val userId = authResult.user?.uid ?: ""
+                val phone = authResult.user?.phoneNumber ?: authMobile
+                try {
+                    com.example.data.subscription.SubscriptionRepository.restoreSubscriptionFromFirestore(
+                        context = com.example.SmartPOSApplication.instance,
+                        userId = userId,
+                        mobileNumber = phone
+                    )
+                    com.example.data.subscription.AppSessionManager.verifyAndEnforceSubscriptionLock(
+                        context = com.example.SmartPOSApplication.instance,
+                        userUid = phone.ifBlank { userId }
+                    )
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error restoring sub in verifyPhoneOtp: ${e.localizedMessage}")
+                }
                 _toastMessage.emit("Authentication successful!")
                 resetAuthState()
                 onSuccess(userId)
@@ -183,7 +211,23 @@ class AuthViewModel(
         viewModelScope.launch {
             val result = authRepository.signInWithGoogle(idToken)
             isVerifyingOtp = false
-            result.onSuccess {
+            result.onSuccess { authResult ->
+                val user = authResult.user
+                if (user != null) {
+                    try {
+                        com.example.data.subscription.SubscriptionRepository.restoreSubscriptionFromFirestore(
+                            context = com.example.SmartPOSApplication.instance,
+                            userId = user.uid,
+                            mobileNumber = user.email ?: user.phoneNumber ?: ""
+                        )
+                        com.example.data.subscription.AppSessionManager.verifyAndEnforceSubscriptionLock(
+                            context = com.example.SmartPOSApplication.instance,
+                            userUid = user.email ?: user.uid
+                        )
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error restoring sub in signInWithGoogle: ${e.localizedMessage}")
+                    }
+                }
                 _toastMessage.emit("Google Sign-In successful!")
                 resetAuthState()
                 onSuccess()

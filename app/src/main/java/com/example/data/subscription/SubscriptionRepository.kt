@@ -144,6 +144,185 @@ object SubscriptionRepository {
         }
     }
 
+    suspend fun restoreSubscriptionFromFirestore(
+        context: Context,
+        userId: String,
+        mobileNumber: String = ""
+    ): SubscriptionInfo? {
+        if (!FirebaseManager.isFirebaseAvailable) return null
+        val firestore = FirebaseManager.firestore ?: return null
+
+        return try {
+            var targetUid = userId.trim()
+            var doc: com.google.firebase.firestore.DocumentSnapshot? = null
+            var userDoc: com.google.firebase.firestore.DocumentSnapshot? = null
+
+            // 1. Try finding by primary userId
+            if (targetUid.isNotBlank()) {
+                doc = firestore.collection("users").document(targetUid)
+                    .collection("subscription").document("current").get().await()
+                userDoc = firestore.collection("users").document(targetUid).get().await()
+            }
+
+            // 2. If docs don't exist and mobileNumber is available, search by mobile/phone fields
+            if ((doc == null || !doc.exists()) && (userDoc == null || !userDoc.exists()) && mobileNumber.isNotBlank()) {
+                val cleanDigits = mobileNumber.replace("\\D".toRegex(), "")
+                val formattedPhone = if (cleanDigits.length == 10) "+91$cleanDigits" else "+$cleanDigits"
+
+                val querySnapshot = firestore.collection("users")
+                    .whereEqualTo("phoneNumber", formattedPhone)
+                    .limit(1)
+                    .get()
+                    .await()
+
+                val foundDoc = if (!querySnapshot.isEmpty) {
+                    querySnapshot.documents.firstOrNull()
+                } else {
+                    val altQuery = firestore.collection("users")
+                        .whereEqualTo("mobileNumber", cleanDigits)
+                        .limit(1)
+                        .get()
+                        .await()
+                    altQuery.documents.firstOrNull()
+                }
+
+                if (foundDoc != null) {
+                    targetUid = foundDoc.id
+                    userDoc = foundDoc
+                    doc = firestore.collection("users").document(targetUid)
+                        .collection("subscription").document("current").get().await()
+                }
+            }
+
+            if ((doc == null || !doc.exists()) && (userDoc == null || !userDoc.exists())) {
+                Log.d(TAG, "No remote subscription records found in Firestore for $userId / $mobileNumber")
+                return null
+            }
+
+            val isProDoc = doc?.getBoolean("isProUser") ?: userDoc?.getBoolean("isProUser") ?: false
+            val tier = doc?.getString("planType") ?: doc?.getString("subscriptionTier")
+                ?: userDoc?.getString("planType") ?: userDoc?.getString("subscriptionTier") ?: "FREE"
+
+            val planType = when {
+                tier.contains("ANNUAL", ignoreCase = true) -> "ANNUAL"
+                tier.contains("MONTHLY", ignoreCase = true) -> "MONTHLY"
+                tier.contains("TRIAL", ignoreCase = true) -> "TRIAL"
+                else -> "FREE"
+            }
+
+            val planName = doc?.getString("planName") ?: userDoc?.getString("planName") ?: when (planType) {
+                "ANNUAL" -> "Annual Pro Plan (₹799/yr)"
+                "MONTHLY" -> "Monthly Pro Plan (₹79/mo)"
+                "TRIAL" -> "Free Trial (3 Days)"
+                else -> "Free Plan"
+            }
+
+            val status = doc?.getString("status")
+                ?: doc?.getString("autoPayMandateStatus")
+                ?: userDoc?.getString("subscriptionStatus")
+                ?: userDoc?.getString("status")
+                ?: "FREE"
+
+            val amountPaid = doc?.getDouble("amountPaid") ?: when (planType) {
+                "ANNUAL" -> 799.0
+                "MONTHLY" -> 79.0
+                "TRIAL" -> 1.0
+                else -> 0.0
+            }
+
+            val startMillis = extractTimestampMillis(doc?.get("startDate"))
+                ?: doc?.getLong("startTimestamp")
+                ?: doc?.getLong("trialStartDate")
+                ?: extractTimestampMillis(userDoc?.get("trialStartDate"))
+                ?: userDoc?.getLong("trialStartDate")
+                ?: 0L
+
+            val expiryTimestamp = extractTimestampMillis(doc?.get("expiryDate"))
+                ?: doc?.getLong("expiryTimestamp")
+                ?: doc?.getLong("subscriptionExpiryDate")
+                ?: doc?.getLong("trialExpiryDate")
+                ?: extractTimestampMillis(userDoc?.get("expiryDate"))
+                ?: userDoc?.getLong("expiryTimestamp")
+                ?: userDoc?.getLong("subscriptionExpiryDate")
+                ?: userDoc?.getLong("trialExpiryDate")
+                ?: 0L
+
+            val mandateStatus = doc?.getString("autoPayMandateStatus")
+                ?: userDoc?.getString("subscriptionStatus")
+                ?: userDoc?.getString("status")
+                ?: "NONE"
+
+            val mandateId = doc?.getString("mandateId")
+                ?: doc?.getString("autoPayMandateId")
+                ?: userDoc?.getString("mandateId")
+                ?: ""
+
+            val gatewayProvider = doc?.getString("gatewayProvider")
+                ?: userDoc?.getString("gatewayProvider")
+                ?: "RAZORPAY"
+
+            val paymentMethod = doc?.getString("paymentMethod")
+                ?: userDoc?.getString("paymentMethod")
+                ?: ""
+
+            val hasUsedTrialDoc = doc?.getBoolean("hasUsedTrial")
+                ?: userDoc?.getBoolean("hasUsedTrial")
+                ?: (startMillis > 0L || tier.contains("TRIAL") || tier.contains("MONTHLY") || tier.contains("ANNUAL"))
+
+            val currentTime = System.currentTimeMillis()
+            val isStatusActive = status.equals("ACTIVE", ignoreCase = true) ||
+                    status.equals("TRIAL_ACTIVE", ignoreCase = true) ||
+                    mandateStatus.equals("ACTIVE", ignoreCase = true) ||
+                    mandateStatus.equals("TRIAL_ACTIVE", ignoreCase = true)
+
+            val isPlanActive = (isStatusActive || isProDoc) && (expiryTimestamp == 0L || expiryTimestamp > currentTime)
+
+            val restoredInfo = SubscriptionInfo(
+                isProUser = isPlanActive,
+                subscriptionTier = tier,
+                planType = planType,
+                planName = planName,
+                status = if (isPlanActive) (if (planType == "TRIAL") "TRIAL_ACTIVE" else "ACTIVE") else "EXPIRED",
+                amountPaid = amountPaid,
+                startDate = startMillis,
+                expiryDate = expiryTimestamp,
+                subscriptionExpiryDate = expiryTimestamp,
+                autoPayMandateStatus = if (isPlanActive) (if (planType == "TRIAL") "TRIAL_ACTIVE" else "ACTIVE") else "EXPIRED",
+                autoPayMandateId = mandateId,
+                gatewayProvider = gatewayProvider,
+                gatewaySubscriptionId = mandateId,
+                settlementAccount = PaymentGatewayConfig.SETTLEMENT_ACCOUNT_MASKED,
+                trialStartDate = if (planType == "TRIAL") startMillis else 0L,
+                paymentMethod = paymentMethod,
+                hasUsedTrial = hasUsedTrialDoc
+            )
+
+            // Save to local SharedPreferences and update in-memory StateFlow
+            SubscriptionManager.saveLocal(context, restoredInfo)
+            SubscriptionManager.updateState(restoredInfo)
+
+            // Sync OneSignal Tags for CRM & push campaigns
+            try {
+                if (isPlanActive) {
+                    com.onesignal.OneSignal.User.addTag("subscription_status", "PRO_ACTIVE")
+                    com.onesignal.OneSignal.User.addTag("is_pro_user", "true")
+                    com.onesignal.OneSignal.User.addTag("plan_type", planType)
+                } else {
+                    com.onesignal.OneSignal.User.addTag("subscription_status", "EXPIRED")
+                    com.onesignal.OneSignal.User.addTag("is_pro_user", "false")
+                }
+            } catch (e: Exception) {
+                Log.d(TAG, "OneSignal tag update error during restore: ${e.localizedMessage}")
+            }
+
+            Log.d(TAG, "Successfully restored subscription from Firestore: plan=$planType, isPro=$isPlanActive, expiry=$expiryTimestamp")
+            restoredInfo
+        } catch (e: Exception) {
+            Log.e(TAG, "Error restoring subscription from Firestore: ${e.localizedMessage}")
+            null
+        }
+    }
+
     private fun extractTimestampMillis(field: Any?): Long? {
         return when (field) {
             is Timestamp -> field.toDate().time

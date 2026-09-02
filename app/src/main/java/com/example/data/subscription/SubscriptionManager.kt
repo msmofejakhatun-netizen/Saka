@@ -498,7 +498,11 @@ object SubscriptionManager {
         syncToFirebase(userUid, updated)
     }
 
-    private fun saveLocal(context: Context, info: SubscriptionInfo) {
+    fun updateState(info: SubscriptionInfo) {
+        _subscriptionState.value = info
+    }
+
+    fun saveLocal(context: Context, info: SubscriptionInfo) {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         prefs.edit()
             .putBoolean(KEY_IS_PRO, info.isProUser)

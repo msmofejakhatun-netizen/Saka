@@ -7,42 +7,37 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 
-private val DarkColorScheme = darkColorScheme(
-    primary = EmeraldGreen,
-    secondary = ElectricViolet,
-    tertiary = AccentPink,
-    background = DeepNavy,
-    surface = DarkSlateNavy,
+private val LightColorScheme = lightColorScheme(
+    primary = VyaparRed,
     onPrimary = Color.White,
+    primaryContainer = VyaparWarningLight,
+    onPrimaryContainer = VyaparRedDark,
+    secondary = VyaparDeepBlue,
     onSecondary = Color.White,
+    secondaryContainer = VyaparLightBlue,
+    onSecondaryContainer = VyaparDeepBlue,
+    tertiary = VyaparSuccess,
     onTertiary = Color.White,
-    onBackground = Color.White,
-    onSurface = Color.White,
-    surfaceVariant = LightSlateNavy,
-    onSurfaceVariant = Color.White
+    background = VyaparBg,
+    onBackground = VyaparTextPrimary,
+    surface = VyaparSurface,
+    onSurface = VyaparTextPrimary,
+    surfaceVariant = Color(0xFFF1F5F9),
+    onSurfaceVariant = VyaparTextSecondary,
+    outline = VyaparBorder,
+    outlineVariant = VyaparDivider,
+    error = VyaparRed,
+    onError = Color.White
 )
 
-private val LightColorScheme = lightColorScheme(
-    primary = EmeraldGreen,
-    secondary = ElectricViolet,
-    tertiary = AccentPink,
-    background = Color(0xFFF8FAFC),
-    surface = Color.White,
-    onPrimary = Color.White,
-    onSecondary = Color.White,
-    onTertiary = Color.White,
-    onBackground = DarkGray,
-    onSurface = DarkGray,
-    surfaceVariant = Color(0xFFE2E8F0),
-    onSurfaceVariant = DarkGray
-)
+private val DarkColorScheme = LightColorScheme
 
 @Composable
 fun MyApplicationTheme(
-    darkTheme: Boolean = true, // Force premium dark theme by default for premium feel
+    darkTheme: Boolean = false, // Clean Business Red & White Theme by default
     content: @Composable () -> Unit
 ) {
-    val colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme
+    val colorScheme = LightColorScheme
 
     MaterialTheme(
         colorScheme = colorScheme,
@@ -50,3 +45,4 @@ fun MyApplicationTheme(
         content = content
     )
 }
+

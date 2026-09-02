@@ -139,11 +139,11 @@ fun UdharKhataScreen(
                         Icon(imageVector = Icons.Default.PersonAdd, contentDescription = "Add Customer", tint = EmeraldGreen)
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color(0x99090D22)),
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = VyaparRed),
                 modifier = Modifier.testTag("udhar_khata_top_bar")
             )
         },
-        containerColor = Color.Transparent
+        containerColor = VyaparBg
     ) { innerPadding ->
         Box(
             modifier = Modifier
@@ -175,9 +175,13 @@ fun UdharKhataScreen(
                     Spacer(modifier = Modifier.height(10.dp))
 
                     // Summary KPI Card
-                    GlassmorphicCard(
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = VyaparSurface),
+                        shape = RoundedCornerShape(12.dp),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
                         modifier = Modifier
                             .fillMaxWidth()
+                            .border(1.dp, VyaparBorder, RoundedCornerShape(12.dp))
                             .testTag("udhar_khata_summary_card")
                     ) {
                         Row(
@@ -190,7 +194,7 @@ fun UdharKhataScreen(
                             Column {
                                 Text(
                                     text = "TOTAL PENDING UDHARI",
-                                    color = Color(0xFFF87171),
+                                    color = VyaparRed,
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.Bold,
                                     letterSpacing = 0.5.sp
@@ -198,7 +202,7 @@ fun UdharKhataScreen(
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Text(
                                     text = "₹${String.format(Locale.US, "%.2f", totalPendingAmount)}",
-                                    color = Color.White,
+                                    color = VyaparRed,
                                     fontSize = 22.sp,
                                     fontWeight = FontWeight.Bold,
                                     modifier = Modifier.testTag("udhar_khata_total_amount")
@@ -208,14 +212,14 @@ fun UdharKhataScreen(
                             Column(horizontalAlignment = Alignment.End) {
                                 Text(
                                     text = "CREDIT CUSTOMERS",
-                                    color = Color(0xFF94A3B8),
+                                    color = VyaparTextSecondary,
                                     fontSize = 10.sp,
                                     fontWeight = FontWeight.Medium
                                 )
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Text(
                                     text = "${allCustomers.size}",
-                                    color = EmeraldLight,
+                                    color = VyaparDeepBlue,
                                     fontSize = 20.sp,
                                     fontWeight = FontWeight.Bold,
                                     modifier = Modifier.testTag("udhar_khata_customers_count")
@@ -233,25 +237,25 @@ fun UdharKhataScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .testTag("udhar_khata_search_input"),
-                        placeholder = { Text("Search by Customer Name or Mobile...", color = Color(0xFF64748B), fontSize = 13.sp) },
-                        leadingIcon = { Icon(imageVector = Icons.Default.Search, contentDescription = "Search", tint = Color(0xFF94A3B8)) },
+                        placeholder = { Text("Search by Customer Name or Mobile...", color = VyaparTextSecondary, fontSize = 13.sp) },
+                        leadingIcon = { Icon(imageVector = Icons.Default.Search, contentDescription = "Search", tint = VyaparTextSecondary) },
                         trailingIcon = {
                             if (searchQuery.isNotEmpty()) {
                                 IconButton(onClick = { viewModel.customerSearchQuery.value = "" }) {
-                                    Icon(imageVector = Icons.Default.Close, contentDescription = "Clear", tint = Color(0xFF94A3B8))
+                                    Icon(imageVector = Icons.Default.Close, contentDescription = "Clear", tint = VyaparTextSecondary)
                                 }
                             }
                         },
                         singleLine = true,
                         colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = EmeraldGreen,
-                            unfocusedBorderColor = Color(0x33FFFFFF),
-                            focusedContainerColor = Color(0x220D1333),
-                            unfocusedContainerColor = Color(0x220D1333),
-                            focusedTextColor = Color.White,
-                            unfocusedTextColor = Color.White
+                            focusedBorderColor = VyaparRed,
+                            unfocusedBorderColor = VyaparBorder,
+                            focusedContainerColor = VyaparSurface,
+                            unfocusedContainerColor = VyaparSurface,
+                            focusedTextColor = VyaparTextPrimary,
+                            unfocusedTextColor = VyaparTextPrimary
                         ),
-                        shape = RoundedCornerShape(12.dp)
+                        shape = RoundedCornerShape(10.dp)
                     )
 
                     Spacer(modifier = Modifier.height(12.dp))
@@ -268,26 +272,27 @@ fun UdharKhataScreen(
                                 Icon(
                                     imageVector = Icons.Default.AccountBalanceWallet,
                                     contentDescription = "Empty",
-                                    tint = Color(0x33FFFFFF),
+                                    tint = VyaparTextSecondary.copy(alpha = 0.4f),
                                     modifier = Modifier.size(56.dp)
                                 )
                                 Spacer(modifier = Modifier.height(8.dp))
                                 Text(
                                     text = if (searchQuery.isBlank()) "No customer Udhar records found" else "No matching customers found",
-                                    color = Color(0xFF94A3B8),
+                                    color = VyaparTextPrimary,
+                                    fontWeight = FontWeight.SemiBold,
                                     fontSize = 14.sp
                                 )
                                 Text(
                                     text = "Tap below to add your first customer and record credit",
-                                    color = Color(0xFF64748B),
+                                    color = VyaparTextSecondary,
                                     fontSize = 12.sp
                                 )
                                 if (searchQuery.isBlank()) {
                                     Spacer(modifier = Modifier.height(16.dp))
                                     Button(
                                         onClick = { showAddUdharDialog = true },
-                                        colors = ButtonDefaults.buttonColors(containerColor = EmeraldGreen),
-                                        shape = RoundedCornerShape(10.dp),
+                                        colors = ButtonDefaults.buttonColors(containerColor = VyaparRed),
+                                        shape = RoundedCornerShape(8.dp),
                                         modifier = Modifier.testTag("empty_add_first_customer_button")
                                     ) {
                                         Icon(
@@ -466,11 +471,12 @@ private fun CustomerBalanceCard(
 
     Card(
         onClick = onSelect,
-        colors = CardDefaults.cardColors(containerColor = Color(0x221E295D)),
-        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.cardColors(containerColor = VyaparSurface),
+        shape = RoundedCornerShape(12.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
         modifier = Modifier
             .fillMaxWidth()
-            .border(1.dp, Color(0x22FFFFFF), RoundedCornerShape(14.dp))
+            .border(1.dp, VyaparBorder, RoundedCornerShape(12.dp))
             .testTag("udhar_customer_item_${customer.mobileNumber}")
     ) {
         Column(
@@ -490,12 +496,12 @@ private fun CustomerBalanceCard(
                     Box(
                         modifier = Modifier
                             .size(44.dp)
-                            .background(Color(0x22EF4444), CircleShape),
+                            .background(Color(0xFFFFEBEE), CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
                             text = customer.name.take(1).uppercase(),
-                            color = Color(0xFFF87171),
+                            color = VyaparRed,
                             fontWeight = FontWeight.Bold,
                             fontSize = 18.sp
                         )
@@ -506,7 +512,7 @@ private fun CustomerBalanceCard(
                     Column {
                         Text(
                             text = customer.name,
-                            color = Color.White,
+                            color = VyaparTextPrimary,
                             fontWeight = FontWeight.Bold,
                             fontSize = 15.sp,
                             maxLines = 1,
@@ -514,12 +520,12 @@ private fun CustomerBalanceCard(
                         )
                         Text(
                             text = "📱 ${customer.mobileNumber}",
-                            color = Color(0xFF94A3B8),
+                            color = VyaparTextSecondary,
                             fontSize = 12.sp
                         )
                         Text(
                             text = "Last: $formattedDate",
-                            color = Color(0xFF64748B),
+                            color = VyaparTextSecondary.copy(alpha = 0.8f),
                             fontSize = 10.sp
                         )
                     }
@@ -528,7 +534,7 @@ private fun CustomerBalanceCard(
                 Column(horizontalAlignment = Alignment.End) {
                     Text(
                         text = "₹${String.format(Locale.US, "%.2f", customer.totalPendingBalance)}",
-                        color = if (customer.totalPendingBalance > 0) Color(0xFFF87171) else EmeraldLight,
+                        color = if (customer.totalPendingBalance > 0) VyaparRed else VyaparSuccess,
                         fontWeight = FontWeight.Bold,
                         fontSize = 16.sp
                     )
@@ -536,14 +542,14 @@ private fun CustomerBalanceCard(
                         modifier = Modifier
                             .padding(top = 4.dp)
                             .background(
-                                if (customer.totalPendingBalance > 0) Color(0x33EF4444) else Color(0x3310B981),
+                                if (customer.totalPendingBalance > 0) Color(0xFFFFEBEE) else Color(0xFFE8F5E9),
                                 RoundedCornerShape(6.dp)
                             )
                             .padding(horizontal = 8.dp, vertical = 2.dp)
                     ) {
                         Text(
                             text = if (customer.totalPendingBalance > 0) "Pending Udhar" else "Settled",
-                            color = if (customer.totalPendingBalance > 0) Color(0xFFF87171) else EmeraldLight,
+                            color = if (customer.totalPendingBalance > 0) VyaparRed else VyaparSuccess,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -555,9 +561,9 @@ private fun CustomerBalanceCard(
             if (customer.reminderScheduledDate > 0 && customer.reminderStatus == "SCHEDULED") {
                 Spacer(modifier = Modifier.height(8.dp))
                 Card(
-                    colors = CardDefaults.cardColors(containerColor = Color(0x22F59E0B)),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFFFFBEB)),
                     shape = RoundedCornerShape(8.dp),
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth().border(1.dp, Color(0xFFFDE68A), RoundedCornerShape(8.dp))
                 ) {
                     Row(
                         modifier = Modifier
@@ -570,14 +576,14 @@ private fun CustomerBalanceCard(
                             Icon(
                                 imageVector = Icons.Default.Schedule,
                                 contentDescription = "Scheduled",
-                                tint = Color(0xFFFBBF24),
+                                tint = Color(0xFFD97706),
                                 modifier = Modifier.size(14.dp)
                             )
                             Spacer(modifier = Modifier.width(6.dp))
                             val scheduleStr = SimpleDateFormat("dd MMM, hh:mm a", Locale.getDefault()).format(Date(customer.reminderScheduledDate))
                             Text(
                                 text = "Auto Reminder: $scheduleStr",
-                                color = Color(0xFFFDE68A),
+                                color = Color(0xFFB45309),
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.SemiBold
                             )
@@ -590,7 +596,7 @@ private fun CustomerBalanceCard(
                                 Icon(
                                     imageVector = Icons.Default.Close,
                                     contentDescription = "Cancel Auto Reminder",
-                                    tint = Color(0xFFFCA5A5),
+                                    tint = Color(0xFFEF4444),
                                     modifier = Modifier.size(14.dp)
                                 )
                             }
@@ -602,7 +608,7 @@ private fun CustomerBalanceCard(
             // WhatsApp Payment Reminder Action Bar
             if (customer.totalPendingBalance > 0) {
                 Spacer(modifier = Modifier.height(10.dp))
-                HorizontalDivider(color = Color(0x11FFFFFF))
+                HorizontalDivider(color = VyaparBorder)
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Row(
@@ -612,8 +618,8 @@ private fun CustomerBalanceCard(
                 ) {
                     OutlinedButton(
                         onClick = { onOpenReminder(customer) },
-                        border = BorderStroke(1.dp, Color(0x44F59E0B)),
-                        shape = RoundedCornerShape(8.dp),
+                        border = BorderStroke(1.dp, VyaparBorder),
+                        shape = RoundedCornerShape(6.dp),
                         contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
                         modifier = Modifier
                             .height(34.dp)
@@ -622,13 +628,13 @@ private fun CustomerBalanceCard(
                         Icon(
                             imageVector = Icons.Default.Schedule,
                             contentDescription = "Schedule Auto",
-                            tint = Color(0xFFFBBF24),
+                            tint = VyaparDeepBlue,
                             modifier = Modifier.size(14.dp)
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
                             text = if (customer.reminderScheduledDate > 0 && customer.reminderStatus == "SCHEDULED") "Reschedule" else "Auto Schedule",
-                            color = Color(0xFFFDE68A),
+                            color = VyaparDeepBlue,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -638,8 +644,8 @@ private fun CustomerBalanceCard(
 
                     Button(
                         onClick = { onOpenReminder(customer) },
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF10B981)),
-                        shape = RoundedCornerShape(8.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF25D366)),
+                        shape = RoundedCornerShape(6.dp),
                         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
                         modifier = Modifier
                             .height(34.dp)
@@ -740,11 +746,12 @@ private fun CustomerLedgerDetailView(
     ) {
         // Customer Header Card
         Card(
-            colors = CardDefaults.cardColors(containerColor = Color(0x330D1333)),
-            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = VyaparSurface),
+            shape = RoundedCornerShape(12.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
             modifier = Modifier
                 .fillMaxWidth()
-                .border(1.dp, Color(0x4410B981), RoundedCornerShape(16.dp))
+                .border(1.dp, VyaparBorder, RoundedCornerShape(12.dp))
                 .testTag("customer_ledger_header")
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
@@ -755,29 +762,29 @@ private fun CustomerLedgerDetailView(
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         IconButton(onClick = onBack) {
-                            Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
+                            Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = VyaparTextPrimary)
                         }
                         Spacer(modifier = Modifier.width(4.dp))
                         Column {
                             Text(
                                 text = customer.name,
-                                color = Color.White,
+                                color = VyaparTextPrimary,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 18.sp
                             )
                             Text(
                                 text = "📱 ${customer.mobileNumber}",
-                                color = Color(0xFF94A3B8),
+                                color = VyaparTextSecondary,
                                 fontSize = 13.sp
                             )
                         }
                     }
 
                     Column(horizontalAlignment = Alignment.End) {
-                        Text("Outstanding", color = Color(0xFF94A3B8), fontSize = 11.sp)
+                        Text("Outstanding", color = VyaparTextSecondary, fontSize = 11.sp)
                         Text(
                             text = "₹${String.format(Locale.US, "%.2f", customer.totalPendingBalance)}",
-                            color = Color(0xFFF87171),
+                            color = VyaparRed,
                             fontWeight = FontWeight.Bold,
                             fontSize = 18.sp,
                             modifier = Modifier.testTag("customer_ledger_balance")
@@ -794,8 +801,8 @@ private fun CustomerLedgerDetailView(
                 ) {
                     Button(
                         onClick = onOpenJamaDialog,
-                        colors = ButtonDefaults.buttonColors(containerColor = EmeraldGreen),
-                        shape = RoundedCornerShape(10.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = VyaparSuccess),
+                        shape = RoundedCornerShape(8.dp),
                         modifier = Modifier
                             .weight(1f)
                             .testTag("customer_ledger_jama_button")
@@ -807,8 +814,8 @@ private fun CustomerLedgerDetailView(
 
                     Button(
                         onClick = onOpenAddUdharDialog,
-                        colors = ButtonDefaults.buttonColors(containerColor = RoseRed),
-                        shape = RoundedCornerShape(10.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = VyaparRed),
+                        shape = RoundedCornerShape(8.dp),
                         modifier = Modifier
                             .weight(1f)
                             .testTag("customer_ledger_add_udhar_button")
@@ -824,9 +831,9 @@ private fun CustomerLedgerDetailView(
                     Spacer(modifier = Modifier.height(10.dp))
                     val scheduleStr = SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault()).format(Date(customer.reminderScheduledDate))
                     Card(
-                        colors = CardDefaults.cardColors(containerColor = Color(0x22F59E0B)),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFFFFFBEB)),
                         shape = RoundedCornerShape(8.dp),
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth().border(1.dp, Color(0xFFFDE68A), RoundedCornerShape(8.dp))
                     ) {
                         Row(
                             modifier = Modifier
@@ -834,9 +841,9 @@ private fun CustomerLedgerDetailView(
                                 .padding(horizontal = 10.dp, vertical = 8.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Icon(Icons.Default.Schedule, contentDescription = "Scheduled", tint = Color(0xFFFBBF24), modifier = Modifier.size(16.dp))
+                            Icon(Icons.Default.Schedule, contentDescription = "Scheduled", tint = Color(0xFFD97706), modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("⏰ Auto Reminder scheduled for $scheduleStr", color = Color(0xFFFDE68A), fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                            Text("⏰ Auto Reminder scheduled for $scheduleStr", color = Color(0xFFB45309), fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
                         }
                     }
                 }
@@ -846,8 +853,8 @@ private fun CustomerLedgerDetailView(
                 // WhatsApp Reminder Action Button inside Ledger Header
                 Button(
                     onClick = { onOpenWhatsAppReminder(customer, ReminderType.POLITE) },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF10B981)),
-                    shape = RoundedCornerShape(10.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF25D366)),
+                    shape = RoundedCornerShape(8.dp),
                     modifier = Modifier
                         .fillMaxWidth()
                         .testTag("customer_ledger_whatsapp_reminder_button")
@@ -858,11 +865,11 @@ private fun CustomerLedgerDetailView(
                 }
 
                 Spacer(modifier = Modifier.height(12.dp))
-                HorizontalDivider(color = Color(0x22FFFFFF))
+                HorizontalDivider(color = VyaparBorder)
                 Spacer(modifier = Modifier.height(8.dp))
 
                 // Quick Action Reminder Chips
-                Text("QUICK REMINDER TEMPLATES", color = Color(0xFF94A3B8), fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.5.sp)
+                Text("QUICK REMINDER TEMPLATES", color = VyaparTextSecondary, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.5.sp)
                 Spacer(modifier = Modifier.height(6.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -871,27 +878,27 @@ private fun CustomerLedgerDetailView(
                     FilterChip(
                         selected = false,
                         onClick = { onOpenWhatsAppReminder(customer, ReminderType.POLITE) },
-                        label = { Text("💬 Polite", fontSize = 11.sp, color = EmeraldLight) },
-                        colors = FilterChipDefaults.filterChipColors(containerColor = Color(0x2210B981)),
-                        border = FilterChipDefaults.filterChipBorder(enabled = true, selected = false, borderColor = Color(0x4410B981)),
+                        label = { Text("💬 Polite", fontSize = 11.sp, color = VyaparSuccess) },
+                        colors = FilterChipDefaults.filterChipColors(containerColor = Color(0xFFE8F5E9)),
+                        border = FilterChipDefaults.filterChipBorder(enabled = true, selected = false, borderColor = Color(0xFFA5D6A7)),
                         modifier = Modifier.testTag("quick_chip_polite")
                     )
 
                     FilterChip(
                         selected = false,
                         onClick = { onOpenWhatsAppReminder(customer, ReminderType.URGENT) },
-                        label = { Text("⚠️ Urgent", fontSize = 11.sp, color = Color(0xFFF87171)) },
-                        colors = FilterChipDefaults.filterChipColors(containerColor = Color(0x22EF4444)),
-                        border = FilterChipDefaults.filterChipBorder(enabled = true, selected = false, borderColor = Color(0x44EF4444)),
+                        label = { Text("⚠️ Urgent", fontSize = 11.sp, color = VyaparRed) },
+                        colors = FilterChipDefaults.filterChipColors(containerColor = Color(0xFFFFEBEE)),
+                        border = FilterChipDefaults.filterChipBorder(enabled = true, selected = false, borderColor = Color(0xFFEF9A9A)),
                         modifier = Modifier.testTag("quick_chip_urgent")
                     )
 
                     FilterChip(
                         selected = false,
                         onClick = { onOpenWhatsAppReminder(customer, ReminderType.STATEMENT) },
-                        label = { Text("📄 Statement", fontSize = 11.sp, color = ElectricVioletLight) },
-                        colors = FilterChipDefaults.filterChipColors(containerColor = Color(0x226366F1)),
-                        border = FilterChipDefaults.filterChipBorder(enabled = true, selected = false, borderColor = Color(0x446366F1)),
+                        label = { Text("📄 Statement", fontSize = 11.sp, color = VyaparDeepBlue) },
+                        colors = FilterChipDefaults.filterChipColors(containerColor = Color(0xFFE8EAF6)),
+                        border = FilterChipDefaults.filterChipBorder(enabled = true, selected = false, borderColor = Color(0xFF9FA8DA)),
                         modifier = Modifier.testTag("quick_chip_statement")
                     )
                 }
@@ -902,7 +909,7 @@ private fun CustomerLedgerDetailView(
 
         Text(
             text = "Ledger Transaction History",
-            color = Color.White,
+            color = VyaparTextPrimary,
             fontWeight = FontWeight.Bold,
             fontSize = 15.sp,
             modifier = Modifier.padding(bottom = 8.dp)
@@ -915,7 +922,7 @@ private fun CustomerLedgerDetailView(
                     .weight(1f),
                 contentAlignment = Alignment.Center
             ) {
-                Text("No ledger history found for this customer", color = Color(0xFF94A3B8), fontSize = 13.sp)
+                Text("No ledger history found for this customer", color = VyaparTextSecondary, fontSize = 13.sp)
             }
         } else {
             LazyColumn(
@@ -963,14 +970,15 @@ private fun LedgerTransactionRow(
     }
 
     Card(
-        colors = CardDefaults.cardColors(containerColor = Color(0x1F1E295D)),
-        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.cardColors(containerColor = VyaparSurface),
+        shape = RoundedCornerShape(12.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
         modifier = Modifier
             .fillMaxWidth()
             .border(
                 width = if (isExpanded) 1.5.dp else 1.dp,
-                color = if (isExpanded) (if (isJama) EmeraldGreen else RoseRed) else Color(0x11FFFFFF),
-                shape = RoundedCornerShape(14.dp)
+                color = if (isExpanded) (if (isJama) VyaparSuccess else VyaparRed) else VyaparBorder,
+                shape = RoundedCornerShape(12.dp)
             )
             .clickable { isExpanded = !isExpanded }
             .testTag("ledger_tx_card_${tx.id}")
@@ -990,7 +998,7 @@ private fun LedgerTransactionRow(
                         modifier = Modifier
                             .size(38.dp)
                             .background(
-                                if (isJama) Color(0x2210B981) else Color(0x22EF4444),
+                                if (isJama) Color(0xFFE8F5E9) else Color(0xFFFFEBEE),
                                 CircleShape
                             ),
                         contentAlignment = Alignment.Center
@@ -998,7 +1006,7 @@ private fun LedgerTransactionRow(
                         Icon(
                             imageVector = if (isJama) Icons.Default.ArrowDownward else Icons.Default.ArrowUpward,
                             contentDescription = tx.type,
-                            tint = if (isJama) EmeraldGreen else Color(0xFFF87171),
+                            tint = if (isJama) VyaparSuccess else VyaparRed,
                             modifier = Modifier.size(20.dp)
                         )
                     }
@@ -1009,19 +1017,19 @@ private fun LedgerTransactionRow(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(
                                 text = if (isJama) "Jama (Payment Received)" else "Udhar Given",
-                                color = Color.White,
+                                color = VyaparTextPrimary,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 14.sp
                             )
                             Spacer(modifier = Modifier.width(6.dp))
                             Surface(
-                                color = Color(0x22FFFFFF),
+                                color = VyaparBg,
                                 shape = RoundedCornerShape(4.dp),
                                 modifier = Modifier.wrapContentWidth()
                             ) {
                                 Text(
                                     text = tx.paymentMode,
-                                    color = Color(0xFF94A3B8),
+                                    color = VyaparTextSecondary,
                                     fontSize = 10.sp,
                                     fontWeight = FontWeight.Bold,
                                     maxLines = 1,
@@ -1032,13 +1040,13 @@ private fun LedgerTransactionRow(
                             if (tx.isEdited) {
                                 Spacer(modifier = Modifier.width(4.dp))
                                 Surface(
-                                    color = Color(0x33F59E0B),
+                                    color = Color(0xFFFFFBEB),
                                     shape = RoundedCornerShape(4.dp),
                                     modifier = Modifier.wrapContentWidth()
                                 ) {
                                     Text(
                                         text = "EDITED",
-                                        color = Color(0xFFFBBF24),
+                                        color = Color(0xFFD97706),
                                         fontSize = 9.sp,
                                         fontWeight = FontWeight.Bold,
                                         modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
@@ -1054,13 +1062,13 @@ private fun LedgerTransactionRow(
                             Icon(
                                 imageVector = Icons.Default.Schedule,
                                 contentDescription = "Time",
-                                tint = EmeraldLight,
+                                tint = VyaparTextSecondary,
                                 modifier = Modifier.size(12.dp)
                             )
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
                                 text = formattedDate,
-                                color = EmeraldLight,
+                                color = VyaparTextSecondary,
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.SemiBold
                             )
@@ -1072,14 +1080,14 @@ private fun LedgerTransactionRow(
                     Column(horizontalAlignment = Alignment.End) {
                         Text(
                             text = "${if (isJama) "- ₹" else "+ ₹"}${String.format(Locale.US, "%.2f", tx.amount)}",
-                            color = if (isJama) EmeraldLight else Color(0xFFF87171),
+                            color = if (isJama) VyaparSuccess else VyaparRed,
                             fontWeight = FontWeight.Bold,
                             fontSize = 16.sp
                         )
                         if (!isJama) {
                             Text(
                                 text = "${parsedItems.size} ${if (parsedItems.size == 1) "Item" else "Items"}",
-                                color = Color(0xFF94A3B8),
+                                color = VyaparTextSecondary,
                                 fontSize = 10.sp
                             )
                         }
@@ -1090,7 +1098,7 @@ private fun LedgerTransactionRow(
                     Icon(
                         imageVector = if (isExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
                         contentDescription = "Expand",
-                        tint = Color(0xFF94A3B8),
+                        tint = VyaparTextSecondary,
                         modifier = Modifier.size(22.dp)
                     )
                 }
@@ -1103,12 +1111,12 @@ private fun LedgerTransactionRow(
                         .fillMaxWidth()
                         .padding(top = 12.dp)
                 ) {
-                    HorizontalDivider(color = Color(0x22FFFFFF))
+                    HorizontalDivider(color = VyaparBorder)
                     Spacer(modifier = Modifier.height(10.dp))
 
                     Text(
                         text = "ITEMIZED PURCHASE BREAKDOWN",
-                        color = GoldYellow,
+                        color = VyaparDeepBlue,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 0.5.sp
@@ -1120,14 +1128,14 @@ private fun LedgerTransactionRow(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .background(Color(0x33000000), RoundedCornerShape(6.dp))
+                            .background(Color(0xFFF1F5F9), RoundedCornerShape(6.dp))
                             .padding(horizontal = 8.dp, vertical = 6.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("ITEM NAME", color = Color(0xFF94A3B8), fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(2f))
-                        Text("QTY & UNIT", color = Color(0xFF94A3B8), fontSize = 10.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, modifier = Modifier.weight(1.2f))
-                        Text("PRICE", color = Color(0xFF94A3B8), fontSize = 10.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.End, modifier = Modifier.weight(1f))
-                        Text("TOTAL", color = Color(0xFF94A3B8), fontSize = 10.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.End, modifier = Modifier.weight(1f))
+                        Text("ITEM NAME", color = VyaparTextSecondary, fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(2f))
+                        Text("QTY & UNIT", color = VyaparTextSecondary, fontSize = 10.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, modifier = Modifier.weight(1.2f))
+                        Text("PRICE", color = VyaparTextSecondary, fontSize = 10.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.End, modifier = Modifier.weight(1f))
+                        Text("TOTAL", color = VyaparTextSecondary, fontSize = 10.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.End, modifier = Modifier.weight(1f))
                     }
 
                     Spacer(modifier = Modifier.height(4.dp))
@@ -1138,13 +1146,13 @@ private fun LedgerTransactionRow(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .background(if (idx % 2 == 0) Color(0x0AFFFFFF) else Color.Transparent)
+                                .background(if (idx % 2 == 0) Color(0xFFF8FAFC) else Color.Transparent)
                                 .padding(horizontal = 8.dp, vertical = 6.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
                                 text = item.name,
-                                color = Color.White,
+                                color = VyaparTextPrimary,
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Medium,
                                 maxLines = 1,
@@ -1153,7 +1161,7 @@ private fun LedgerTransactionRow(
                             )
                             Text(
                                 text = formattedQty,
-                                color = EmeraldLight,
+                                color = VyaparDeepBlue,
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
                                 textAlign = TextAlign.Center,
@@ -1161,14 +1169,14 @@ private fun LedgerTransactionRow(
                             )
                             Text(
                                 text = if (item.unitPrice > 0) "₹${String.format(Locale.US, "%.2f", item.unitPrice)}" else "—",
-                                color = Color(0xFFCBD5E1),
+                                color = VyaparTextSecondary,
                                 fontSize = 11.sp,
                                 textAlign = TextAlign.End,
                                 modifier = Modifier.weight(1f)
                             )
                             Text(
                                 text = if (item.lineTotal > 0) "₹${String.format(Locale.US, "%.2f", item.lineTotal)}" else "₹${String.format(Locale.US, "%.2f", tx.amount)}",
-                                color = Color.White,
+                                color = VyaparTextPrimary,
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
                                 textAlign = TextAlign.End,
@@ -1178,13 +1186,13 @@ private fun LedgerTransactionRow(
                     }
 
                     Spacer(modifier = Modifier.height(10.dp))
-                    HorizontalDivider(color = Color(0x11FFFFFF))
+                    HorizontalDivider(color = VyaparBorder)
                     Spacer(modifier = Modifier.height(8.dp))
 
                     // Quick Action: View / Print Bill Button
                     Button(
                         onClick = { onViewReceipt(tx) },
-                        colors = ButtonDefaults.buttonColors(containerColor = EmeraldGreen),
+                        colors = ButtonDefaults.buttonColors(containerColor = VyaparRed),
                         shape = RoundedCornerShape(8.dp),
                         contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
                         modifier = Modifier
@@ -1249,29 +1257,29 @@ private fun UdharBillReceiptModalDialog(
                     Box(
                         modifier = Modifier
                             .size(36.dp)
-                            .background(Color(0x2210B981), CircleShape),
+                            .background(Color(0xFFFFEBEE), CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(Icons.Default.ReceiptLong, contentDescription = null, tint = EmeraldGreen, modifier = Modifier.size(20.dp))
+                        Icon(Icons.Default.ReceiptLong, contentDescription = null, tint = VyaparRed, modifier = Modifier.size(20.dp))
                     }
                     Spacer(modifier = Modifier.width(10.dp))
                     Column {
                         Text(
                             text = "Udhar Tax Invoice",
-                            color = Color.White,
+                            color = VyaparTextPrimary,
                             fontWeight = FontWeight.Bold,
                             fontSize = 16.sp
                         )
                         Text(
                             text = "Bill #${invoiceForPdf.firestoreId.take(10)}",
-                            color = Color(0xFF94A3B8),
+                            color = VyaparTextSecondary,
                             fontSize = 11.sp
                         )
                     }
                 }
 
                 IconButton(onClick = onDismiss) {
-                    Icon(Icons.Default.Close, contentDescription = "Close", tint = Color.White)
+                    Icon(Icons.Default.Close, contentDescription = "Close", tint = VyaparTextSecondary)
                 }
             }
         },
@@ -1282,11 +1290,11 @@ private fun UdharBillReceiptModalDialog(
                     .verticalScroll(rememberScrollState())
             ) {
                 Card(
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFF1E293B)),
+                    colors = CardDefaults.cardColors(containerColor = VyaparBg),
                     shape = RoundedCornerShape(12.dp),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .border(1.dp, Color(0x33FFFFFF), RoundedCornerShape(12.dp))
+                        .border(1.dp, VyaparBorder, RoundedCornerShape(12.dp))
                 ) {
                     Column(
                         modifier = Modifier
@@ -1295,7 +1303,7 @@ private fun UdharBillReceiptModalDialog(
                     ) {
                         Text(
                             text = storeName.uppercase(Locale.getDefault()),
-                            color = EmeraldLight,
+                            color = VyaparRed,
                             fontWeight = FontWeight.Bold,
                             fontSize = 15.sp,
                             textAlign = TextAlign.Center,
@@ -1304,7 +1312,7 @@ private fun UdharBillReceiptModalDialog(
                         if (merchantMobile.isNotBlank()) {
                             Text(
                                 text = "Contact: $merchantMobile",
-                                color = Color(0xFF94A3B8),
+                                color = VyaparTextSecondary,
                                 fontSize = 11.sp,
                                 textAlign = TextAlign.Center,
                                 modifier = Modifier.fillMaxWidth()
@@ -1312,7 +1320,7 @@ private fun UdharBillReceiptModalDialog(
                         }
 
                         Spacer(modifier = Modifier.height(10.dp))
-                        HorizontalDivider(color = Color(0x22FFFFFF))
+                        HorizontalDivider(color = VyaparBorder)
                         Spacer(modifier = Modifier.height(10.dp))
 
                         Row(
@@ -1320,21 +1328,21 @@ private fun UdharBillReceiptModalDialog(
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             Column {
-                                Text("CUSTOMER", color = Color(0xFF94A3B8), fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                                Text(customer.name, color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                                Text("📱 ${customer.mobileNumber}", color = Color(0xFFCBD5E1), fontSize = 11.sp)
+                                Text("CUSTOMER", color = VyaparTextSecondary, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                Text(customer.name, color = VyaparTextPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                                Text("📱 ${customer.mobileNumber}", color = VyaparTextSecondary, fontSize = 11.sp)
                             }
                             Column(horizontalAlignment = Alignment.End) {
-                                Text("DATE & TIME", color = Color(0xFF94A3B8), fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                                Text(formattedDate, color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                                Text("DATE & TIME", color = VyaparTextSecondary, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                Text(formattedDate, color = VyaparTextPrimary, fontSize = 11.sp, fontWeight = FontWeight.Medium)
                                 Surface(
-                                    color = Color(0x33EF4444),
+                                    color = Color(0xFFFFEBEE),
                                     shape = RoundedCornerShape(4.dp),
                                     modifier = Modifier.padding(top = 2.dp).wrapContentWidth()
                                 ) {
                                     Text(
                                         text = transaction.paymentMode,
-                                        color = Color(0xFFF87171),
+                                        color = VyaparRed,
                                         fontSize = 10.sp,
                                         fontWeight = FontWeight.Bold,
                                         maxLines = 1,
@@ -1346,10 +1354,10 @@ private fun UdharBillReceiptModalDialog(
                         }
 
                         Spacer(modifier = Modifier.height(12.dp))
-                        HorizontalDivider(color = Color(0x22FFFFFF))
+                        HorizontalDivider(color = VyaparBorder)
                         Spacer(modifier = Modifier.height(10.dp))
 
-                        Text("PURCHASED ITEMS", color = GoldYellow, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                        Text("PURCHASED ITEMS", color = VyaparDeepBlue, fontSize = 10.sp, fontWeight = FontWeight.Bold)
                         Spacer(modifier = Modifier.height(6.dp))
 
                         parsedItems.forEachIndexed { idx, item ->
@@ -1362,17 +1370,17 @@ private fun UdharBillReceiptModalDialog(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Column(modifier = Modifier.weight(1.5f)) {
-                                    Text(item.name, color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                                    Text(item.name, color = VyaparTextPrimary, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                                     Text(
                                         text = if (item.unitPrice > 0) "@ ₹${String.format(Locale.US, "%.2f", item.unitPrice)} / ${item.unit}" else "",
-                                        color = Color(0xFF94A3B8),
+                                        color = VyaparTextSecondary,
                                         fontSize = 10.sp
                                     )
                                 }
-                                Text(formattedQty, color = EmeraldLight, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                Text(formattedQty, color = VyaparDeepBlue, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                                 Text(
                                     text = if (item.lineTotal > 0) "₹${String.format(Locale.US, "%.2f", item.lineTotal)}" else "₹${String.format(Locale.US, "%.2f", transaction.amount)}",
-                                    color = Color.White,
+                                    color = VyaparTextPrimary,
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.Bold,
                                     textAlign = TextAlign.End,
@@ -1380,12 +1388,12 @@ private fun UdharBillReceiptModalDialog(
                                 )
                             }
                             if (idx < parsedItems.size - 1) {
-                                HorizontalDivider(color = Color(0x0AFFFFFF))
+                                HorizontalDivider(color = VyaparBorder)
                             }
                         }
 
                         Spacer(modifier = Modifier.height(12.dp))
-                        HorizontalDivider(color = Color(0x33FFFFFF))
+                        HorizontalDivider(color = VyaparBorder)
                         Spacer(modifier = Modifier.height(8.dp))
 
                         Row(
@@ -1393,10 +1401,10 @@ private fun UdharBillReceiptModalDialog(
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text("TOTAL UDHAR BILLED", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                            Text("TOTAL UDHAR BILLED", color = VyaparTextPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                             Text(
                                 text = "₹${String.format(Locale.US, "%.2f", transaction.amount)}",
-                                color = Color(0xFFF87171),
+                                color = VyaparRed,
                                 fontSize = 18.sp,
                                 fontWeight = FontWeight.Bold
                             )
@@ -1420,8 +1428,8 @@ private fun UdharBillReceiptModalDialog(
                             )
                             com.example.util.InvoicePdfHelper.printInvoicePdf(context, pdf)
                         },
-                        colors = ButtonDefaults.buttonColors(containerColor = EmeraldGreen),
-                        shape = RoundedCornerShape(10.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = VyaparDeepBlue),
+                        shape = RoundedCornerShape(8.dp),
                         modifier = Modifier
                             .weight(1f)
                             .testTag("udhar_modal_print_btn")
@@ -1447,7 +1455,7 @@ private fun UdharBillReceiptModalDialog(
                             )
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF25D366)),
-                        shape = RoundedCornerShape(10.dp),
+                        shape = RoundedCornerShape(8.dp),
                         modifier = Modifier
                             .weight(1f)
                             .testTag("udhar_modal_whatsapp_btn")
@@ -1473,22 +1481,23 @@ private fun UdharBillReceiptModalDialog(
                             )
                         },
                         modifier = Modifier
-                            .background(Color(0x22FFFFFF), RoundedCornerShape(10.dp))
+                            .background(VyaparBg, RoundedCornerShape(8.dp))
+                            .border(1.dp, VyaparBorder, RoundedCornerShape(8.dp))
                             .testTag("udhar_modal_share_btn")
                     ) {
-                        Icon(Icons.Default.Share, contentDescription = "Share PDF", tint = Color.White)
+                        Icon(Icons.Default.Share, contentDescription = "Share PDF", tint = VyaparTextPrimary)
                     }
                 }
             }
         },
         confirmButton = {
             TextButton(onClick = onDismiss) {
-                Text("Close", color = Color.White, fontWeight = FontWeight.Bold)
+                Text("Close", color = VyaparRed, fontWeight = FontWeight.Bold)
             }
         },
-        containerColor = Color(0xFF0F172A),
-        shape = RoundedCornerShape(20.dp),
-        modifier = Modifier.border(1.dp, Color(0x3310B981), RoundedCornerShape(20.dp))
+        containerColor = VyaparSurface,
+        shape = RoundedCornerShape(16.dp),
+        modifier = Modifier.border(1.dp, VyaparBorder, RoundedCornerShape(16.dp))
     )
 }
 
@@ -1534,7 +1543,7 @@ private fun WhatsAppReminderModalDialog(
                 Box(
                     modifier = Modifier
                         .size(36.dp)
-                        .background(Color(0xFF10B981), CircleShape),
+                        .background(Color(0xFF25D366), CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(imageVector = Icons.Default.Send, contentDescription = "WhatsApp", tint = Color.White, modifier = Modifier.size(20.dp))
@@ -1543,13 +1552,13 @@ private fun WhatsAppReminderModalDialog(
                 Column {
                     Text(
                         text = "WhatsApp Payment Reminder",
-                        color = Color.White,
+                        color = VyaparTextPrimary,
                         fontWeight = FontWeight.Bold,
                         fontSize = 16.sp
                     )
                     Text(
                         text = "To: ${customer.name} (${customer.mobileNumber})",
-                        color = Color(0xFF94A3B8),
+                        color = VyaparTextSecondary,
                         fontSize = 12.sp
                     )
                 }
@@ -1562,9 +1571,9 @@ private fun WhatsAppReminderModalDialog(
             ) {
                 // Outstanding Summary Badge
                 Card(
-                    colors = CardDefaults.cardColors(containerColor = Color(0x22EF4444)),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFFFEBEE)),
                     shape = RoundedCornerShape(8.dp),
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth().border(1.dp, Color(0xFFEF9A9A), RoundedCornerShape(8.dp))
                 ) {
                     Row(
                         modifier = Modifier
@@ -1573,10 +1582,10 @@ private fun WhatsAppReminderModalDialog(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("Outstanding Udhar Balance:", color = Color.White, fontSize = 12.sp)
+                        Text("Outstanding Udhar Balance:", color = VyaparTextPrimary, fontSize = 12.sp)
                         Text(
                             text = "₹${String.format(Locale.US, "%.2f", customer.totalPendingBalance)}",
-                            color = Color(0xFFF87171),
+                            color = VyaparRed,
                             fontWeight = FontWeight.Bold,
                             fontSize = 15.sp
                         )
@@ -1585,32 +1594,32 @@ private fun WhatsAppReminderModalDialog(
 
                 // Dynamic Merchant Profile Verification Badge
                 Card(
-                    colors = CardDefaults.cardColors(containerColor = Color(0x2238BDF8)),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFF0F9FF)),
                     shape = RoundedCornerShape(8.dp),
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth().border(1.dp, Color(0xFFBAE6FD), RoundedCornerShape(8.dp))
                 ) {
                     Column(modifier = Modifier.padding(10.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(imageVector = Icons.Default.Store, contentDescription = "Store", tint = Color(0xFF38BDF8), modifier = Modifier.size(14.dp))
+                            Icon(imageVector = Icons.Default.Store, contentDescription = "Store", tint = Color(0xFF0284C7), modifier = Modifier.size(14.dp))
                             Spacer(modifier = Modifier.width(6.dp))
-                            Text(text = "Sender: $businessName", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            Text(text = "Sender: $businessName", color = VyaparTextPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                         }
                         if (merchantPhone.isNotBlank()) {
                             Spacer(modifier = Modifier.height(2.dp))
-                            Text(text = "📞 Contact: $merchantPhone", color = Color(0xFF94A3B8), fontSize = 11.sp)
+                            Text(text = "📞 Contact: $merchantPhone", color = VyaparTextSecondary, fontSize = 11.sp)
                         }
                         Spacer(modifier = Modifier.height(2.dp))
-                        Text(text = "💳 UPI ID: $upiId", color = Color(0xFF38BDF8), fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                        Text(text = "💳 UPI ID: $upiId", color = Color(0xFF0284C7), fontSize = 11.sp, fontWeight = FontWeight.Medium)
                     }
                 }
 
                 // Interactive UPI Link Banner Card
                 Card(
-                    colors = CardDefaults.cardColors(containerColor = Color(0x2210B981)),
-                    shape = RoundedCornerShape(10.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFE8F5E9)),
+                    shape = RoundedCornerShape(8.dp),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .border(1.dp, Color(0x4410B981), RoundedCornerShape(10.dp))
+                        .border(1.dp, Color(0xFFA5D6A7), RoundedCornerShape(8.dp))
                 ) {
                     Column(modifier = Modifier.padding(10.dp)) {
                         Row(
@@ -1619,16 +1628,16 @@ private fun WhatsAppReminderModalDialog(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(imageVector = Icons.Default.QrCode, contentDescription = "UPI", tint = EmeraldLight, modifier = Modifier.size(16.dp))
+                                Icon(imageVector = Icons.Default.QrCode, contentDescription = "UPI", tint = VyaparSuccess, modifier = Modifier.size(16.dp))
                                 Spacer(modifier = Modifier.width(6.dp))
-                                Text("Dynamic UPI Payment Link", color = EmeraldLight, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                Text("Dynamic UPI Payment Link", color = VyaparSuccess, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                             }
-                            Text(text = upiId, color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                            Text(text = upiId, color = VyaparTextPrimary, fontSize = 11.sp, fontWeight = FontWeight.Medium)
                         }
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
                             text = "Customers can tap the interactive UPI link in WhatsApp to pay ₹${String.format(Locale.US, "%.2f", customer.totalPendingBalance)} directly.",
-                            color = Color(0xFF94A3B8),
+                            color = VyaparTextSecondary,
                             fontSize = 10.sp
                         )
                         Spacer(modifier = Modifier.height(6.dp))
@@ -1642,8 +1651,9 @@ private fun WhatsAppReminderModalDialog(
                                     note = "Udhar Clearance (${customer.name})"
                                 )
                             },
-                            colors = ButtonDefaults.buttonColors(containerColor = EmeraldGreen),
+                            colors = ButtonDefaults.buttonColors(containerColor = VyaparSuccess),
                             contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
+                            shape = RoundedCornerShape(6.dp),
                             modifier = Modifier
                                 .height(28.dp)
                                 .testTag("whatsapp_modal_test_pay_upi_button")
@@ -1657,22 +1667,22 @@ private fun WhatsAppReminderModalDialog(
 
                 // Automatic Scheduled Reminder Section
                 Card(
-                    colors = CardDefaults.cardColors(containerColor = Color(0x22F59E0B)),
-                    shape = RoundedCornerShape(10.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFFFFBEB)),
+                    shape = RoundedCornerShape(8.dp),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .border(1.dp, Color(0x44F59E0B), RoundedCornerShape(10.dp))
+                        .border(1.dp, Color(0xFFFDE68A), RoundedCornerShape(8.dp))
                 ) {
                     Column(modifier = Modifier.padding(10.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(imageVector = Icons.Default.Schedule, contentDescription = "Auto Reminder", tint = Color(0xFFFBBF24), modifier = Modifier.size(16.dp))
+                            Icon(imageVector = Icons.Default.Schedule, contentDescription = "Auto Reminder", tint = Color(0xFFD97706), modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(6.dp))
-                            Text("Scheduled Automatic Reminder", color = Color(0xFFFBBF24), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            Text("Scheduled Automatic Reminder", color = Color(0xFFB45309), fontSize = 12.sp, fontWeight = FontWeight.Bold)
                         }
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
                             text = "Pick a date & time for SmartPOS to automatically dispatch this WhatsApp reminder in the background.",
-                            color = Color(0xFF94A3B8),
+                            color = VyaparTextSecondary,
                             fontSize = 10.sp
                         )
 
@@ -1683,14 +1693,14 @@ private fun WhatsAppReminderModalDialog(
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .background(Color(0x33F59E0B), RoundedCornerShape(6.dp))
+                                    .background(Color(0xFFFEF3C7), RoundedCornerShape(6.dp))
                                     .padding(8.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.SpaceBetween
                             ) {
                                 Text(
                                     text = "⏰ $scheduledDateFormatted",
-                                    color = Color(0xFFFDE68A),
+                                    color = Color(0xFF92400E),
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.Bold
                                 )
@@ -1702,7 +1712,7 @@ private fun WhatsAppReminderModalDialog(
                                     },
                                     contentPadding = PaddingValues(horizontal = 6.dp, vertical = 0.dp)
                                 ) {
-                                    Text("Change", color = Color(0xFF38BDF8), fontSize = 11.sp)
+                                    Text("Change", color = VyaparDeepBlue, fontSize = 11.sp)
                                 }
                             }
 
@@ -1716,16 +1726,16 @@ private fun WhatsAppReminderModalDialog(
                                     onClick = {
                                         onScheduleAuto?.invoke(selectedScheduledEpoch, messageText)
                                     },
-                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF59E0B)),
-                                    shape = RoundedCornerShape(8.dp),
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD97706)),
+                                    shape = RoundedCornerShape(6.dp),
                                     modifier = Modifier
                                         .weight(1f)
                                         .height(34.dp)
                                         .testTag("confirm_schedule_auto_reminder_button")
                                 ) {
-                                    Icon(imageVector = Icons.Default.Check, contentDescription = "Confirm", modifier = Modifier.size(14.dp), tint = Color.Black)
+                                    Icon(imageVector = Icons.Default.Check, contentDescription = "Confirm", modifier = Modifier.size(14.dp), tint = Color.White)
                                     Spacer(modifier = Modifier.width(4.dp))
-                                    Text("Save Schedule", color = Color.Black, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                    Text("Save Schedule", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                                 }
 
                                 if (customer.reminderScheduledDate > 0 && customer.reminderStatus == "SCHEDULED") {
@@ -1734,13 +1744,13 @@ private fun WhatsAppReminderModalDialog(
                                             onCancelAuto?.invoke()
                                             selectedScheduledEpoch = 0L
                                         },
-                                        border = BorderStroke(1.dp, Color(0xFFEF4444)),
-                                        shape = RoundedCornerShape(8.dp),
+                                        border = BorderStroke(1.dp, VyaparRed),
+                                        shape = RoundedCornerShape(6.dp),
                                         modifier = Modifier
                                             .height(34.dp)
                                             .testTag("cancel_schedule_auto_reminder_button")
                                     ) {
-                                        Text("Cancel Auto", color = Color(0xFFF87171), fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                        Text("Cancel Auto", color = VyaparRed, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                                     }
                                 }
                             }
@@ -1751,23 +1761,23 @@ private fun WhatsAppReminderModalDialog(
                                         selectedScheduledEpoch = newEpoch
                                     }
                                 },
-                                border = BorderStroke(1.dp, Color(0x66F59E0B)),
-                                shape = RoundedCornerShape(8.dp),
+                                border = BorderStroke(1.dp, Color(0xFFD97706)),
+                                shape = RoundedCornerShape(6.dp),
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .height(34.dp)
                                     .testTag("pick_auto_reminder_datetime_button")
                             ) {
-                                Icon(imageVector = Icons.Default.CalendarMonth, contentDescription = "Pick Date", tint = Color(0xFFFBBF24), modifier = Modifier.size(14.dp))
+                                Icon(imageVector = Icons.Default.CalendarMonth, contentDescription = "Pick Date", tint = Color(0xFFD97706), modifier = Modifier.size(14.dp))
                                 Spacer(modifier = Modifier.width(6.dp))
-                                Text("📅 Pick Auto-Send Date & Time", color = Color(0xFFFDE68A), fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                Text("📅 Pick Auto-Send Date & Time", color = Color(0xFFB45309), fontSize = 11.sp, fontWeight = FontWeight.Bold)
                             }
                         }
                     }
                 }
 
                 // Reminder Type Quick Selection Chips
-                Text("Select Reminder Template", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                Text("Select Reminder Template", color = VyaparTextPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -1779,17 +1789,17 @@ private fun WhatsAppReminderModalDialog(
                             onClick = { selectedType = type },
                             label = { Text(type.label, fontSize = 10.sp) },
                             colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = Color(0xFF10B981),
+                                selectedContainerColor = VyaparRed,
                                 selectedLabelColor = Color.White,
-                                containerColor = Color(0x2210B981),
-                                labelColor = EmeraldLight
+                                containerColor = VyaparBg,
+                                labelColor = VyaparTextPrimary
                             )
                         )
                     }
                 }
 
                 // Message Preview / Custom Editor
-                Text("Message Preview (Editable)", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                Text("Message Preview (Editable)", color = VyaparTextPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                 OutlinedTextField(
                     value = messageText,
                     onValueChange = { messageText = it },
@@ -1797,12 +1807,12 @@ private fun WhatsAppReminderModalDialog(
                         .fillMaxWidth()
                         .height(160.dp)
                         .testTag("whatsapp_reminder_message_input"),
-                    textStyle = MaterialTheme.typography.bodySmall.copy(color = Color.White, fontSize = 12.sp),
+                    textStyle = MaterialTheme.typography.bodySmall.copy(color = VyaparTextPrimary, fontSize = 12.sp),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = EmeraldGreen,
-                        unfocusedBorderColor = Color(0x33FFFFFF),
-                        focusedContainerColor = Color(0x220D1333),
-                        unfocusedContainerColor = Color(0x220D1333)
+                        focusedBorderColor = VyaparRed,
+                        unfocusedBorderColor = VyaparBorder,
+                        focusedContainerColor = VyaparBg,
+                        unfocusedContainerColor = VyaparBg
                     )
                 )
             }
@@ -1817,7 +1827,8 @@ private fun WhatsAppReminderModalDialog(
                         WhatsAppReminderUtils.sendWhatsAppReminder(context, customer.mobileNumber, messageText)
                         onDismiss()
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF10B981)),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF25D366)),
+                    shape = RoundedCornerShape(8.dp),
                     modifier = Modifier
                         .fillMaxWidth()
                         .testTag("whatsapp_reminder_send_whatsapp_button")
@@ -1832,14 +1843,15 @@ private fun WhatsAppReminderModalDialog(
                         WhatsAppReminderUtils.shareTextViaStandardChooser(context, messageText)
                         onDismiss()
                     },
-                    border = BorderStroke(1.dp, Color(0x44FFFFFF)),
+                    border = BorderStroke(1.dp, VyaparBorder),
+                    shape = RoundedCornerShape(8.dp),
                     modifier = Modifier
                         .fillMaxWidth()
                         .testTag("whatsapp_reminder_share_fallback_button")
                 ) {
-                    Icon(imageVector = Icons.Default.Share, contentDescription = "Share SMS", tint = Color.White, modifier = Modifier.size(16.dp))
+                    Icon(imageVector = Icons.Default.Share, contentDescription = "Share SMS", tint = VyaparTextPrimary, modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("SMS / Other Share (Fallback)", color = Color.White, fontSize = 12.sp)
+                    Text("SMS / Other Share (Fallback)", color = VyaparTextPrimary, fontSize = 12.sp)
                 }
             }
         },
@@ -1848,11 +1860,12 @@ private fun WhatsAppReminderModalDialog(
                 onClick = onDismiss,
                 modifier = Modifier.testTag("whatsapp_reminder_cancel_button")
             ) {
-                Text("Cancel", color = Color(0xFF94A3B8))
+                Text("Cancel", color = VyaparTextSecondary)
             }
         },
-        containerColor = Color(0xFF0F172A),
-        shape = RoundedCornerShape(16.dp)
+        containerColor = VyaparSurface,
+        shape = RoundedCornerShape(16.dp),
+        modifier = Modifier.border(1.dp, VyaparBorder, RoundedCornerShape(16.dp))
     )
 }
 

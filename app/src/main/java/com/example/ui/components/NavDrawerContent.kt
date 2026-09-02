@@ -62,115 +62,124 @@ fun NavDrawerContent(
         modifier = modifier
             .fillMaxHeight()
             .width(300.dp)
-            .background(Color(0xFF0F172A))
+            .background(Color.White)
             .verticalScroll(scrollState)
             .padding(bottom = 24.dp)
             .testTag("nav_drawer_scrollable_content")
     ) {
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // User Header Profile Card
-        Card(
-            colors = CardDefaults.cardColors(containerColor = Color(0x3310B981)),
-            shape = RoundedCornerShape(16.dp),
+        // Red Header Profile Card Banner
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp)
-                .border(1.dp, Color(0x3310B981), RoundedCornerShape(16.dp))
+                .background(VyaparRed)
+                .padding(horizontal = 20.dp, vertical = 24.dp)
         ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Box(
-                    modifier = Modifier
-                        .size(48.dp)
-                        .background(EmeraldGreen, CircleShape),
-                    contentAlignment = Alignment.Center
+            Column {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(50.dp)
+                            .background(Color.White, CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = (currentUser?.businessName?.take(1) ?: "K").uppercase(),
+                            color = VyaparRed,
+                            fontWeight = FontWeight.ExtraBold,
+                            fontSize = 24.sp
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column {
+                        Text(
+                            text = currentUser?.businessName ?: "SmartPOS Business",
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 17.sp,
+                            maxLines = 1
+                        )
+                        Text(
+                            text = "👤 ${currentUser?.fullName ?: "Merchant"}",
+                            color = Color(0xFFFFCDD2),
+                            fontSize = 12.sp
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+                Surface(
+                    color = Color(0x33FFFFFF),
+                    shape = RoundedCornerShape(6.dp)
                 ) {
                     Text(
-                        text = (currentUser?.businessName?.take(1) ?: "K").uppercase(),
+                        text = "Category: ${currentUser?.category ?: "Retail Kirana"}",
                         color = Color.White,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 22.sp
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Medium,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                     )
                 }
-                Spacer(modifier = Modifier.height(10.dp))
-                Text(
-                    text = currentUser?.businessName ?: "Kirana Billing",
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp
-                )
-                Text(
-                    text = "👤 ${currentUser?.fullName ?: "Store Owner"}",
-                    color = Color(0xFF94A3B8),
-                    fontSize = 12.sp
-                )
-                Text(
-                    text = "Category: ${currentUser?.category ?: "Retail"}",
-                    color = EmeraldLight,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.SemiBold
-                )
             }
         }
 
-        Spacer(modifier = Modifier.height(20.dp))
-        HorizontalDivider(color = Color(0x22FFFFFF), modifier = Modifier.padding(horizontal = 16.dp))
-        Spacer(modifier = Modifier.height(10.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
         // Main Navigation Items
         NavigationDrawerItem(
-            icon = { Icon(Icons.Default.Home, contentDescription = "Home", tint = EmeraldGreen) },
-            label = { Text("Home Dashboard", fontWeight = FontWeight.SemiBold) },
+            icon = { Icon(Icons.Default.Home, contentDescription = "Home", tint = if (currentTab == BottomTab.HOME && !showProfileScreenOverlay && !showPrinterSettingsOverlay) VyaparRed else VyaparTextSecondary) },
+            label = { Text("Home Dashboard", fontWeight = FontWeight.SemiBold, color = if (currentTab == BottomTab.HOME && !showProfileScreenOverlay && !showPrinterSettingsOverlay) VyaparRed else VyaparTextPrimary) },
             selected = currentTab == BottomTab.HOME && !showProfileScreenOverlay && !showPrinterSettingsOverlay,
             onClick = { onTabSelected(BottomTab.HOME) },
-            colors = NavigationDrawerItemDefaults.colors(selectedContainerColor = Color(0x3310B981)),
+            colors = NavigationDrawerItemDefaults.colors(selectedContainerColor = Color(0xFFFFEBEE)),
             modifier = Modifier.padding(horizontal = 12.dp).testTag("drawer_item_home")
         )
 
         NavigationDrawerItem(
-            icon = { Icon(Icons.Default.PointOfSale, contentDescription = "POS Bill", tint = EmeraldGreen) },
-            label = { Text("POS Terminal & Billing", fontWeight = FontWeight.SemiBold) },
+            icon = { Icon(Icons.Default.PointOfSale, contentDescription = "POS Bill", tint = if (currentTab == BottomTab.POS && !showProfileScreenOverlay && !showPrinterSettingsOverlay) VyaparRed else VyaparTextSecondary) },
+            label = { Text("POS Terminal & Billing", fontWeight = FontWeight.SemiBold, color = if (currentTab == BottomTab.POS && !showProfileScreenOverlay && !showPrinterSettingsOverlay) VyaparRed else VyaparTextPrimary) },
             selected = currentTab == BottomTab.POS && !showProfileScreenOverlay && !showPrinterSettingsOverlay,
             onClick = { onTabSelected(BottomTab.POS) },
-            colors = NavigationDrawerItemDefaults.colors(selectedContainerColor = Color(0x3310B981)),
+            colors = NavigationDrawerItemDefaults.colors(selectedContainerColor = Color(0xFFFFEBEE)),
             modifier = Modifier.padding(horizontal = 12.dp).testTag("drawer_item_pos")
         )
 
         NavigationDrawerItem(
-            icon = { Icon(Icons.Default.Inventory2, contentDescription = "Inventory", tint = EmeraldGreen) },
-            label = { Text("Inventory & Stock Alert", fontWeight = FontWeight.SemiBold) },
+            icon = { Icon(Icons.Default.Inventory2, contentDescription = "Inventory", tint = if (currentTab == BottomTab.INVENTORY && !showProfileScreenOverlay && !showPrinterSettingsOverlay) VyaparRed else VyaparTextSecondary) },
+            label = { Text("Inventory & Stock Alert", fontWeight = FontWeight.SemiBold, color = if (currentTab == BottomTab.INVENTORY && !showProfileScreenOverlay && !showPrinterSettingsOverlay) VyaparRed else VyaparTextPrimary) },
             selected = currentTab == BottomTab.INVENTORY && !showProfileScreenOverlay && !showPrinterSettingsOverlay,
             onClick = { onTabSelected(BottomTab.INVENTORY) },
-            colors = NavigationDrawerItemDefaults.colors(selectedContainerColor = Color(0x3310B981)),
+            colors = NavigationDrawerItemDefaults.colors(selectedContainerColor = Color(0xFFFFEBEE)),
             modifier = Modifier.padding(horizontal = 12.dp).testTag("drawer_item_inventory")
         )
 
         NavigationDrawerItem(
-            icon = { Icon(Icons.Default.History, contentDescription = "History", tint = EmeraldGreen) },
-            label = { Text("Transaction History", fontWeight = FontWeight.SemiBold) },
+            icon = { Icon(Icons.Default.History, contentDescription = "History", tint = if (currentTab == BottomTab.HISTORY && !showProfileScreenOverlay && !showPrinterSettingsOverlay) VyaparRed else VyaparTextSecondary) },
+            label = { Text("Transaction History", fontWeight = FontWeight.SemiBold, color = if (currentTab == BottomTab.HISTORY && !showProfileScreenOverlay && !showPrinterSettingsOverlay) VyaparRed else VyaparTextPrimary) },
             selected = currentTab == BottomTab.HISTORY && !showProfileScreenOverlay && !showPrinterSettingsOverlay,
             onClick = { onTabSelected(BottomTab.HISTORY) },
-            colors = NavigationDrawerItemDefaults.colors(selectedContainerColor = Color(0x3310B981)),
+            colors = NavigationDrawerItemDefaults.colors(selectedContainerColor = Color(0xFFFFEBEE)),
             modifier = Modifier.padding(horizontal = 12.dp).testTag("drawer_item_history")
         )
 
         NavigationDrawerItem(
-            icon = { Icon(Icons.Default.AccountBalanceWallet, contentDescription = "Udhar Khata", tint = EmeraldGreen) },
-            label = { Text("Udhar Khata (Credit Ledger)", fontWeight = FontWeight.SemiBold) },
+            icon = { Icon(Icons.Default.AccountBalanceWallet, contentDescription = "Udhar Khata", tint = if (currentTab == BottomTab.UDHAR && !showProfileScreenOverlay && !showPrinterSettingsOverlay) VyaparRed else VyaparTextSecondary) },
+            label = { Text("Udhar Khata (Credit Ledger)", fontWeight = FontWeight.SemiBold, color = if (currentTab == BottomTab.UDHAR && !showProfileScreenOverlay && !showPrinterSettingsOverlay) VyaparRed else VyaparTextPrimary) },
             selected = currentTab == BottomTab.UDHAR && !showProfileScreenOverlay && !showPrinterSettingsOverlay,
             onClick = { onTabSelected(BottomTab.UDHAR) },
-            colors = NavigationDrawerItemDefaults.colors(selectedContainerColor = Color(0x3310B981)),
+            colors = NavigationDrawerItemDefaults.colors(selectedContainerColor = Color(0xFFFFEBEE)),
             modifier = Modifier.padding(horizontal = 12.dp).testTag("drawer_item_udhar")
         )
 
         Spacer(modifier = Modifier.height(10.dp))
-        HorizontalDivider(color = Color(0x22FFFFFF), modifier = Modifier.padding(horizontal = 16.dp))
+        HorizontalDivider(color = VyaparBorder, modifier = Modifier.padding(horizontal = 16.dp))
         Spacer(modifier = Modifier.height(10.dp))
 
         // Management & Profile Items
         Text(
             text = "MANAGEMENT & PROFILE",
-            color = Color(0xFF64748B),
+            color = VyaparTextSecondary,
             fontSize = 10.sp,
             fontWeight = FontWeight.Bold,
             letterSpacing = 0.5.sp,
@@ -178,20 +187,20 @@ fun NavDrawerContent(
         )
 
         NavigationDrawerItem(
-            icon = { Icon(Icons.Default.Person, contentDescription = "Profile", tint = GoldYellow) },
-            label = { Text("Business Profile Settings", fontWeight = FontWeight.SemiBold) },
+            icon = { Icon(Icons.Default.Person, contentDescription = "Profile", tint = VyaparDeepBlue) },
+            label = { Text("Business Profile Settings", fontWeight = FontWeight.SemiBold, color = VyaparTextPrimary) },
             selected = showProfileScreenOverlay,
             onClick = onProfileClick,
-            colors = NavigationDrawerItemDefaults.colors(selectedContainerColor = Color(0x33F59E0B)),
+            colors = NavigationDrawerItemDefaults.colors(selectedContainerColor = Color(0xFFE8EAF6)),
             modifier = Modifier.padding(horizontal = 12.dp).testTag("drawer_item_profile")
         )
 
         NavigationDrawerItem(
-            icon = { Icon(Icons.Default.Print, contentDescription = "Thermal Printer", tint = EmeraldGreen) },
-            label = { Text("Thermal Printer Setup", fontWeight = FontWeight.SemiBold) },
+            icon = { Icon(Icons.Default.Print, contentDescription = "Thermal Printer", tint = VyaparDeepBlue) },
+            label = { Text("Thermal Printer Setup", fontWeight = FontWeight.SemiBold, color = VyaparTextPrimary) },
             selected = showPrinterSettingsOverlay,
             onClick = onPrinterSettingsClick,
-            colors = NavigationDrawerItemDefaults.colors(selectedContainerColor = Color(0x3310B981)),
+            colors = NavigationDrawerItemDefaults.colors(selectedContainerColor = Color(0xFFE8EAF6)),
             modifier = Modifier.padding(horizontal = 12.dp).testTag("drawer_item_printer_settings")
         )
 
@@ -201,7 +210,7 @@ fun NavDrawerContent(
                 Icon(
                     imageVector = if (isSubscribed) Icons.Default.Verified else Icons.Default.WorkspacePremium,
                     contentDescription = "Subscription Status",
-                    tint = if (isSubscribed) EmeraldGreen else GoldYellow
+                    tint = if (isSubscribed) VyaparSuccess else VyaparGold
                 )
             },
             label = {
@@ -214,24 +223,24 @@ fun NavDrawerContent(
                         Text(
                             text = if (isSubscribed) subscriptionState.displayBadgeTitle else "Pro Membership & ₹1 Trial",
                             fontWeight = FontWeight.Bold,
-                            color = if (isSubscribed) EmeraldLight else GoldYellow,
+                            color = if (isSubscribed) VyaparSuccess else VyaparGold,
                             fontSize = 13.sp
                         )
                         if (isSubscribed && subscriptionState.effectiveExpiry > 0L) {
                             Text(
                                 text = "${subscriptionState.daysLeft} days left",
-                                color = Color(0xFF94A3B8),
+                                color = VyaparTextSecondary,
                                 fontSize = 11.sp
                             )
                         }
                     }
                     Surface(
-                        color = if (isSubscribed) EmeraldGreen else GoldYellow,
+                        color = if (isSubscribed) VyaparSuccessLight else VyaparGoldLight,
                         shape = RoundedCornerShape(8.dp)
                     ) {
                         Text(
                             text = if (isSubscribed) "ACTIVE" else "PRO",
-                            color = if (isSubscribed) Color.White else Color.Black,
+                            color = if (isSubscribed) VyaparSuccess else Color(0xFFB45309),
                             fontSize = 10.sp,
                             fontWeight = FontWeight.ExtraBold,
                             modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
@@ -241,26 +250,26 @@ fun NavDrawerContent(
             },
             selected = false,
             onClick = onPaywallClick,
-            colors = NavigationDrawerItemDefaults.colors(selectedContainerColor = if (isSubscribed) Color(0x3310B981) else Color(0x33F59E0B)),
+            colors = NavigationDrawerItemDefaults.colors(selectedContainerColor = Color(0xFFF1F5F9)),
             modifier = Modifier.padding(horizontal = 12.dp).testTag("drawer_item_paywall")
         )
 
         NavigationDrawerItem(
-            icon = { Icon(Icons.Default.SystemUpdate, contentDescription = "Check for Updates", tint = ElectricVioletLight) },
-            label = { Text("Check App Updates", fontWeight = FontWeight.Bold, color = Color.White) },
+            icon = { Icon(Icons.Default.SystemUpdate, contentDescription = "Check for Updates", tint = VyaparDeepBlue) },
+            label = { Text("Check App Updates", fontWeight = FontWeight.Bold, color = VyaparTextPrimary) },
             selected = false,
             onClick = onCheckUpdateClick,
-            colors = NavigationDrawerItemDefaults.colors(selectedContainerColor = Color(0x338B5CF6)),
+            colors = NavigationDrawerItemDefaults.colors(selectedContainerColor = Color(0xFFF1F5F9)),
             modifier = Modifier.padding(horizontal = 12.dp).testTag("drawer_item_check_update")
         )
 
         Spacer(modifier = Modifier.height(10.dp))
-        HorizontalDivider(color = Color(0x22FFFFFF), modifier = Modifier.padding(horizontal = 16.dp))
+        HorizontalDivider(color = VyaparBorder, modifier = Modifier.padding(horizontal = 16.dp))
         Spacer(modifier = Modifier.height(10.dp))
 
         Text(
             text = "LEGAL & POLICIES",
-            color = Color(0xFF64748B),
+            color = VyaparTextSecondary,
             fontSize = 10.sp,
             fontWeight = FontWeight.Bold,
             letterSpacing = 0.5.sp,
@@ -268,36 +277,36 @@ fun NavDrawerContent(
         )
 
         NavigationDrawerItem(
-            icon = { Icon(Icons.Default.Description, contentDescription = "Terms & Conditions", tint = Color(0xFF2DD4BF)) },
-            label = { Text("Terms & Conditions", fontWeight = FontWeight.SemiBold, color = Color.White) },
+            icon = { Icon(Icons.Default.Description, contentDescription = "Terms & Conditions", tint = VyaparTextSecondary) },
+            label = { Text("Terms & Conditions", fontWeight = FontWeight.SemiBold, color = VyaparTextPrimary) },
             selected = false,
             onClick = onTermsClick,
-            colors = NavigationDrawerItemDefaults.colors(selectedContainerColor = Color(0x332DD4BF)),
+            colors = NavigationDrawerItemDefaults.colors(selectedContainerColor = Color(0xFFF1F5F9)),
             modifier = Modifier.padding(horizontal = 12.dp).testTag("drawer_item_terms")
         )
 
         NavigationDrawerItem(
-            icon = { Icon(Icons.Default.Security, contentDescription = "Privacy Policy", tint = Color(0xFF2DD4BF)) },
-            label = { Text("Privacy Policy", fontWeight = FontWeight.SemiBold, color = Color.White) },
+            icon = { Icon(Icons.Default.Security, contentDescription = "Privacy Policy", tint = VyaparTextSecondary) },
+            label = { Text("Privacy Policy", fontWeight = FontWeight.SemiBold, color = VyaparTextPrimary) },
             selected = false,
             onClick = onPrivacyClick,
-            colors = NavigationDrawerItemDefaults.colors(selectedContainerColor = Color(0x332DD4BF)),
+            colors = NavigationDrawerItemDefaults.colors(selectedContainerColor = Color(0xFFF1F5F9)),
             modifier = Modifier.padding(horizontal = 12.dp).testTag("drawer_item_privacy")
         )
 
         Spacer(modifier = Modifier.height(12.dp))
-        HorizontalDivider(color = Color(0x22FFFFFF), modifier = Modifier.padding(horizontal = 16.dp))
+        HorizontalDivider(color = VyaparBorder, modifier = Modifier.padding(horizontal = 16.dp))
 
         NavigationDrawerItem(
-            icon = { Icon(Icons.Default.Logout, contentDescription = "Logout", tint = AccentPink) },
-            label = { Text("Logout", fontWeight = FontWeight.Bold, color = AccentPink) },
+            icon = { Icon(Icons.Default.Logout, contentDescription = "Logout", tint = VyaparRed) },
+            label = { Text("Logout", fontWeight = FontWeight.Bold, color = VyaparRed) },
             selected = false,
             onClick = onLogoutClick,
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp).testTag("drawer_item_logout")
         )
 
         // Footer Section with Terms, Privacy Policy & App Version
-        HorizontalDivider(color = Color.Gray.copy(alpha = 0.2f), modifier = Modifier.padding(vertical = 12.dp, horizontal = 16.dp))
+        HorizontalDivider(color = VyaparBorder, modifier = Modifier.padding(vertical = 12.dp, horizontal = 16.dp))
 
         Row(
             modifier = Modifier
@@ -308,7 +317,7 @@ fun NavDrawerContent(
         ) {
             Text(
                 text = "Privacy Policy",
-                style = MaterialTheme.typography.labelMedium.copy(color = Color(0xFF64748B)),
+                style = MaterialTheme.typography.labelMedium.copy(color = VyaparTextSecondary),
                 modifier = Modifier
                     .clickable { onPrivacyClick() }
                     .padding(vertical = 4.dp)
@@ -316,12 +325,12 @@ fun NavDrawerContent(
             )
             Text(
                 text = "•",
-                color = Color(0xFF475569),
+                color = VyaparTextSecondary,
                 fontSize = 12.sp
             )
             Text(
                 text = "Terms of Service",
-                style = MaterialTheme.typography.labelMedium.copy(color = Color(0xFF64748B)),
+                style = MaterialTheme.typography.labelMedium.copy(color = VyaparTextSecondary),
                 modifier = Modifier
                     .clickable { onTermsClick() }
                     .padding(vertical = 4.dp)
@@ -332,10 +341,11 @@ fun NavDrawerContent(
         Spacer(modifier = Modifier.height(8.dp))
         Text(
             text = "SmartPOS v${BuildConfig.VERSION_NAME}",
-            style = MaterialTheme.typography.labelSmall.copy(color = Color.Gray),
+            style = MaterialTheme.typography.labelSmall.copy(color = VyaparTextSecondary),
             modifier = Modifier
                 .padding(horizontal = 16.dp)
                 .testTag("drawer_footer_version")
         )
     }
 }
+

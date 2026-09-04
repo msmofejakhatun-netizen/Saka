@@ -174,7 +174,8 @@ fun POSCheckoutDialog(
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp),
-                    color = Color(0xFF0F172A)
+                    color = Color(0xFFF8FAFC),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE2E8F0))
                 ) {
                     Column(
                         modifier = Modifier
@@ -186,7 +187,7 @@ fun POSCheckoutDialog(
                             text = "BILLING AMOUNT DUE",
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color(0xFF94A3B8),
+                            color = Color(0xFF64748B),
                             letterSpacing = 1.sp
                         )
                         Spacer(modifier = Modifier.height(4.dp))

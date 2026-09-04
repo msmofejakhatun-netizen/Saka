@@ -129,14 +129,14 @@ fun UdharKhataScreen(
                         onClick = triggerSpeechToText,
                         modifier = Modifier.testTag("udhar_khata_voice_action")
                     ) {
-                        Icon(imageVector = Icons.Default.Mic, contentDescription = "Voice Entry", tint = GoldYellow)
+                        Icon(imageVector = Icons.Default.Mic, contentDescription = "Voice Entry", tint = Color.White)
                     }
 
                     IconButton(
                         onClick = { showAddUdharDialog = true },
                         modifier = Modifier.testTag("udhar_khata_add_customer_action")
                     ) {
-                        Icon(imageVector = Icons.Default.PersonAdd, contentDescription = "Add Customer", tint = EmeraldGreen)
+                        Icon(imageVector = Icons.Default.PersonAdd, contentDescription = "Add Customer", tint = Color.White)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = VyaparRed),
@@ -1941,12 +1941,23 @@ private fun JamaPaymentDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
-            Text(
-                text = "Jama Karein (Receive Payment)",
-                color = EmeraldLight,
-                fontWeight = FontWeight.Bold,
-                fontSize = 18.sp
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .background(Color(0xFFE8F5E9), CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.Default.AddCircle, contentDescription = null, tint = VyaparSuccess, modifier = Modifier.size(20.dp))
+                }
+                Spacer(modifier = Modifier.width(10.dp))
+                Text(
+                    text = "Jama Karein (Receive Payment)",
+                    color = VyaparTextPrimary,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp
+                )
+            }
         },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -1955,6 +1966,14 @@ private fun JamaPaymentDialog(
                     onValueChange = { name = it },
                     label = { Text("Customer Name") },
                     singleLine = true,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = VyaparSuccess,
+                        unfocusedBorderColor = VyaparBorder,
+                        focusedTextColor = VyaparTextPrimary,
+                        unfocusedTextColor = VyaparTextPrimary,
+                        focusedLabelColor = VyaparSuccess,
+                        unfocusedLabelColor = VyaparTextSecondary
+                    ),
                     modifier = Modifier
                         .fillMaxWidth()
                         .testTag("jama_dialog_name_input")
@@ -1966,6 +1985,14 @@ private fun JamaPaymentDialog(
                     label = { Text("Mobile Number") },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = VyaparSuccess,
+                        unfocusedBorderColor = VyaparBorder,
+                        focusedTextColor = VyaparTextPrimary,
+                        unfocusedTextColor = VyaparTextPrimary,
+                        focusedLabelColor = VyaparSuccess,
+                        unfocusedLabelColor = VyaparTextSecondary
+                    ),
                     modifier = Modifier
                         .fillMaxWidth()
                         .testTag("jama_dialog_mobile_input")
@@ -1977,12 +2004,20 @@ private fun JamaPaymentDialog(
                     label = { Text("Amount Received (₹)") },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = VyaparSuccess,
+                        unfocusedBorderColor = VyaparBorder,
+                        focusedTextColor = VyaparTextPrimary,
+                        unfocusedTextColor = VyaparTextPrimary,
+                        focusedLabelColor = VyaparSuccess,
+                        unfocusedLabelColor = VyaparTextSecondary
+                    ),
                     modifier = Modifier
                         .fillMaxWidth()
                         .testTag("jama_dialog_amount_input")
                 )
 
-                Text("Payment Method", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                Text("Payment Method", color = VyaparTextPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     listOf("Cash", "UPI", "Online").forEach { mode ->
                         FilterChip(
@@ -1990,8 +2025,10 @@ private fun JamaPaymentDialog(
                             onClick = { paymentMode = mode },
                             label = { Text(mode, fontSize = 12.sp) },
                             colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = EmeraldGreen,
-                                selectedLabelColor = Color.White
+                                selectedContainerColor = VyaparSuccess,
+                                selectedLabelColor = Color.White,
+                                containerColor = VyaparBg,
+                                labelColor = VyaparTextPrimary
                             )
                         )
                     }
@@ -2002,13 +2039,21 @@ private fun JamaPaymentDialog(
                     onValueChange = { noteInput = it },
                     label = { Text("Note / Remarks (e.g. Monthly Settlement)") },
                     singleLine = true,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = VyaparSuccess,
+                        unfocusedBorderColor = VyaparBorder,
+                        focusedTextColor = VyaparTextPrimary,
+                        unfocusedTextColor = VyaparTextPrimary,
+                        focusedLabelColor = VyaparSuccess,
+                        unfocusedLabelColor = VyaparTextSecondary
+                    ),
                     modifier = Modifier
                         .fillMaxWidth()
                         .testTag("jama_dialog_note_input")
                 )
 
                 errorMsg?.let {
-                    Text(text = it, color = Color(0xFFEF4444), fontSize = 12.sp)
+                    Text(text = it, color = VyaparRed, fontSize = 12.sp)
                 }
             }
         },
@@ -2022,19 +2067,21 @@ private fun JamaPaymentDialog(
                         onSave(name.ifBlank { "Customer" }, mobile, amt, paymentMode, noteInput)
                     }
                 },
-                colors = ButtonDefaults.buttonColors(containerColor = EmeraldGreen),
+                colors = ButtonDefaults.buttonColors(containerColor = VyaparSuccess),
+                shape = RoundedCornerShape(8.dp),
                 modifier = Modifier.testTag("jama_dialog_save_button")
             ) {
-                Text("Save Jama", fontWeight = FontWeight.Bold)
+                Text("Save Jama", fontWeight = FontWeight.Bold, color = Color.White)
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel", color = Color(0xFF94A3B8))
+                Text("Cancel", color = VyaparTextSecondary)
             }
         },
-        containerColor = Color(0xFF0F172A),
-        shape = RoundedCornerShape(16.dp)
+        containerColor = VyaparSurface,
+        shape = RoundedCornerShape(16.dp),
+        modifier = Modifier.border(1.dp, VyaparBorder, RoundedCornerShape(16.dp))
     )
 }
 
@@ -2055,12 +2102,23 @@ private fun AddUdharEntryDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
-            Text(
-                text = "Record New Udhar (Credit)",
-                color = Color(0xFFF87171),
-                fontWeight = FontWeight.Bold,
-                fontSize = 18.sp
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .background(Color(0xFFFFEBEE), CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.Default.RemoveCircle, contentDescription = null, tint = VyaparRed, modifier = Modifier.size(20.dp))
+                }
+                Spacer(modifier = Modifier.width(10.dp))
+                Text(
+                    text = "Record New Udhar (Credit)",
+                    color = VyaparTextPrimary,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp
+                )
+            }
         },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -2069,6 +2127,14 @@ private fun AddUdharEntryDialog(
                     onValueChange = { name = it },
                     label = { Text("Customer Name") },
                     singleLine = true,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = VyaparRed,
+                        unfocusedBorderColor = VyaparBorder,
+                        focusedTextColor = VyaparTextPrimary,
+                        unfocusedTextColor = VyaparTextPrimary,
+                        focusedLabelColor = VyaparRed,
+                        unfocusedLabelColor = VyaparTextSecondary
+                    ),
                     modifier = Modifier
                         .fillMaxWidth()
                         .testTag("add_udhar_dialog_name_input")
@@ -2080,6 +2146,14 @@ private fun AddUdharEntryDialog(
                     label = { Text("Mobile Number") },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = VyaparRed,
+                        unfocusedBorderColor = VyaparBorder,
+                        focusedTextColor = VyaparTextPrimary,
+                        unfocusedTextColor = VyaparTextPrimary,
+                        focusedLabelColor = VyaparRed,
+                        unfocusedLabelColor = VyaparTextSecondary
+                    ),
                     modifier = Modifier
                         .fillMaxWidth()
                         .testTag("add_udhar_dialog_mobile_input")
@@ -2091,6 +2165,14 @@ private fun AddUdharEntryDialog(
                     label = { Text("Udhar Amount (₹)") },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = VyaparRed,
+                        unfocusedBorderColor = VyaparBorder,
+                        focusedTextColor = VyaparTextPrimary,
+                        unfocusedTextColor = VyaparTextPrimary,
+                        focusedLabelColor = VyaparRed,
+                        unfocusedLabelColor = VyaparTextSecondary
+                    ),
                     modifier = Modifier
                         .fillMaxWidth()
                         .testTag("add_udhar_dialog_amount_input")
@@ -2101,13 +2183,21 @@ private fun AddUdharEntryDialog(
                     onValueChange = { noteInput = it },
                     label = { Text("Items / Note (e.g. Kirana Ration)") },
                     singleLine = true,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = VyaparRed,
+                        unfocusedBorderColor = VyaparBorder,
+                        focusedTextColor = VyaparTextPrimary,
+                        unfocusedTextColor = VyaparTextPrimary,
+                        focusedLabelColor = VyaparRed,
+                        unfocusedLabelColor = VyaparTextSecondary
+                    ),
                     modifier = Modifier
                         .fillMaxWidth()
                         .testTag("add_udhar_dialog_note_input")
                 )
 
                 errorMsg?.let {
-                    Text(text = it, color = Color(0xFFEF4444), fontSize = 12.sp)
+                    Text(text = it, color = VyaparRed, fontSize = 12.sp)
                 }
             }
         },
@@ -2121,19 +2211,21 @@ private fun AddUdharEntryDialog(
                         onSave(name.ifBlank { "Customer" }, mobile, amt, noteInput)
                     }
                 },
-                colors = ButtonDefaults.buttonColors(containerColor = RoseRed),
+                colors = ButtonDefaults.buttonColors(containerColor = VyaparRed),
+                shape = RoundedCornerShape(8.dp),
                 modifier = Modifier.testTag("add_udhar_dialog_save_button")
             ) {
-                Text("Save Udhar", fontWeight = FontWeight.Bold)
+                Text("Save Udhar", fontWeight = FontWeight.Bold, color = Color.White)
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel", color = Color(0xFF94A3B8))
+                Text("Cancel", color = VyaparTextSecondary)
             }
         },
-        containerColor = Color(0xFF0F172A),
-        shape = RoundedCornerShape(16.dp)
+        containerColor = VyaparSurface,
+        shape = RoundedCornerShape(16.dp),
+        modifier = Modifier.border(1.dp, VyaparBorder, RoundedCornerShape(16.dp))
     )
 }
 
@@ -2183,26 +2275,26 @@ private fun VoiceUdharEntryDialog(
                     Box(
                         modifier = Modifier
                             .size(36.dp)
-                            .background(GoldYellow, CircleShape),
+                            .background(Color(0xFFFFEBEE), CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(imageVector = Icons.Default.Mic, contentDescription = "Voice", tint = Color.Black, modifier = Modifier.size(20.dp))
+                        Icon(imageVector = Icons.Default.Mic, contentDescription = "Voice", tint = VyaparRed, modifier = Modifier.size(20.dp))
                     }
                     Spacer(modifier = Modifier.width(10.dp))
                     Column {
-                        Text("Voice Udhar Entry", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                        Text("Speak in Hindi / English", color = Color(0xFF94A3B8), fontSize = 11.sp)
+                        Text("Voice Udhar Entry", color = VyaparTextPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                        Text("Speak in Hindi / English", color = VyaparTextSecondary, fontSize = 11.sp)
                     }
                 }
 
                 IconButton(
                     onClick = onTriggerMic,
                     modifier = Modifier
-                        .background(GoldYellow, CircleShape)
+                        .background(VyaparRed, CircleShape)
                         .size(36.dp)
                         .testTag("voice_dialog_mic_button")
                 ) {
-                    Icon(imageVector = Icons.Default.Mic, contentDescription = "Tap to speak", tint = Color.Black, modifier = Modifier.size(20.dp))
+                    Icon(imageVector = Icons.Default.Mic, contentDescription = "Tap to speak", tint = Color.White, modifier = Modifier.size(20.dp))
                 }
             }
         },
@@ -2218,16 +2310,22 @@ private fun VoiceUdharEntryDialog(
                     label = { Text("Spoken Phrase (or type below)") },
                     trailingIcon = {
                         IconButton(onClick = onTriggerMic) {
-                            Icon(imageVector = Icons.Default.Mic, contentDescription = "Mic", tint = GoldYellow)
+                            Icon(imageVector = Icons.Default.Mic, contentDescription = "Mic", tint = VyaparRed)
                         }
                     },
                     modifier = Modifier
                         .fillMaxWidth()
                         .testTag("voice_dialog_transcript_input"),
-                    textStyle = MaterialTheme.typography.bodySmall.copy(color = Color.White, fontSize = 13.sp),
+                    textStyle = MaterialTheme.typography.bodySmall.copy(color = VyaparTextPrimary, fontSize = 13.sp),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = GoldYellow,
-                        unfocusedBorderColor = Color(0x44FFFFFF)
+                        focusedBorderColor = VyaparRed,
+                        unfocusedBorderColor = VyaparBorder,
+                        focusedTextColor = VyaparTextPrimary,
+                        unfocusedTextColor = VyaparTextPrimary,
+                        focusedLabelColor = VyaparRed,
+                        unfocusedLabelColor = VyaparTextSecondary,
+                        focusedContainerColor = VyaparBg,
+                        unfocusedContainerColor = VyaparBg
                     )
                 )
 
@@ -2242,8 +2340,10 @@ private fun VoiceUdharEntryDialog(
                         onClick = { isJama = false },
                         label = { Text("🔴 Udhar (Credit)", fontWeight = FontWeight.Bold) },
                         colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = RoseRed,
-                            selectedLabelColor = Color.White
+                            selectedContainerColor = VyaparRed,
+                            selectedLabelColor = Color.White,
+                            containerColor = VyaparBg,
+                            labelColor = VyaparTextPrimary
                         ),
                         modifier = Modifier.weight(1f).testTag("voice_dialog_type_udhar")
                     )
@@ -2253,8 +2353,10 @@ private fun VoiceUdharEntryDialog(
                         onClick = { isJama = true },
                         label = { Text("🟢 Jama (Received)", fontWeight = FontWeight.Bold) },
                         colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = EmeraldGreen,
-                            selectedLabelColor = Color.White
+                            selectedContainerColor = VyaparSuccess,
+                            selectedLabelColor = Color.White,
+                            containerColor = VyaparBg,
+                            labelColor = VyaparTextPrimary
                         ),
                         modifier = Modifier.weight(1f).testTag("voice_dialog_type_jama")
                     )
@@ -2262,27 +2364,30 @@ private fun VoiceUdharEntryDialog(
 
                 // Parsed Summary Badge
                 Card(
-                    colors = CardDefaults.cardColors(containerColor = Color(0x2210B981)),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFEFF6FF)),
                     shape = RoundedCornerShape(10.dp),
-                    modifier = Modifier.fillMaxWidth().border(1.dp, Color(0x3310B981), RoundedCornerShape(10.dp))
+                    modifier = Modifier.fillMaxWidth().border(1.dp, Color(0xFFBFDBFE), RoundedCornerShape(10.dp))
                 ) {
                     Column(modifier = Modifier.padding(10.dp)) {
-                        Text("✨ SMART EXTRACTED DETAILS", color = EmeraldLight, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                        Text("✨ SMART EXTRACTED DETAILS", color = VyaparDeepBlue, fontSize = 10.sp, fontWeight = FontWeight.Bold)
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
                             text = if (parsedResult.matchedCustomer != null)
                                 "Matched Customer: ${parsedResult.matchedCustomer.name} (${parsedResult.matchedCustomer.mobileNumber})"
                             else "Extracted Customer Name: ${parsedResult.customerName ?: "Not detected"}",
-                            color = Color.White,
-                            fontSize = 12.sp
+                            color = VyaparTextPrimary,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium
                         )
                         Text(
                             text = "Extracted Amount: ₹${parsedResult.amount ?: 0.0} | Items: ${parsedResult.itemsOrNote}",
-                            color = Color(0xFF94A3B8),
+                            color = VyaparTextSecondary,
                             fontSize = 11.sp
                         )
                     }
                 }
+
+                val activeColor = if (isJama) VyaparSuccess else VyaparRed
 
                 // Customer Name Input
                 OutlinedTextField(
@@ -2296,6 +2401,14 @@ private fun VoiceUdharEntryDialog(
                     },
                     label = { Text("Customer Name") },
                     singleLine = true,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = activeColor,
+                        unfocusedBorderColor = VyaparBorder,
+                        focusedTextColor = VyaparTextPrimary,
+                        unfocusedTextColor = VyaparTextPrimary,
+                        focusedLabelColor = activeColor,
+                        unfocusedLabelColor = VyaparTextSecondary
+                    ),
                     modifier = Modifier.fillMaxWidth().testTag("voice_dialog_name_input")
                 )
 
@@ -2306,6 +2419,14 @@ private fun VoiceUdharEntryDialog(
                     label = { Text("Mobile Number (10 digits)") },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = activeColor,
+                        unfocusedBorderColor = VyaparBorder,
+                        focusedTextColor = VyaparTextPrimary,
+                        unfocusedTextColor = VyaparTextPrimary,
+                        focusedLabelColor = activeColor,
+                        unfocusedLabelColor = VyaparTextSecondary
+                    ),
                     modifier = Modifier.fillMaxWidth().testTag("voice_dialog_mobile_input")
                 )
 
@@ -2316,6 +2437,14 @@ private fun VoiceUdharEntryDialog(
                     label = { Text("Amount (₹)") },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = activeColor,
+                        unfocusedBorderColor = VyaparBorder,
+                        focusedTextColor = VyaparTextPrimary,
+                        unfocusedTextColor = VyaparTextPrimary,
+                        focusedLabelColor = activeColor,
+                        unfocusedLabelColor = VyaparTextSecondary
+                    ),
                     modifier = Modifier.fillMaxWidth().testTag("voice_dialog_amount_input")
                 )
 
@@ -2325,11 +2454,19 @@ private fun VoiceUdharEntryDialog(
                     onValueChange = { noteInput = it },
                     label = { Text("Items / Description") },
                     singleLine = true,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = activeColor,
+                        unfocusedBorderColor = VyaparBorder,
+                        focusedTextColor = VyaparTextPrimary,
+                        unfocusedTextColor = VyaparTextPrimary,
+                        focusedLabelColor = activeColor,
+                        unfocusedLabelColor = VyaparTextSecondary
+                    ),
                     modifier = Modifier.fillMaxWidth().testTag("voice_dialog_note_input")
                 )
 
                 errorMsg?.let {
-                    Text(text = it, color = Color(0xFFEF4444), fontSize = 12.sp)
+                    Text(text = it, color = VyaparRed, fontSize = 12.sp)
                 }
             }
         },
@@ -2350,7 +2487,8 @@ private fun VoiceUdharEntryDialog(
                         }
                     }
                 },
-                colors = ButtonDefaults.buttonColors(containerColor = if (isJama) EmeraldGreen else RoseRed),
+                colors = ButtonDefaults.buttonColors(containerColor = if (isJama) VyaparSuccess else VyaparRed),
+                shape = RoundedCornerShape(8.dp),
                 modifier = Modifier.fillMaxWidth().testTag("voice_dialog_save_button")
             ) {
                 Icon(
@@ -2361,7 +2499,8 @@ private fun VoiceUdharEntryDialog(
                 Spacer(modifier = Modifier.width(6.dp))
                 Text(
                     text = if (isJama) "Save Jama (₹${amountInput.ifBlank { "0" }})" else "Save Udhar (₹${amountInput.ifBlank { "0" }})",
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
                 )
             }
         },
@@ -2370,10 +2509,11 @@ private fun VoiceUdharEntryDialog(
                 onClick = onDismiss,
                 modifier = Modifier.testTag("voice_dialog_cancel_button")
             ) {
-                Text("Cancel", color = Color(0xFF94A3B8))
+                Text("Cancel", color = VyaparTextSecondary)
             }
         },
-        containerColor = Color(0xFF0F172A),
-        shape = RoundedCornerShape(18.dp)
+        containerColor = VyaparSurface,
+        shape = RoundedCornerShape(18.dp),
+        modifier = Modifier.border(1.dp, VyaparBorder, RoundedCornerShape(18.dp))
     )
 }

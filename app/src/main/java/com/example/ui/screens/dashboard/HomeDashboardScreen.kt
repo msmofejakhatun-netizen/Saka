@@ -68,35 +68,29 @@ fun WelcomeTrialOnboardingDialog(
         Box(
             modifier = modifier
                 .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.75f))
+                .background(Color.Black.copy(alpha = 0.5f))
                 .padding(24.dp)
                 .testTag("welcome_dialog_backdrop"),
             contentAlignment = Alignment.Center
         ) {
             Card(
-                shape = RoundedCornerShape(24.dp),
-                colors = CardDefaults.cardColors(containerColor = DarkSlateNavy),
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(containerColor = VyaparSurface),
                 border = androidx.compose.foundation.BorderStroke(
-                    1.5.dp,
-                    Brush.linearGradient(
-                        listOf(
-                            EmeraldGreen.copy(alpha = 0.6f),
-                            ElectricViolet.copy(alpha = 0.3f),
-                            Color(0x22FFFFFF)
-                        )
-                    )
+                    1.dp,
+                    VyaparBorder
                 ),
-                elevation = CardDefaults.cardElevation(defaultElevation = 16.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 12.dp),
                 modifier = Modifier
                     .fillMaxWidth()
                     .widthIn(max = 440.dp)
-                    .clip(RoundedCornerShape(24.dp))
+                    .clip(RoundedCornerShape(20.dp))
                     .testTag("welcome_dialog")
             ) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 24.dp, vertical = 28.dp)
+                        .padding(horizontal = 24.dp, vertical = 24.dp)
                         .verticalScroll(rememberScrollState()),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
@@ -110,13 +104,13 @@ fun WelcomeTrialOnboardingDialog(
                             modifier = Modifier
                                 .size(32.dp)
                                 .clip(CircleShape)
-                                .background(Color(0x22FFFFFF))
+                                .background(Color(0xFFF1F5F9))
                                 .testTag("welcome_dialog_close_button")
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Close,
                                 contentDescription = "Close",
-                                tint = Color(0xFF94A3B8),
+                                tint = VyaparTextSecondary,
                                 modifier = Modifier.size(18.dp)
                             )
                         }
@@ -127,34 +121,26 @@ fun WelcomeTrialOnboardingDialog(
                     // Hero Rocket Icon Badge
                     Box(
                         modifier = Modifier
-                            .size(72.dp)
+                            .size(68.dp)
                             .clip(CircleShape)
-                            .background(
-                                Brush.radialGradient(
-                                    listOf(
-                                        EmeraldGreen.copy(alpha = 0.35f),
-                                        Color(0x1110B981),
-                                        Color.Transparent
-                                    )
-                                )
-                            )
-                            .border(1.5.dp, EmeraldGreen.copy(alpha = 0.5f), CircleShape),
+                            .background(VyaparWarningLight)
+                            .border(1.5.dp, Color(0xFFFFCDD2), CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
                             text = "🚀",
-                            fontSize = 34.sp
+                            fontSize = 32.sp
                         )
                     }
 
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(14.dp))
 
                     // Header: "Welcome to SmartPOS! 🚀"
                     Text(
                         text = "Welcome to SmartPOS! 🚀",
                         style = MaterialTheme.typography.headlineSmall.copy(
                             fontWeight = FontWeight.ExtraBold,
-                            color = Color.White,
+                            color = VyaparTextPrimary,
                             letterSpacing = (-0.5).sp
                         ),
                         textAlign = TextAlign.Center,
@@ -165,11 +151,11 @@ fun WelcomeTrialOnboardingDialog(
 
                     // Badge: "3-DAY FREE TRIAL ACTIVE"
                     Surface(
-                        color = EmeraldGreen.copy(alpha = 0.15f * badgePulseAlpha),
+                        color = VyaparSuccessLight.copy(alpha = badgePulseAlpha),
                         shape = RoundedCornerShape(50.dp),
                         border = androidx.compose.foundation.BorderStroke(
                             1.dp,
-                            EmeraldGreen.copy(alpha = 0.8f * badgePulseAlpha)
+                            VyaparSuccess.copy(alpha = badgePulseAlpha)
                         ),
                         modifier = Modifier.testTag("welcome_badge")
                     ) {
@@ -181,12 +167,12 @@ fun WelcomeTrialOnboardingDialog(
                                 modifier = Modifier
                                     .size(8.dp)
                                     .clip(CircleShape)
-                                    .background(EmeraldLight)
+                                    .background(VyaparSuccess)
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
                                 text = "3-DAY FREE TRIAL ACTIVE",
-                                color = EmeraldLight,
+                                color = VyaparSuccess,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 11.sp,
                                 letterSpacing = 0.8.sp
@@ -200,7 +186,7 @@ fun WelcomeTrialOnboardingDialog(
                     Text(
                         text = "You have full access to Pro features: Unlimited Invoices, Thermal Printing, Udhar Khata, and Cloud Sync.",
                         style = MaterialTheme.typography.bodyMedium.copy(
-                            color = Color(0xFFCBD5E1),
+                            color = VyaparTextSecondary,
                             lineHeight = 20.sp
                         ),
                         textAlign = TextAlign.Center,
@@ -210,15 +196,15 @@ fun WelcomeTrialOnboardingDialog(
                             .testTag("welcome_description")
                     )
 
-                    Spacer(modifier = Modifier.height(18.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
 
                     // Key Features List
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(14.dp))
-                            .background(DeepNavy.copy(alpha = 0.6f))
-                            .border(1.dp, Color(0x22FFFFFF), RoundedCornerShape(14.dp))
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(Color(0xFFF8FAFC))
+                            .border(1.dp, VyaparBorder, RoundedCornerShape(12.dp))
                             .padding(14.dp),
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
@@ -226,45 +212,45 @@ fun WelcomeTrialOnboardingDialog(
                             icon = Icons.Default.ReceiptLong,
                             title = "Unlimited Invoices",
                             subtitle = "Lightning-fast GST & non-GST billing",
-                            iconColor = EmeraldGreen
+                            iconColor = VyaparRed
                         )
-                        HorizontalDivider(color = Color(0x1AFFFFFF), thickness = 0.5.dp)
+                        HorizontalDivider(color = VyaparDivider, thickness = 1.dp)
                         FeatureRowItem(
                             icon = Icons.Default.Print,
                             title = "ESC/POS Thermal Printing",
                             subtitle = "58mm & 80mm Bluetooth receipts",
-                            iconColor = ElectricVioletLight
+                            iconColor = VyaparDeepBlue
                         )
-                        HorizontalDivider(color = Color(0x1AFFFFFF), thickness = 0.5.dp)
+                        HorizontalDivider(color = VyaparDivider, thickness = 1.dp)
                         FeatureRowItem(
                             icon = Icons.Default.AccountBalanceWallet,
                             title = "Digital Udhar Khata",
                             subtitle = "Customer credit & WhatsApp reminders",
-                            iconColor = GoldYellow
+                            iconColor = Color(0xFFD97706)
                         )
-                        HorizontalDivider(color = Color(0x1AFFFFFF), thickness = 0.5.dp)
+                        HorizontalDivider(color = VyaparDivider, thickness = 1.dp)
                         FeatureRowItem(
                             icon = Icons.Default.CloudSync,
                             title = "Real-time Cloud Sync",
                             subtitle = "Offline-first database with auto-sync",
-                            iconColor = EmeraldLight
+                            iconColor = VyaparSuccess
                         )
                     }
 
-                    Spacer(modifier = Modifier.height(22.dp))
+                    Spacer(modifier = Modifier.height(20.dp))
 
                     // Primary Action Button: "Start Billing"
                     Button(
                         onClick = onStartBilling,
-                        shape = RoundedCornerShape(14.dp),
+                        shape = RoundedCornerShape(12.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = EmeraldGreen,
+                            containerColor = VyaparRed,
                             contentColor = Color.White
                         ),
                         contentPadding = PaddingValues(vertical = 14.dp),
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(52.dp)
+                            .height(50.dp)
                             .testTag("start_billing_btn")
                     ) {
                         Row(
@@ -273,7 +259,7 @@ fun WelcomeTrialOnboardingDialog(
                         ) {
                             Text(
                                 text = "Start Billing",
-                                fontSize = 16.sp,
+                                fontSize = 15.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color.White
                             )
@@ -293,7 +279,7 @@ fun WelcomeTrialOnboardingDialog(
                     Text(
                         text = "Auto-renewal at ₹79/mo after trial unless cancelled.",
                         style = MaterialTheme.typography.bodySmall.copy(
-                            color = Color(0xFF94A3B8),
+                            color = VyaparTextSecondary,
                             fontSize = 11.sp
                         ),
                         textAlign = TextAlign.Center,
@@ -322,7 +308,7 @@ private fun FeatureRowItem(
             modifier = Modifier
                 .size(34.dp)
                 .clip(RoundedCornerShape(8.dp))
-                .background(iconColor.copy(alpha = 0.15f)),
+                .background(iconColor.copy(alpha = 0.12f)),
             contentAlignment = Alignment.Center
         ) {
             Icon(
@@ -338,14 +324,14 @@ private fun FeatureRowItem(
                 text = title,
                 style = MaterialTheme.typography.bodyMedium.copy(
                     fontWeight = FontWeight.Bold,
-                    color = Color.White,
+                    color = VyaparTextPrimary,
                     fontSize = 13.sp
                 )
             )
             Text(
                 text = subtitle,
                 style = MaterialTheme.typography.bodySmall.copy(
-                    color = Color(0xFF94A3B8),
+                    color = VyaparTextSecondary,
                     fontSize = 11.sp
                 )
             )

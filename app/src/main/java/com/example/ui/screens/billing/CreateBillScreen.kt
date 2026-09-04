@@ -3,6 +3,7 @@ package com.example.ui.screens.billing
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -100,13 +101,7 @@ import com.example.ui.components.UpiPaymentDialog
 import androidx.compose.material.icons.filled.QrCodeScanner
 import android.widget.Toast
 import androidx.compose.ui.platform.LocalContext
-import com.example.ui.theme.AccentPink
-import com.example.ui.theme.DarkGray
-import com.example.ui.theme.ElectricViolet
-import com.example.ui.theme.ElectricVioletLight
-import com.example.ui.theme.EmeraldGreen
-import com.example.ui.theme.EmeraldLight
-import com.example.ui.theme.GoldYellow
+import com.example.ui.theme.*
 import com.example.ui.viewmodel.BillingViewModel
 import com.example.ui.viewmodel.POSCartItem
 import com.example.util.KiranaUnitUtils
@@ -175,7 +170,7 @@ fun CreateBillScreen(
                         Icon(
                             imageVector = Icons.Default.PointOfSale,
                             contentDescription = null,
-                            tint = EmeraldGreen,
+                            tint = Color.White,
                             modifier = Modifier.size(24.dp)
                         )
                         Spacer(modifier = Modifier.width(10.dp))
@@ -205,37 +200,29 @@ fun CreateBillScreen(
                         onClick = { showBluetoothPrinterDialog = true },
                         modifier = Modifier.testTag("pos_bluetooth_printer_topbar_btn")
                     ) {
-                        Icon(Icons.Default.Print, contentDescription = "Thermal Printer", tint = EmeraldGreen)
+                        Icon(Icons.Default.Print, contentDescription = "Thermal Printer", tint = Color.White)
                     }
                     if (viewModel.posCartItems.isNotEmpty()) {
                         TextButton(
                             onClick = { viewModel.clearPOSCart() },
                             modifier = Modifier.testTag("pos_clear_cart_button")
                         ) {
-                            Text("Clear Cart", color = AccentPink, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                            Text("Clear Cart", color = Color(0xFFFFCDD2), fontSize = 12.sp, fontWeight = FontWeight.Bold)
                         }
                     }
                 },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = Color(0x99090D22)
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = VyaparRed
                 ),
                 modifier = Modifier.testTag("pos_top_bar")
             )
         },
-        containerColor = Color.Transparent
+        containerColor = VyaparBg
     ) { innerPadding ->
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(
-                            Color(0xFF0B0F28),
-                            DarkGray,
-                            Color(0xFF090C1E)
-                        )
-                    )
-                )
+                .background(VyaparBg)
                 .padding(innerPadding)
         ) {
             LazyColumn(
@@ -250,11 +237,11 @@ fun CreateBillScreen(
                     item {
                         Card(
                             onClick = { viewModel.openPaywall() },
-                            colors = CardDefaults.cardColors(containerColor = Color(0x33EF4444)),
+                            colors = CardDefaults.cardColors(containerColor = Color(0xFFFFEBEE)),
                             shape = RoundedCornerShape(12.dp),
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .border(1.dp, Color(0x66EF4444), RoundedCornerShape(12.dp))
+                                .border(1.dp, Color(0xFFEF9A9A), RoundedCornerShape(12.dp))
                                 .padding(top = 4.dp)
                                 .testTag("pos_subscription_expired_banner")
                         ) {
@@ -269,27 +256,27 @@ fun CreateBillScreen(
                                     Icon(
                                         imageVector = Icons.Default.Close,
                                         contentDescription = "Expired",
-                                        tint = Color(0xFFEF4444),
+                                        tint = VyaparRed,
                                         modifier = Modifier.size(22.dp)
                                     )
                                     Spacer(modifier = Modifier.width(10.dp))
                                     Column {
                                         Text(
                                             text = "Subscription Expired",
-                                            color = Color.White,
+                                            color = VyaparRedDark,
                                             fontWeight = FontWeight.Bold,
                                             fontSize = 13.sp
                                         )
                                         Text(
                                             text = "Complete payment of ₹79 to unlock all features.",
-                                            color = Color(0xFFFCA5A5),
+                                            color = VyaparTextSecondary,
                                             fontSize = 11.sp
                                         )
                                     }
                                 }
                                 Button(
                                     onClick = { viewModel.openPaywall() },
-                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF4444)),
+                                    colors = ButtonDefaults.buttonColors(containerColor = VyaparRed),
                                     shape = RoundedCornerShape(8.dp),
                                     contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
                                     modifier = Modifier.height(32.dp).testTag("pos_renew_subscription_btn")
@@ -305,11 +292,11 @@ fun CreateBillScreen(
                 if (viewModel.isEditingBill) {
                     item {
                         Card(
-                            colors = CardDefaults.cardColors(containerColor = Color(0x33F59E0B)),
+                            colors = CardDefaults.cardColors(containerColor = Color(0xFFFFFBEB)),
                             shape = RoundedCornerShape(12.dp),
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .border(1.dp, Color(0xFFF59E0B), RoundedCornerShape(12.dp))
+                                .border(1.dp, Color(0xFFFDE68A), RoundedCornerShape(12.dp))
                                 .padding(top = 4.dp)
                                 .testTag("editing_bill_banner")
                         ) {
@@ -324,20 +311,20 @@ fun CreateBillScreen(
                                     Icon(
                                         imageVector = Icons.Default.Edit,
                                         contentDescription = "Editing Bill",
-                                        tint = Color(0xFFFBBF24),
+                                        tint = Color(0xFFD97706),
                                         modifier = Modifier.size(20.dp)
                                     )
                                     Spacer(modifier = Modifier.width(8.dp))
                                     Column {
                                         Text(
                                             text = "Editing Bill #${viewModel.editingInvoice?.id ?: ""}",
-                                            color = Color.White,
+                                            color = VyaparTextPrimary,
                                             fontWeight = FontWeight.Bold,
                                             fontSize = 13.sp
                                         )
                                         Text(
                                             text = "Modify items/customer and tap Update Bill",
-                                            color = Color(0xFFFCD34D),
+                                            color = VyaparTextSecondary,
                                             fontSize = 11.sp
                                         )
                                     }
@@ -346,7 +333,7 @@ fun CreateBillScreen(
                                     onClick = { viewModel.cancelEditingBill() },
                                     modifier = Modifier.testTag("cancel_edit_bill_button")
                                 ) {
-                                    Text("Cancel Edit", color = Color(0xFFF87171), fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                    Text("Cancel Edit", color = VyaparRed, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                                 }
                             }
                         }
@@ -363,11 +350,12 @@ fun CreateBillScreen(
 
                     Spacer(modifier = Modifier.height(4.dp))
                     Card(
-                        colors = CardDefaults.cardColors(containerColor = Color(0x1F1E295D)),
-                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(containerColor = VyaparSurface),
+                        shape = RoundedCornerShape(12.dp),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 1.5.dp),
                         modifier = Modifier
                             .fillMaxWidth()
-                            .border(1.dp, Color(0x22FFFFFF), RoundedCornerShape(16.dp))
+                            .border(1.dp, VyaparBorder, RoundedCornerShape(12.dp))
                             .testTag("pos_customer_card")
                     ) {
                         Column(
@@ -383,27 +371,27 @@ fun CreateBillScreen(
                                     Icon(
                                         imageVector = Icons.Default.Person,
                                         contentDescription = "Customer",
-                                        tint = EmeraldGreen,
+                                        tint = VyaparRed,
                                         modifier = Modifier.size(20.dp)
                                     )
                                     Spacer(modifier = Modifier.width(8.dp))
                                     Column {
                                         Text(
                                             text = if (viewModel.posCustomerName.isBlank() || viewModel.posCustomerName == "Walk-in Customer") "Walk-in Cash Sale" else viewModel.posCustomerName,
-                                            color = Color.White,
+                                            color = VyaparTextPrimary,
                                             fontWeight = FontWeight.Bold,
                                             fontSize = 14.sp
                                         )
                                         if (viewModel.posCustomerMobile.isNotBlank()) {
                                             Text(
                                                 text = "Mob: ${viewModel.posCustomerMobile}",
-                                                color = Color(0xFF94A3B8),
+                                                color = VyaparTextSecondary,
                                                 fontSize = 11.sp
                                             )
                                         } else if (!showCustomerFormFields) {
                                             Text(
                                                 text = "Default POS Mode • Fast Checkout",
-                                                color = Color(0xFF94A3B8),
+                                                color = VyaparTextSecondary,
                                                 fontSize = 10.sp
                                             )
                                         }
@@ -420,7 +408,7 @@ fun CreateBillScreen(
                                             },
                                             contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
                                         ) {
-                                            Text("Reset Walk-in", color = AccentPink, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                                            Text("Reset Walk-in", color = VyaparRed, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
                                         }
                                     } else if (!showCustomerFormFields) {
                                         Surface(
@@ -428,7 +416,7 @@ fun CreateBillScreen(
                                                 showCustomerPickerModal = true
                                                 isCustomerFieldsExpanded = true
                                             },
-                                            color = Color(0x3310B981),
+                                            color = Color(0xFFFFEBEE),
                                             shape = RoundedCornerShape(6.dp),
                                             modifier = Modifier.testTag("pos_open_customer_search_btn")
                                         ) {
@@ -436,9 +424,9 @@ fun CreateBillScreen(
                                                 verticalAlignment = Alignment.CenterVertically,
                                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp)
                                             ) {
-                                                Icon(Icons.Default.PersonAdd, contentDescription = "Add Customer", tint = EmeraldLight, modifier = Modifier.size(13.dp))
+                                                Icon(Icons.Default.PersonAdd, contentDescription = "Add Customer", tint = VyaparRed, modifier = Modifier.size(13.dp))
                                                 Spacer(modifier = Modifier.width(4.dp))
-                                                Text("Customer (+)", color = EmeraldLight, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                                Text("Customer (+)", color = VyaparRed, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                                             }
                                         }
                                     }
@@ -454,13 +442,15 @@ fun CreateBillScreen(
                                     OutlinedTextField(
                                         value = viewModel.posTableNumber,
                                         onValueChange = { viewModel.posTableNumber = it },
-                                        label = { Text("Table No. / Counter", color = Color(0xFF94A3B8), fontSize = 11.sp) },
-                                        placeholder = { Text("Table 4", color = Color(0xFF64748B)) },
+                                        label = { Text("Table No. / Counter", color = VyaparTextSecondary, fontSize = 11.sp) },
+                                        placeholder = { Text("Table 4", color = Color(0xFF94A3B8)) },
                                         colors = OutlinedTextFieldDefaults.colors(
-                                            focusedBorderColor = EmeraldGreen,
-                                            unfocusedBorderColor = Color(0x22FFFFFF),
-                                            focusedTextColor = Color.White,
-                                            unfocusedTextColor = Color.White
+                                            focusedBorderColor = VyaparRed,
+                                            unfocusedBorderColor = VyaparBorder,
+                                            focusedTextColor = VyaparTextPrimary,
+                                            unfocusedTextColor = VyaparTextPrimary,
+                                            focusedContainerColor = VyaparSurface,
+                                            unfocusedContainerColor = Color(0xFFF8FAFC)
                                         ),
                                         singleLine = true,
                                         modifier = Modifier
@@ -470,7 +460,7 @@ fun CreateBillScreen(
 
                                     val orderTypes = listOf("Dine-in", "Takeaway", "Delivery")
                                     Column(modifier = Modifier.weight(1.2f)) {
-                                        Text("Order Type:", color = Color(0xFF94A3B8), fontSize = 10.sp)
+                                        Text("Order Type:", color = VyaparTextSecondary, fontSize = 10.sp)
                                         Spacer(modifier = Modifier.height(2.dp))
                                         Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                                             orderTypes.forEach { type ->
@@ -478,13 +468,13 @@ fun CreateBillScreen(
                                                 Box(
                                                     modifier = Modifier
                                                         .clip(RoundedCornerShape(6.dp))
-                                                        .background(if (isSel) EmeraldGreen else Color(0x22FFFFFF))
+                                                        .background(if (isSel) VyaparRed else Color(0xFFF1F5F9))
                                                         .clickable { viewModel.posOrderType = type }
                                                         .padding(horizontal = 6.dp, vertical = 6.dp)
                                                 ) {
                                                     Text(
                                                         text = type,
-                                                        color = Color.White,
+                                                        color = if (isSel) Color.White else VyaparTextPrimary,
                                                         fontSize = 10.sp,
                                                         fontWeight = FontWeight.Bold
                                                     )
@@ -501,21 +491,23 @@ fun CreateBillScreen(
                                     OutlinedTextField(
                                         value = viewModel.posCustomerName,
                                         onValueChange = { viewModel.posCustomerName = it },
-                                        label = { Text("Customer Name *", color = Color(0xFF94A3B8), fontSize = 12.sp) },
-                                        leadingIcon = { Icon(Icons.Default.Person, contentDescription = null, tint = EmeraldGreen, modifier = Modifier.size(18.dp)) },
+                                        label = { Text("Customer Name *", color = VyaparTextSecondary, fontSize = 12.sp) },
+                                        leadingIcon = { Icon(Icons.Default.Person, contentDescription = null, tint = VyaparRed, modifier = Modifier.size(18.dp)) },
                                         trailingIcon = {
                                             IconButton(onClick = {
                                                 showCustomerPickerModal = true
                                                 isCustomerFieldsExpanded = true
                                             }) {
-                                                Icon(Icons.Default.Search, contentDescription = "Search Customer", tint = EmeraldGreen, modifier = Modifier.size(20.dp))
+                                                Icon(Icons.Default.Search, contentDescription = "Search Customer", tint = VyaparRed, modifier = Modifier.size(20.dp))
                                             }
                                         },
                                         colors = OutlinedTextFieldDefaults.colors(
-                                            focusedBorderColor = EmeraldGreen,
-                                            unfocusedBorderColor = Color(0x22FFFFFF),
-                                            focusedTextColor = Color.White,
-                                            unfocusedTextColor = Color.White
+                                            focusedBorderColor = VyaparRed,
+                                            unfocusedBorderColor = VyaparBorder,
+                                            focusedTextColor = VyaparTextPrimary,
+                                            unfocusedTextColor = VyaparTextPrimary,
+                                            focusedContainerColor = VyaparSurface,
+                                            unfocusedContainerColor = Color(0xFFF8FAFC)
                                         ),
                                         singleLine = true,
                                         modifier = Modifier
@@ -526,13 +518,15 @@ fun CreateBillScreen(
                                     OutlinedTextField(
                                         value = viewModel.posCustomerMobile,
                                         onValueChange = { viewModel.posCustomerMobile = it },
-                                        label = { Text("Mobile (Opt)", color = Color(0xFF94A3B8), fontSize = 12.sp) },
-                                        leadingIcon = { Icon(Icons.Default.Phone, contentDescription = null, tint = EmeraldGreen, modifier = Modifier.size(18.dp)) },
+                                        label = { Text("Mobile (Opt)", color = VyaparTextSecondary, fontSize = 12.sp) },
+                                        leadingIcon = { Icon(Icons.Default.Phone, contentDescription = null, tint = VyaparRed, modifier = Modifier.size(18.dp)) },
                                         colors = OutlinedTextFieldDefaults.colors(
-                                            focusedBorderColor = EmeraldGreen,
-                                            unfocusedBorderColor = Color(0x22FFFFFF),
-                                            focusedTextColor = Color.White,
-                                            unfocusedTextColor = Color.White
+                                            focusedBorderColor = VyaparRed,
+                                            unfocusedBorderColor = VyaparBorder,
+                                            focusedTextColor = VyaparTextPrimary,
+                                            unfocusedTextColor = VyaparTextPrimary,
+                                            focusedContainerColor = VyaparSurface,
+                                            unfocusedContainerColor = Color(0xFFF8FAFC)
                                         ),
                                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
                                         singleLine = true,
@@ -547,13 +541,15 @@ fun CreateBillScreen(
                                         OutlinedTextField(
                                             value = viewModel.posDoctorName,
                                             onValueChange = { viewModel.posDoctorName = it },
-                                            label = { Text("Doctor Name (Opt)", color = Color(0xFF94A3B8), fontSize = 11.sp) },
+                                            label = { Text("Doctor Name (Opt)", color = VyaparTextSecondary, fontSize = 11.sp) },
                                             placeholder = { Text("Dr. Sharma") },
                                             colors = OutlinedTextFieldDefaults.colors(
-                                                focusedBorderColor = EmeraldGreen,
-                                                unfocusedBorderColor = Color(0x22FFFFFF),
-                                                focusedTextColor = Color.White,
-                                                unfocusedTextColor = Color.White
+                                                focusedBorderColor = VyaparRed,
+                                                unfocusedBorderColor = VyaparBorder,
+                                                focusedTextColor = VyaparTextPrimary,
+                                                unfocusedTextColor = VyaparTextPrimary,
+                                                focusedContainerColor = VyaparSurface,
+                                                unfocusedContainerColor = Color(0xFFF8FAFC)
                                             ),
                                             singleLine = true,
                                             modifier = Modifier
@@ -564,13 +560,15 @@ fun CreateBillScreen(
                                         OutlinedTextField(
                                             value = viewModel.posPatientInfo,
                                             onValueChange = { viewModel.posPatientInfo = it },
-                                            label = { Text("Patient Name/Age (Opt)", color = Color(0xFF94A3B8), fontSize = 11.sp) },
+                                            label = { Text("Patient Name/Age (Opt)", color = VyaparTextSecondary, fontSize = 11.sp) },
                                             placeholder = { Text("Rahul / 32Y") },
                                             colors = OutlinedTextFieldDefaults.colors(
-                                                focusedBorderColor = EmeraldGreen,
-                                                unfocusedBorderColor = Color(0x22FFFFFF),
-                                                focusedTextColor = Color.White,
-                                                unfocusedTextColor = Color.White
+                                                focusedBorderColor = VyaparRed,
+                                                unfocusedBorderColor = VyaparBorder,
+                                                focusedTextColor = VyaparTextPrimary,
+                                                unfocusedTextColor = VyaparTextPrimary,
+                                                focusedContainerColor = VyaparSurface,
+                                                unfocusedContainerColor = Color(0xFFF8FAFC)
                                             ),
                                             singleLine = true,
                                             modifier = Modifier
@@ -585,8 +583,9 @@ fun CreateBillScreen(
                                         showCustomerPickerModal = true
                                         isCustomerFieldsExpanded = true
                                     },
-                                    color = Color(0x11FFFFFF),
+                                    color = Color(0xFFF8FAFC),
                                     shape = RoundedCornerShape(8.dp),
+                                    border = BorderStroke(1.dp, VyaparBorder),
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .testTag("pos_customer_picker_banner")
@@ -597,11 +596,11 @@ fun CreateBillScreen(
                                         horizontalArrangement = Arrangement.SpaceBetween
                                     ) {
                                         Row(verticalAlignment = Alignment.CenterVertically) {
-                                            Icon(Icons.Default.PersonAdd, contentDescription = null, tint = EmeraldLight, modifier = Modifier.size(14.dp))
+                                            Icon(Icons.Default.PersonAdd, contentDescription = null, tint = VyaparRed, modifier = Modifier.size(14.dp))
                                             Spacer(modifier = Modifier.width(6.dp))
-                                            Text("Search Saved Customers or Register New (+)", color = EmeraldLight, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                                            Text("Search Saved Customers or Register New (+)", color = VyaparDeepBlue, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
                                         }
-                                        Icon(Icons.Default.Search, contentDescription = null, tint = Color(0xFF94A3B8), modifier = Modifier.size(14.dp))
+                                        Icon(Icons.Default.Search, contentDescription = null, tint = VyaparTextSecondary, modifier = Modifier.size(14.dp))
                                     }
                                 }
                             }
@@ -612,11 +611,12 @@ fun CreateBillScreen(
                 // 2. Product Picker & Inventory Search Engine
                 item {
                     Card(
-                        colors = CardDefaults.cardColors(containerColor = Color(0x151E295D)),
-                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(containerColor = VyaparSurface),
+                        shape = RoundedCornerShape(12.dp),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 1.5.dp),
                         modifier = Modifier
                             .fillMaxWidth()
-                            .border(1.dp, Color(0x18FFFFFF), RoundedCornerShape(16.dp))
+                            .border(1.dp, VyaparBorder, RoundedCornerShape(12.dp))
                     ) {
                         Column(
                             modifier = Modifier.padding(14.dp),
@@ -626,20 +626,20 @@ fun CreateBillScreen(
                                 Icon(
                                     imageVector = Icons.Default.Inventory2,
                                     contentDescription = "Products",
-                                    tint = GoldYellow,
+                                    tint = VyaparRed,
                                     modifier = Modifier.size(20.dp)
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
                                     text = "Select Products from Inventory",
-                                    color = Color.White,
+                                    color = VyaparTextPrimary,
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 14.sp
                                 )
                                 Spacer(modifier = Modifier.weight(1f))
                                 Text(
                                     text = "${filteredProducts.size} items available",
-                                    color = Color(0xFF94A3B8),
+                                    color = VyaparTextSecondary,
                                     fontSize = 11.sp
                                 )
                             }
@@ -656,7 +656,7 @@ fun CreateBillScreen(
                                     placeholder = {
                                         Text(
                                             "Search products...",
-                                            style = MaterialTheme.typography.bodyMedium.copy(color = Color(0xFF94A3B8)),
+                                            style = MaterialTheme.typography.bodyMedium.copy(color = VyaparTextSecondary),
                                             maxLines = 1
                                         )
                                     },
@@ -664,7 +664,7 @@ fun CreateBillScreen(
                                         Icon(
                                             imageVector = Icons.Default.Search,
                                             contentDescription = "Search Icon",
-                                            tint = Color(0xFF10B981), // Mint green accent
+                                            tint = VyaparRed,
                                             modifier = Modifier.size(20.dp)
                                         )
                                     },
@@ -677,35 +677,35 @@ fun CreateBillScreen(
                                                 Icon(
                                                     Icons.Default.Clear,
                                                     contentDescription = "Clear Search",
-                                                    tint = Color(0xFF94A3B8),
+                                                    tint = VyaparTextSecondary,
                                                     modifier = Modifier.size(16.dp)
                                                 )
                                             }
                                         }
                                     },
                                     singleLine = true,
-                                    shape = RoundedCornerShape(12.dp),
+                                    shape = RoundedCornerShape(10.dp),
                                     colors = OutlinedTextFieldDefaults.colors(
-                                        focusedBorderColor = Color(0xFF10B981),
-                                        unfocusedBorderColor = Color(0xFF334155),
-                                        focusedContainerColor = Color(0xFF0F172A),
-                                        unfocusedContainerColor = Color(0xFF0F172A),
-                                        focusedTextColor = Color.White,
-                                        unfocusedTextColor = Color.White,
-                                        cursorColor = Color(0xFF10B981)
+                                        focusedBorderColor = VyaparRed,
+                                        unfocusedBorderColor = VyaparBorder,
+                                        focusedContainerColor = VyaparSurface,
+                                        unfocusedContainerColor = Color(0xFFF8FAFC),
+                                        focusedTextColor = VyaparTextPrimary,
+                                        unfocusedTextColor = VyaparTextPrimary,
+                                        cursorColor = VyaparRed
                                     ),
                                     modifier = Modifier
                                         .weight(1f)
-                                        .height(52.dp)
+                                        .height(50.dp)
                                         .testTag("pos_product_search_input")
                                 )
 
                                 Surface(
                                     onClick = { showBarcodeScanner = true },
-                                    shape = RoundedCornerShape(12.dp),
-                                    color = EmeraldGreen,
+                                    shape = RoundedCornerShape(10.dp),
+                                    color = VyaparRed,
                                     modifier = Modifier
-                                        .height(52.dp)
+                                        .height(50.dp)
                                         .testTag("pos_scan_barcode_button")
                                 ) {
                                     Row(
@@ -717,7 +717,7 @@ fun CreateBillScreen(
                                             imageVector = Icons.Default.QrCodeScanner,
                                             contentDescription = "Scan Barcode",
                                             tint = Color.White,
-                                            modifier = Modifier.size(20.dp)
+                                            modifier = Modifier.size(18.dp)
                                         )
                                         Text(
                                             text = "Scan",
@@ -740,14 +740,14 @@ fun CreateBillScreen(
                                         FilterChip(
                                             selected = isSelected,
                                             onClick = { selectedCategoryFilter = cat },
-                                            label = { Text(cat, fontSize = 11.sp) },
+                                            label = { Text(cat, fontSize = 11.sp, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal) },
                                             colors = FilterChipDefaults.filterChipColors(
-                                                selectedContainerColor = GoldYellow,
-                                                selectedLabelColor = Color.Black,
-                                                containerColor = Color(0x22FFFFFF),
-                                                labelColor = Color.White
+                                                selectedContainerColor = VyaparRed,
+                                                selectedLabelColor = Color.White,
+                                                containerColor = Color(0xFFF1F5F9),
+                                                labelColor = VyaparTextPrimary
                                             ),
-                                            shape = RoundedCornerShape(20.dp)
+                                            shape = RoundedCornerShape(16.dp)
                                         )
                                     }
                                 }
@@ -761,7 +761,7 @@ fun CreateBillScreen(
                                         .padding(vertical = 20.dp),
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    Text("No products found matching '$searchQuery'", color = Color(0xFF94A3B8), fontSize = 12.sp)
+                                    Text("No products found matching '$searchQuery'", color = VyaparTextSecondary, fontSize = 12.sp)
                                 }
                             } else {
                                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -787,30 +787,31 @@ fun CreateBillScreen(
 
             // Step 1 Bottom Sticky Bar: View Cart Summary Action
             Surface(
-                color = Color(0xFF0D122B),
+                color = VyaparSurface,
+                shadowElevation = 8.dp,
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .fillMaxWidth()
-                    .border(1.dp, Color(0x22FFFFFF), RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp))
+                    .border(1.dp, VyaparBorder, RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))
             ) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 20.dp, vertical = 14.dp),
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Column {
                         Text(
                             text = if (viewModel.posCartItems.isEmpty()) "Cart is Empty" else "${viewModel.posCartItems.sumOf { it.quantity.toInt() }} Items in Cart",
-                            color = Color(0xFF94A3B8),
+                            color = VyaparTextSecondary,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.SemiBold,
                             letterSpacing = 0.5.sp
                         )
                         Text(
                             text = "₹${String.format(Locale.US, "%.2f", viewModel.posSubtotal)}",
-                            color = EmeraldGreen,
+                            color = VyaparRed,
                             fontWeight = FontWeight.Bold,
                             fontSize = 22.sp
                         )
@@ -826,20 +827,21 @@ fun CreateBillScreen(
                         },
                         enabled = viewModel.posCartItems.isNotEmpty(),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = EmeraldGreen,
-                            disabledContainerColor = Color(0x3310B981)
+                            containerColor = VyaparRed,
+                            disabledContainerColor = Color(0xFFEF9A9A)
                         ),
-                        shape = RoundedCornerShape(14.dp),
+                        shape = RoundedCornerShape(10.dp),
                         modifier = Modifier
-                            .height(50.dp)
+                            .height(48.dp)
                             .testTag("pos_view_cart_button")
                     ) {
-                        Icon(imageVector = Icons.Default.ShoppingBag, contentDescription = null, modifier = Modifier.size(20.dp))
+                        Icon(imageVector = Icons.Default.ShoppingBag, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "View Cart (${viewModel.posCartItems.size}) ->",
+                            text = "View Cart (${viewModel.posCartItems.size}) →",
                             fontWeight = FontWeight.Bold,
-                            fontSize = 14.sp
+                            color = Color.White,
+                            fontSize = 13.sp
                         )
                     }
                 }
@@ -856,7 +858,7 @@ fun CreateBillScreen(
                     Icon(
                         imageVector = Icons.Default.Close,
                         contentDescription = null,
-                        tint = Color(0xFFEF4444),
+                        tint = VyaparRed,
                         modifier = Modifier.size(24.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
@@ -864,7 +866,7 @@ fun CreateBillScreen(
                         text = "Subscription Expired",
                         style = MaterialTheme.typography.titleMedium.copy(
                             fontWeight = FontWeight.Bold,
-                            color = Color.White
+                            color = VyaparTextPrimary
                         )
                     )
                 }
@@ -873,7 +875,7 @@ fun CreateBillScreen(
                 Text(
                     text = "Your trial has expired. Please complete payment of ₹79 to continue billing and unlock all SmartPOS features.",
                     style = MaterialTheme.typography.bodyMedium.copy(
-                        color = Color(0xFFCBD5E1)
+                        color = VyaparTextSecondary
                     )
                 )
             },
@@ -883,19 +885,19 @@ fun CreateBillScreen(
                         showExpiredBillingDialog = false
                         viewModel.openPaywall()
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = EmeraldGreen),
-                    shape = RoundedCornerShape(10.dp)
+                    colors = ButtonDefaults.buttonColors(containerColor = VyaparRed),
+                    shape = RoundedCornerShape(8.dp)
                 ) {
                     Text("Complete Payment (₹79)", fontWeight = FontWeight.Bold, color = Color.White)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showExpiredBillingDialog = false }) {
-                    Text("Cancel", color = Color(0xFF94A3B8))
+                    Text("Cancel", color = VyaparTextSecondary)
                 }
             },
-            containerColor = Color(0xFF1E293B),
-            shape = RoundedCornerShape(16.dp)
+            containerColor = VyaparSurface,
+            shape = RoundedCornerShape(14.dp)
         )
     }
 
@@ -913,11 +915,11 @@ fun CreateBillScreen(
             },
             title = {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.CheckCircle, contentDescription = "Success", tint = EmeraldGreen, modifier = Modifier.size(28.dp))
+                    Icon(Icons.Default.CheckCircle, contentDescription = "Success", tint = VyaparSuccess, modifier = Modifier.size(28.dp))
                     Spacer(modifier = Modifier.width(10.dp))
                     Column {
-                        Text("Invoice Generated!", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                        Text("Receipt #${invoice.firestoreId.take(8).ifBlank { invoice.id }}", color = Color(0xFF94A3B8), fontSize = 11.sp)
+                        Text("Invoice Generated!", color = VyaparTextPrimary, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                        Text("Receipt #${invoice.firestoreId.take(8).ifBlank { invoice.id }}", color = VyaparTextSecondary, fontSize = 11.sp)
                     }
                 }
             },
@@ -928,26 +930,27 @@ fun CreateBillScreen(
                 ) {
                     // Header Details
                     Card(
-                        colors = CardDefaults.cardColors(containerColor = Color(0x2210B981)),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFFF1F5F9)),
                         shape = RoundedCornerShape(10.dp),
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Column(modifier = Modifier.padding(10.dp)) {
-                            Text(currentUser?.businessName ?: "Billing Store", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                            Text("Customer: ${invoice.customerName} ${if (invoice.customerMobile.isNotBlank()) "(${invoice.customerMobile})" else ""}", color = Color(0xFF94A3B8), fontSize = 11.sp)
-                            Text("Date: $formattedDate", color = Color(0xFF94A3B8), fontSize = 11.sp)
-                            Text("Payment Mode: ${invoice.paymentMode}", color = EmeraldLight, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                            Text(currentUser?.businessName ?: "Billing Store", color = VyaparTextPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                            Text("Customer: ${invoice.customerName} ${if (invoice.customerMobile.isNotBlank()) "(${invoice.customerMobile})" else ""}", color = VyaparTextSecondary, fontSize = 11.sp)
+                            Text("Date: $formattedDate", color = VyaparTextSecondary, fontSize = 11.sp)
+                            Text("Payment Mode: ${invoice.paymentMode}", color = VyaparDeepBlue, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
                         }
                     }
 
                     // Purchased Items Summary
-                    Text("Purchased Items Summary:", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    Text("Purchased Items Summary:", color = VyaparTextPrimary, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                     Text(
                         text = invoice.itemsSummary.ifBlank { "${invoice.itemsCount} items billed" },
-                        color = Color(0xFFE2E8F0),
+                        color = VyaparTextPrimary,
                         fontSize = 12.sp,
                         modifier = Modifier
-                            .background(Color(0x11FFFFFF), RoundedCornerShape(8.dp))
+                            .background(Color(0xFFF8FAFC), RoundedCornerShape(8.dp))
+                            .border(1.dp, VyaparBorder, RoundedCornerShape(8.dp))
                             .padding(10.dp)
                             .fillMaxWidth()
                     )
@@ -967,10 +970,10 @@ fun CreateBillScreen(
                                 .padding(top = 4.dp),
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Text("Paid Amount", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                            Text("Paid Amount", color = VyaparTextPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                             Text(
                                 "₹${String.format(Locale.US, "%.2f", invoice.amount)}",
-                                color = EmeraldGreen,
+                                color = VyaparRed,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 16.sp
                             )
@@ -984,12 +987,13 @@ fun CreateBillScreen(
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Button(
                             onClick = { showBluetoothPrinterDialog = true },
-                            colors = ButtonDefaults.buttonColors(containerColor = EmeraldGreen),
+                            colors = ButtonDefaults.buttonColors(containerColor = VyaparDeepBlue),
+                            shape = RoundedCornerShape(8.dp),
                             modifier = Modifier.fillMaxWidth().height(42.dp).testTag("receipt_print_thermal_button")
                         ) {
-                            Icon(Icons.Default.Print, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Icon(Icons.Default.Print, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Print Bluetooth Thermal Receipt", fontWeight = FontWeight.Bold)
+                            Text("Print Bluetooth Thermal Receipt", color = Color.White, fontWeight = FontWeight.Bold)
                         }
 
                         Button(
@@ -1002,12 +1006,13 @@ fun CreateBillScreen(
                                 )
                                 com.example.util.InvoicePdfHelper.printInvoicePdf(localContext, pdf)
                             },
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0x33FFFFFF)),
-                            modifier = Modifier.fillMaxWidth().height(42.dp).testTag("receipt_print_pdf_button")
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF1F5F9)),
+                            shape = RoundedCornerShape(8.dp),
+                            modifier = Modifier.fillMaxWidth().height(42.dp).border(1.dp, VyaparBorder, RoundedCornerShape(8.dp)).testTag("receipt_print_pdf_button")
                         ) {
-                            Icon(Icons.Default.ReceiptLong, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Icon(Icons.Default.ReceiptLong, contentDescription = null, tint = VyaparTextPrimary, modifier = Modifier.size(18.dp))
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Print Invoice PDF (A4)", fontWeight = FontWeight.Bold)
+                            Text("Print Invoice PDF (A4)", color = VyaparTextPrimary, fontWeight = FontWeight.Bold)
                         }
 
                         Button(
@@ -1050,11 +1055,12 @@ fun CreateBillScreen(
                                 }
                             },
                             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF25D366)),
+                            shape = RoundedCornerShape(8.dp),
                             modifier = Modifier.fillMaxWidth().height(42.dp).testTag("receipt_whatsapp_button")
                         ) {
-                            Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Icon(Icons.Default.Share, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Share via WhatsApp", fontWeight = FontWeight.Bold)
+                            Text("Share via WhatsApp", color = Color.White, fontWeight = FontWeight.Bold)
                         }
                     }
                 }
@@ -1064,7 +1070,8 @@ fun CreateBillScreen(
                     onClick = {
                         showSuccessReceiptDialog = false
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = EmeraldGreen),
+                    colors = ButtonDefaults.buttonColors(containerColor = VyaparRed),
+                    shape = RoundedCornerShape(8.dp),
                     modifier = Modifier.testTag("receipt_start_new_sale_button")
                 ) {
                     Text("Start New Sale", color = Color.White, fontWeight = FontWeight.Bold)
@@ -1077,12 +1084,12 @@ fun CreateBillScreen(
                         onNavigateBack()
                     }
                 ) {
-                    Text("Dashboard", color = ElectricVioletLight)
+                    Text("Dashboard", color = VyaparDeepBlue, fontWeight = FontWeight.SemiBold)
                 }
             },
-            containerColor = Color(0xFF0F172A),
-            shape = RoundedCornerShape(20.dp),
-            modifier = Modifier.border(1.dp, Color(0x3310B981), RoundedCornerShape(20.dp))
+            containerColor = VyaparSurface,
+            shape = RoundedCornerShape(16.dp),
+            modifier = Modifier.border(1.dp, VyaparBorder, RoundedCornerShape(16.dp))
         )
     }
 
@@ -1299,9 +1306,10 @@ private fun CartReviewModalDialog(
         Surface(
             modifier = Modifier
                 .fillMaxWidth(0.95f)
-                .fillMaxHeight(0.92f),
-            color = Color(0xFF0F172A),
-            shape = RoundedCornerShape(20.dp),
+                .fillMaxHeight(0.92f)
+                .border(1.dp, VyaparBorder, RoundedCornerShape(16.dp)),
+            color = VyaparSurface,
+            shape = RoundedCornerShape(16.dp),
             tonalElevation = 8.dp
         ) {
             Column(
@@ -1319,20 +1327,20 @@ private fun CartReviewModalDialog(
                         Box(
                             modifier = Modifier
                                 .size(36.dp)
-                                .background(Color(0x2210B981), CircleShape),
+                                .background(Color(0xFFFFEBEE), CircleShape),
                             contentAlignment = Alignment.Center
                         ) {
-                            Icon(Icons.Default.ShoppingBag, contentDescription = null, tint = EmeraldGreen, modifier = Modifier.size(20.dp))
+                            Icon(Icons.Default.ShoppingBag, contentDescription = null, tint = VyaparRed, modifier = Modifier.size(20.dp))
                         }
                         Spacer(modifier = Modifier.width(10.dp))
                         Column {
-                            Text("Step 2/3: Review Cart & Discounts", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-                            Text("${viewModel.posCartItems.size} products added to bill", color = Color(0xFF94A3B8), fontSize = 11.sp)
+                            Text("Step 2/3: Review Cart & Discounts", color = VyaparTextPrimary, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                            Text("${viewModel.posCartItems.size} products added to bill", color = VyaparTextSecondary, fontSize = 11.sp)
                         }
                     }
 
                     IconButton(onClick = onDismiss, modifier = Modifier.testTag("cart_review_close_btn")) {
-                        Icon(Icons.Default.Close, contentDescription = "Close", tint = Color.White)
+                        Icon(Icons.Default.Close, contentDescription = "Close", tint = VyaparTextSecondary)
                     }
                 }
 
@@ -1348,11 +1356,11 @@ private fun CartReviewModalDialog(
                     // Customer Summary Card
                     item {
                         Card(
-                            colors = CardDefaults.cardColors(containerColor = Color(0x1F1E295D)),
+                            colors = CardDefaults.cardColors(containerColor = Color(0xFFF8FAFC)),
                             shape = RoundedCornerShape(12.dp),
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .border(1.dp, Color(0x22FFFFFF), RoundedCornerShape(12.dp))
+                                .border(1.dp, VyaparBorder, RoundedCornerShape(12.dp))
                         ) {
                             Row(
                                 modifier = Modifier
@@ -1362,17 +1370,17 @@ private fun CartReviewModalDialog(
                                 horizontalArrangement = Arrangement.SpaceBetween
                             ) {
                                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
-                                    Icon(Icons.Default.Person, contentDescription = null, tint = EmeraldGreen, modifier = Modifier.size(18.dp))
+                                    Icon(Icons.Default.Person, contentDescription = null, tint = VyaparRed, modifier = Modifier.size(18.dp))
                                     Spacer(modifier = Modifier.width(8.dp))
                                     Column {
                                         Text(
                                             text = viewModel.posCustomerName.ifBlank { "Walk-in Customer" },
-                                            color = Color.White,
+                                            color = VyaparTextPrimary,
                                             fontWeight = FontWeight.Bold,
                                             fontSize = 13.sp
                                         )
                                         if (viewModel.posCustomerMobile.isNotBlank()) {
-                                            Text(viewModel.posCustomerMobile, color = EmeraldLight, fontSize = 11.sp)
+                                            Text(viewModel.posCustomerMobile, color = VyaparTextSecondary, fontSize = 11.sp)
                                         }
                                         if (viewModel.posDoctorName.isNotBlank() || viewModel.posPatientInfo.isNotBlank()) {
                                             Text(
@@ -1380,7 +1388,7 @@ private fun CartReviewModalDialog(
                                                     viewModel.posDoctorName.takeIf { it.isNotBlank() }?.let { "Dr. $it" },
                                                     viewModel.posPatientInfo.takeIf { it.isNotBlank() }?.let { "Patient: $it" }
                                                 ).joinToString(" · "),
-                                                color = Color(0xFF94A3B8),
+                                                color = VyaparTextSecondary,
                                                 fontSize = 10.sp
                                             )
                                         }
@@ -1391,7 +1399,7 @@ private fun CartReviewModalDialog(
                                     onClick = onChangeCustomerClick,
                                     modifier = Modifier.testTag("cart_review_change_customer_btn")
                                 ) {
-                                    Text("Change", color = EmeraldLight, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                    Text("Change", color = VyaparDeepBlue, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                                 }
                             }
                         }
@@ -1401,7 +1409,7 @@ private fun CartReviewModalDialog(
                     item {
                         Text(
                             text = "ITEMIZED MEDICINES / PRODUCTS",
-                            color = Color(0xFF94A3B8),
+                            color = VyaparTextSecondary,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 0.5.sp
@@ -1417,9 +1425,9 @@ private fun CartReviewModalDialog(
                                 contentAlignment = Alignment.Center
                             ) {
                                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                    Icon(Icons.Default.ShoppingBag, contentDescription = null, tint = Color(0x44FFFFFF), modifier = Modifier.size(40.dp))
+                                    Icon(Icons.Default.ShoppingBag, contentDescription = null, tint = Color(0xFFCBD5E1), modifier = Modifier.size(40.dp))
                                     Spacer(modifier = Modifier.height(6.dp))
-                                    Text("Your cart is empty", color = Color(0xFF94A3B8), fontSize = 13.sp)
+                                    Text("Your cart is empty", color = VyaparTextSecondary, fontSize = 13.sp)
                                 }
                             }
                         }
@@ -1446,17 +1454,17 @@ private fun CartReviewModalDialog(
                     // Adjustments Section: Discount & Tax
                     item {
                         Card(
-                            colors = CardDefaults.cardColors(containerColor = Color(0x1F1E295D)),
+                            colors = CardDefaults.cardColors(containerColor = Color(0xFFF8FAFC)),
                             shape = RoundedCornerShape(12.dp),
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .border(1.dp, Color(0x22FFFFFF), RoundedCornerShape(12.dp))
+                                .border(1.dp, VyaparBorder, RoundedCornerShape(12.dp))
                         ) {
                             Column(
                                 modifier = Modifier.padding(12.dp),
                                 verticalArrangement = Arrangement.spacedBy(10.dp)
                             ) {
-                                Text("Bill Adjustments (Discount & GST)", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                Text("Bill Adjustments (Discount & GST)", color = VyaparTextPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
 
                                 // Discount Row
                                 Row(
@@ -1464,41 +1472,43 @@ private fun CartReviewModalDialog(
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
-                                    Icon(Icons.Default.Discount, contentDescription = "Discount", tint = ElectricVioletLight, modifier = Modifier.size(18.dp))
-                                    Text("Discount", color = Color(0xFF94A3B8), fontSize = 12.sp, modifier = Modifier.width(60.dp))
+                                    Icon(Icons.Default.Discount, contentDescription = "Discount", tint = VyaparRed, modifier = Modifier.size(18.dp))
+                                    Text("Discount", color = VyaparTextSecondary, fontSize = 12.sp, modifier = Modifier.width(60.dp))
 
                                     Row(
                                         modifier = Modifier
                                             .clip(RoundedCornerShape(8.dp))
-                                            .background(Color(0x22FFFFFF))
+                                            .background(Color(0xFFE2E8F0))
                                     ) {
                                         Box(
                                             modifier = Modifier
-                                                .background(if (viewModel.posDiscountType == "Fixed") ElectricViolet else Color.Transparent)
+                                                .background(if (viewModel.posDiscountType == "Fixed") VyaparRed else Color.Transparent)
                                                 .clickable { viewModel.posDiscountType = "Fixed" }
                                                 .padding(horizontal = 8.dp, vertical = 6.dp)
                                         ) {
-                                            Text("₹", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                            Text("₹", color = if (viewModel.posDiscountType == "Fixed") Color.White else VyaparTextPrimary, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                                         }
                                         Box(
                                             modifier = Modifier
-                                                .background(if (viewModel.posDiscountType == "Percentage") ElectricViolet else Color.Transparent)
+                                                .background(if (viewModel.posDiscountType == "Percentage") VyaparRed else Color.Transparent)
                                                 .clickable { viewModel.posDiscountType = "Percentage" }
                                                 .padding(horizontal = 8.dp, vertical = 6.dp)
                                         ) {
-                                            Text("%", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                            Text("%", color = if (viewModel.posDiscountType == "Percentage") Color.White else VyaparTextPrimary, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                                         }
                                     }
 
                                     OutlinedTextField(
                                         value = viewModel.posDiscountInput,
                                         onValueChange = { viewModel.posDiscountInput = it },
-                                        placeholder = { Text("0", color = Color(0xFF64748B), fontSize = 12.sp) },
+                                        placeholder = { Text("0", color = Color(0xFF94A3B8), fontSize = 12.sp) },
                                         colors = OutlinedTextFieldDefaults.colors(
-                                            focusedBorderColor = ElectricVioletLight,
-                                            unfocusedBorderColor = Color(0x22FFFFFF),
-                                            focusedTextColor = Color.White,
-                                            unfocusedTextColor = Color.White
+                                            focusedBorderColor = VyaparRed,
+                                            unfocusedBorderColor = VyaparBorder,
+                                            focusedTextColor = VyaparTextPrimary,
+                                            unfocusedTextColor = VyaparTextPrimary,
+                                            focusedContainerColor = VyaparSurface,
+                                            unfocusedContainerColor = VyaparSurface
                                         ),
                                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                                         singleLine = true,
@@ -1509,7 +1519,7 @@ private fun CartReviewModalDialog(
 
                                     Text(
                                         text = "-₹${String.format(Locale.US, "%.2f", viewModel.posDiscountAmount)}",
-                                        color = AccentPink,
+                                        color = VyaparRed,
                                         fontWeight = FontWeight.Bold,
                                         fontSize = 12.sp
                                     )
@@ -1517,9 +1527,9 @@ private fun CartReviewModalDialog(
 
                                 // Tax / GST & Invoice Mode Settings Card
                                 Card(
-                                    colors = CardDefaults.cardColors(containerColor = Color(0x1F1E295D)),
+                                    colors = CardDefaults.cardColors(containerColor = VyaparSurface),
                                     shape = RoundedCornerShape(10.dp),
-                                    modifier = Modifier.fillMaxWidth().border(1.dp, Color(0x22FFFFFF), RoundedCornerShape(10.dp))
+                                    modifier = Modifier.fillMaxWidth().border(1.dp, VyaparBorder, RoundedCornerShape(10.dp))
                                 ) {
                                     Column(
                                         modifier = Modifier.padding(10.dp),
@@ -1531,11 +1541,11 @@ private fun CartReviewModalDialog(
                                             verticalAlignment = Alignment.CenterVertically
                                         ) {
                                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                                Icon(Icons.Default.ReceiptLong, contentDescription = null, tint = GoldYellow, modifier = Modifier.size(18.dp))
+                                                Icon(Icons.Default.ReceiptLong, contentDescription = null, tint = VyaparDeepBlue, modifier = Modifier.size(18.dp))
                                                 Spacer(modifier = Modifier.width(6.dp))
                                                 Text(
                                                     text = if (viewModel.isGstInvoiceMode) "GST Invoice Mode" else "Simple Estimate (Non-GST)",
-                                                    color = Color.White,
+                                                    color = VyaparTextPrimary,
                                                     fontWeight = FontWeight.Bold,
                                                     fontSize = 12.sp
                                                 )
@@ -1547,8 +1557,8 @@ private fun CartReviewModalDialog(
                                                     if (!it) viewModel.posTaxPercentageInput = "0"
                                                 },
                                                 colors = androidx.compose.material3.SwitchDefaults.colors(
-                                                    checkedThumbColor = EmeraldGreen,
-                                                    checkedTrackColor = Color(0x4410B981)
+                                                    checkedThumbColor = Color.White,
+                                                    checkedTrackColor = VyaparRed
                                                 ),
                                                 modifier = Modifier.testTag("pos_gst_toggle_switch")
                                             )
@@ -1560,7 +1570,7 @@ private fun CartReviewModalDialog(
                                                 verticalAlignment = Alignment.CenterVertically,
                                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
                                             ) {
-                                                Text("GST Rate:", color = Color(0xFF94A3B8), fontSize = 11.sp, modifier = Modifier.width(60.dp))
+                                                Text("GST Rate:", color = VyaparTextSecondary, fontSize = 11.sp, modifier = Modifier.width(60.dp))
                                                 Row(
                                                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                                                     modifier = Modifier.weight(1f)
@@ -1570,13 +1580,13 @@ private fun CartReviewModalDialog(
                                                         Box(
                                                             modifier = Modifier
                                                                 .clip(RoundedCornerShape(6.dp))
-                                                                .background(if (isSelected) GoldYellow else Color(0x22FFFFFF))
+                                                                .background(if (isSelected) VyaparRed else Color(0xFFF1F5F9))
                                                                 .clickable { viewModel.posTaxPercentageInput = taxRate }
                                                                 .padding(horizontal = 8.dp, vertical = 6.dp)
                                                         ) {
                                                             Text(
                                                                 text = "$taxRate%",
-                                                                color = if (isSelected) Color.Black else Color.White,
+                                                                color = if (isSelected) Color.White else VyaparTextPrimary,
                                                                 fontSize = 11.sp,
                                                                 fontWeight = FontWeight.Bold
                                                             )
@@ -1585,7 +1595,7 @@ private fun CartReviewModalDialog(
                                                 }
                                                 Text(
                                                     text = "+₹${String.format(Locale.US, "%.2f", viewModel.posTaxAmount)}",
-                                                    color = GoldYellow,
+                                                    color = VyaparRed,
                                                     fontWeight = FontWeight.Bold,
                                                     fontSize = 12.sp
                                                 )
@@ -1594,7 +1604,7 @@ private fun CartReviewModalDialog(
                                                 val halfTax = viewModel.posTaxAmount / 2.0
                                                 Text(
                                                     text = "CGST (Intra-state): ₹${String.format(Locale.US, "%.2f", halfTax)} | SGST: ₹${String.format(Locale.US, "%.2f", halfTax)}",
-                                                    color = EmeraldLight,
+                                                    color = VyaparSuccess,
                                                     fontSize = 10.sp,
                                                     fontWeight = FontWeight.SemiBold
                                                 )
@@ -1602,7 +1612,7 @@ private fun CartReviewModalDialog(
                                         } else {
                                             Text(
                                                 text = "⚡ Simple Estimate Mode active — Tax lines & GSTIN omitted on receipt.",
-                                                color = Color(0xFF94A3B8),
+                                                color = VyaparTextSecondary,
                                                 fontSize = 10.sp
                                             )
                                         }
@@ -1615,9 +1625,9 @@ private fun CartReviewModalDialog(
                     // Calculation Summary Card
                     item {
                         Card(
-                            colors = CardDefaults.cardColors(containerColor = Color(0x2210B981)),
+                            colors = CardDefaults.cardColors(containerColor = Color(0xFFF8FAFC)),
                             shape = RoundedCornerShape(12.dp),
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier.fillMaxWidth().border(1.dp, VyaparBorder, RoundedCornerShape(12.dp))
                         ) {
                             Column(
                                 modifier = Modifier.padding(12.dp),
@@ -1630,16 +1640,16 @@ private fun CartReviewModalDialog(
                                 if (viewModel.posTaxAmount > 0) {
                                     SummaryLineItem("Tax (${viewModel.posTaxPercentageInput}%)", "+₹${String.format(Locale.US, "%.2f", viewModel.posTaxAmount)}")
                                 }
-                                HorizontalDivider(color = Color(0x22FFFFFF), modifier = Modifier.padding(vertical = 4.dp))
+                                HorizontalDivider(color = VyaparBorder, modifier = Modifier.padding(vertical = 4.dp))
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.SpaceBetween,
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Text("Verified Total Amount", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                                    Text("Verified Total Amount", color = VyaparTextPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                                     Text(
                                         text = "₹${String.format(Locale.US, "%.2f", viewModel.posFinalTotal)}",
-                                        color = EmeraldGreen,
+                                        color = VyaparRed,
                                         fontWeight = FontWeight.Bold,
                                         fontSize = 18.sp
                                     )
@@ -1658,26 +1668,26 @@ private fun CartReviewModalDialog(
                 ) {
                     Button(
                         onClick = onDismiss,
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0x22FFFFFF)),
-                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF1F5F9)),
+                        shape = RoundedCornerShape(10.dp),
                         modifier = Modifier
                             .weight(1f)
                             .height(48.dp)
                     ) {
-                        Text("Add More Items", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                        Text("Add More Items", color = VyaparTextPrimary, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                     }
 
                     Button(
                         onClick = onProceedToPayment,
                         enabled = viewModel.posCartItems.isNotEmpty(),
-                        colors = ButtonDefaults.buttonColors(containerColor = EmeraldGreen),
-                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = VyaparRed),
+                        shape = RoundedCornerShape(10.dp),
                         modifier = Modifier
                             .weight(1.3f)
                             .height(48.dp)
                             .testTag("pos_proceed_to_payment_button")
                     ) {
-                        Text("Proceed to Payment ->", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                        Text("Proceed to Payment →", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                     }
                 }
             }
@@ -1703,9 +1713,10 @@ private fun PaymentAndCheckoutModalDialog(
         Surface(
             modifier = Modifier
                 .fillMaxWidth(0.95f)
-                .fillMaxHeight(0.85f),
-            color = Color(0xFF0F172A),
-            shape = RoundedCornerShape(20.dp),
+                .fillMaxHeight(0.88f)
+                .border(1.dp, VyaparBorder, RoundedCornerShape(16.dp)),
+            color = VyaparSurface,
+            shape = RoundedCornerShape(16.dp),
             tonalElevation = 8.dp
         ) {
             Column(
@@ -1723,20 +1734,20 @@ private fun PaymentAndCheckoutModalDialog(
                         Box(
                             modifier = Modifier
                                 .size(36.dp)
-                                .background(Color(0x2210B981), CircleShape),
+                                .background(Color(0xFFFFEBEE), CircleShape),
                             contentAlignment = Alignment.Center
                         ) {
-                            Icon(Icons.Default.PointOfSale, contentDescription = null, tint = EmeraldGreen, modifier = Modifier.size(20.dp))
+                            Icon(Icons.Default.PointOfSale, contentDescription = null, tint = VyaparRed, modifier = Modifier.size(20.dp))
                         }
                         Spacer(modifier = Modifier.width(10.dp))
                         Column {
-                            Text("Step 3/3: Payment & Complete Sale", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-                            Text("Final verification & payment collection", color = Color(0xFF94A3B8), fontSize = 11.sp)
+                            Text("Step 3/3: Payment & Complete Sale", color = VyaparTextPrimary, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                            Text("Final verification & payment collection", color = VyaparTextSecondary, fontSize = 11.sp)
                         }
                     }
 
                     IconButton(onClick = onDismiss, modifier = Modifier.testTag("payment_modal_close_btn")) {
-                        Icon(Icons.Default.Close, contentDescription = "Close", tint = Color.White)
+                        Icon(Icons.Default.Close, contentDescription = "Close", tint = VyaparTextSecondary)
                     }
                 }
 
@@ -1749,11 +1760,11 @@ private fun PaymentAndCheckoutModalDialog(
                     // Final Breakdown Card
                     item {
                         Card(
-                            colors = CardDefaults.cardColors(containerColor = Color(0x2A131B3E)),
-                            shape = RoundedCornerShape(16.dp),
+                            colors = CardDefaults.cardColors(containerColor = Color(0xFFF8FAFC)),
+                            shape = RoundedCornerShape(12.dp),
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .border(1.dp, Color(0x3310B981), RoundedCornerShape(16.dp))
+                                .border(1.dp, VyaparBorder, RoundedCornerShape(12.dp))
                         ) {
                             Column(
                                 modifier = Modifier.padding(16.dp),
@@ -1761,7 +1772,7 @@ private fun PaymentAndCheckoutModalDialog(
                             ) {
                                 Text(
                                     text = "FINAL INVOICE BREAKDOWN",
-                                    color = EmeraldLight,
+                                    color = VyaparDeepBlue,
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.Bold,
                                     letterSpacing = 0.5.sp
@@ -1777,7 +1788,7 @@ private fun PaymentAndCheckoutModalDialog(
                                     }
                                 }
 
-                                HorizontalDivider(color = Color(0x22FFFFFF), modifier = Modifier.padding(vertical = 4.dp))
+                                HorizontalDivider(color = VyaparBorder, modifier = Modifier.padding(vertical = 4.dp))
 
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
@@ -1785,12 +1796,12 @@ private fun PaymentAndCheckoutModalDialog(
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Column {
-                                        Text("GRAND TOTAL", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                                        Text("Customer: ${viewModel.posCustomerName.ifBlank { "Walk-in Customer" }}", color = Color(0xFF94A3B8), fontSize = 11.sp)
+                                        Text("GRAND TOTAL", color = VyaparTextPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                                        Text("Customer: ${viewModel.posCustomerName.ifBlank { "Walk-in Customer" }}", color = VyaparTextSecondary, fontSize = 11.sp)
                                     }
                                     Text(
                                         text = "₹${String.format(Locale.US, "%.2f", viewModel.posFinalTotal)}",
-                                        color = EmeraldGreen,
+                                        color = VyaparRed,
                                         fontWeight = FontWeight.Bold,
                                         fontSize = 24.sp,
                                         modifier = Modifier.testTag("pos_final_total_value")
@@ -1803,17 +1814,17 @@ private fun PaymentAndCheckoutModalDialog(
                     // Payment Mode Selection
                     item {
                         Card(
-                            colors = CardDefaults.cardColors(containerColor = Color(0x1F1E295D)),
-                            shape = RoundedCornerShape(16.dp),
+                            colors = CardDefaults.cardColors(containerColor = VyaparSurface),
+                            shape = RoundedCornerShape(12.dp),
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .border(1.dp, Color(0x22FFFFFF), RoundedCornerShape(16.dp))
+                                .border(1.dp, VyaparBorder, RoundedCornerShape(12.dp))
                         ) {
                             Column(
                                 modifier = Modifier.padding(14.dp),
                                 verticalArrangement = Arrangement.spacedBy(10.dp)
                             ) {
-                                Text("Select Payment Mode", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                Text("Select Payment Mode", color = VyaparTextPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
 
                                 Row(
                                     horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -1824,15 +1835,15 @@ private fun PaymentAndCheckoutModalDialog(
                                         Card(
                                             onClick = { viewModel.posPaymentMode = mode },
                                             colors = CardDefaults.cardColors(
-                                                containerColor = if (isSelected) EmeraldGreen else Color(0x11FFFFFF)
+                                                containerColor = if (isSelected) VyaparRed else Color(0xFFF1F5F9)
                                             ),
-                                            shape = RoundedCornerShape(10.dp),
+                                            shape = RoundedCornerShape(8.dp),
                                             modifier = Modifier
                                                 .weight(1f)
                                                 .border(
                                                     1.dp,
-                                                    if (isSelected) EmeraldLight else Color(0x22FFFFFF),
-                                                    RoundedCornerShape(10.dp)
+                                                    if (isSelected) VyaparRedDark else VyaparBorder,
+                                                    RoundedCornerShape(8.dp)
                                                 )
                                                 .testTag("pos_payment_mode_${mode.lowercase().replace(" ", "_").replace("/", "")}")
                                         ) {
@@ -1844,7 +1855,7 @@ private fun PaymentAndCheckoutModalDialog(
                                             ) {
                                                 Text(
                                                     text = mode,
-                                                    color = Color.White,
+                                                    color = if (isSelected) Color.White else VyaparTextPrimary,
                                                     fontSize = 11.sp,
                                                     fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
                                                     textAlign = TextAlign.Center
@@ -1859,7 +1870,8 @@ private fun PaymentAndCheckoutModalDialog(
                                     Surface(
                                         onClick = onShowUpiQr,
                                         shape = RoundedCornerShape(10.dp),
-                                        color = Color(0x3310B981),
+                                        color = Color(0xFFEFF6FF),
+                                        border = BorderStroke(1.dp, Color(0xFFBFDBFE)),
                                         modifier = Modifier
                                             .fillMaxWidth()
                                             .testTag("pos_show_upi_qr_banner")
@@ -1870,22 +1882,22 @@ private fun PaymentAndCheckoutModalDialog(
                                             horizontalArrangement = Arrangement.SpaceBetween
                                         ) {
                                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                                Icon(Icons.Default.QrCode, contentDescription = null, tint = EmeraldGreen, modifier = Modifier.size(22.dp))
+                                                Icon(Icons.Default.QrCode, contentDescription = null, tint = VyaparDeepBlue, modifier = Modifier.size(22.dp))
                                                 Spacer(modifier = Modifier.width(10.dp))
                                                 Column {
-                                                    Text("Dynamic UPI QR Scanner Ready", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                                    Text("Dynamic UPI QR Scanner Ready", color = VyaparTextPrimary, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                                                     val upiText = currentUser?.upiId?.takeIf { it.isNotBlank() } ?: "store@upi"
-                                                    Text("Pay to: $upiText", color = EmeraldLight, fontSize = 11.sp)
+                                                    Text("Pay to: $upiText", color = VyaparDeepBlue, fontSize = 11.sp)
                                                 }
                                             }
                                             Button(
                                                 onClick = onShowUpiQr,
-                                                colors = ButtonDefaults.buttonColors(containerColor = EmeraldGreen),
+                                                colors = ButtonDefaults.buttonColors(containerColor = VyaparDeepBlue),
                                                 contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
                                                 shape = RoundedCornerShape(6.dp),
                                                 modifier = Modifier.height(32.dp)
                                             ) {
-                                                Text("Show QR", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                                Text("Show QR", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                                             }
                                         }
                                     }
@@ -1896,26 +1908,28 @@ private fun PaymentAndCheckoutModalDialog(
                                     Column(
                                         modifier = Modifier
                                             .fillMaxWidth()
-                                            .background(Color(0x2210B981), RoundedCornerShape(10.dp))
-                                            .border(1.dp, EmeraldGreen, RoundedCornerShape(10.dp))
+                                            .background(Color(0xFFFFFBEB), RoundedCornerShape(10.dp))
+                                            .border(1.dp, Color(0xFFFDE68A), RoundedCornerShape(10.dp))
                                             .padding(12.dp),
                                         verticalArrangement = Arrangement.spacedBy(8.dp)
                                     ) {
                                         Row(verticalAlignment = Alignment.CenterVertically) {
-                                            Icon(Icons.Default.Person, contentDescription = null, tint = EmeraldGreen, modifier = Modifier.size(18.dp))
+                                            Icon(Icons.Default.Person, contentDescription = null, tint = VyaparRed, modifier = Modifier.size(18.dp))
                                             Spacer(modifier = Modifier.width(6.dp))
-                                            Text("Udhar Sale Customer Details Required", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                            Text("Udhar Sale Customer Details Required", color = VyaparTextPrimary, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                                         }
                                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                             OutlinedTextField(
                                                 value = if (viewModel.posCustomerName == "Walk-in Customer") "" else viewModel.posCustomerName,
                                                 onValueChange = { viewModel.posCustomerName = it },
-                                                label = { Text("Customer Name *", color = Color(0xFF94A3B8), fontSize = 11.sp) },
+                                                label = { Text("Customer Name *", color = VyaparTextSecondary, fontSize = 11.sp) },
                                                 colors = OutlinedTextFieldDefaults.colors(
-                                                    focusedBorderColor = EmeraldGreen,
-                                                    unfocusedBorderColor = Color(0x33FFFFFF),
-                                                    focusedTextColor = Color.White,
-                                                    unfocusedTextColor = Color.White
+                                                    focusedBorderColor = VyaparRed,
+                                                    unfocusedBorderColor = VyaparBorder,
+                                                    focusedTextColor = VyaparTextPrimary,
+                                                    unfocusedTextColor = VyaparTextPrimary,
+                                                    focusedContainerColor = VyaparSurface,
+                                                    unfocusedContainerColor = VyaparSurface
                                                 ),
                                                 singleLine = true,
                                                 modifier = Modifier
@@ -1926,12 +1940,14 @@ private fun PaymentAndCheckoutModalDialog(
                                             OutlinedTextField(
                                                 value = viewModel.posCustomerMobile,
                                                 onValueChange = { viewModel.posCustomerMobile = it },
-                                                label = { Text("Mobile No.", color = Color(0xFF94A3B8), fontSize = 11.sp) },
+                                                label = { Text("Mobile No.", color = VyaparTextSecondary, fontSize = 11.sp) },
                                                 colors = OutlinedTextFieldDefaults.colors(
-                                                    focusedBorderColor = EmeraldGreen,
-                                                    unfocusedBorderColor = Color(0x33FFFFFF),
-                                                    focusedTextColor = Color.White,
-                                                    unfocusedTextColor = Color.White
+                                                    focusedBorderColor = VyaparRed,
+                                                    unfocusedBorderColor = VyaparBorder,
+                                                    focusedTextColor = VyaparTextPrimary,
+                                                    unfocusedTextColor = VyaparTextPrimary,
+                                                    focusedContainerColor = VyaparSurface,
+                                                    unfocusedContainerColor = VyaparSurface
                                                 ),
                                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
                                                 singleLine = true,
@@ -1951,7 +1967,7 @@ private fun PaymentAndCheckoutModalDialog(
                                         if (prevDue > 0) {
                                             Spacer(modifier = Modifier.height(4.dp))
                                             Surface(
-                                                color = Color(0x33F59E0B),
+                                                color = Color(0xFFFEF3C7),
                                                 shape = RoundedCornerShape(8.dp),
                                                 modifier = Modifier.fillMaxWidth()
                                             ) {
@@ -1963,10 +1979,10 @@ private fun PaymentAndCheckoutModalDialog(
                                                     verticalAlignment = Alignment.CenterVertically
                                                 ) {
                                                     Column {
-                                                        Text("Previous Udhar: ₹${String.format(Locale.US, "%.2f", prevDue)}", color = Color(0xFFFCD34D), fontSize = 11.sp)
-                                                        Text("Total Outstanding: ₹${String.format(Locale.US, "%.2f", totalOutstanding)}", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                                        Text("Previous Udhar: ₹${String.format(Locale.US, "%.2f", prevDue)}", color = Color(0xFFB45309), fontSize = 11.sp)
+                                                        Text("Total Outstanding: ₹${String.format(Locale.US, "%.2f", totalOutstanding)}", color = VyaparTextPrimary, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                                                     }
-                                                    Text("Udhar Khata", color = Color(0xFF94A3B8), fontSize = 10.sp)
+                                                    Text("Udhar Khata", color = VyaparTextSecondary, fontSize = 10.sp)
                                                 }
                                             }
                                         }
@@ -1979,11 +1995,11 @@ private fun PaymentAndCheckoutModalDialog(
                     // Auto-send WhatsApp Bill Switch Option
                     item {
                         Card(
-                            colors = CardDefaults.cardColors(containerColor = Color(0x1F1E295D)),
+                            colors = CardDefaults.cardColors(containerColor = VyaparSurface),
                             shape = RoundedCornerShape(12.dp),
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .border(1.dp, Color(0x3310B981), RoundedCornerShape(12.dp))
+                                .border(1.dp, VyaparBorder, RoundedCornerShape(12.dp))
                         ) {
                             Row(
                                 modifier = Modifier
@@ -2006,13 +2022,13 @@ private fun PaymentAndCheckoutModalDialog(
                                     Column {
                                         Text(
                                             text = "Auto-send WhatsApp Bill",
-                                            color = Color.White,
+                                            color = VyaparTextPrimary,
                                             fontSize = 12.sp,
                                             fontWeight = FontWeight.Bold
                                         )
                                         Text(
                                             text = if (viewModel.posCustomerMobile.isNotBlank()) "Send invoice to ${viewModel.posCustomerMobile}" else "Opens WhatsApp when mobile number is provided",
-                                            color = Color(0xFF94A3B8),
+                                            color = VyaparTextSecondary,
                                             fontSize = 10.sp
                                         )
                                     }
@@ -2024,9 +2040,9 @@ private fun PaymentAndCheckoutModalDialog(
                                     },
                                     colors = SwitchDefaults.colors(
                                         checkedThumbColor = Color.White,
-                                        checkedTrackColor = EmeraldGreen,
-                                        uncheckedThumbColor = Color(0xFF94A3B8),
-                                        uncheckedTrackColor = Color(0x33FFFFFF)
+                                        checkedTrackColor = Color(0xFF25D366),
+                                        uncheckedThumbColor = VyaparTextSecondary,
+                                        uncheckedTrackColor = Color(0xFFE2E8F0)
                                     ),
                                     modifier = Modifier.testTag("pos_auto_whatsapp_checkout_switch")
                                 )
@@ -2043,15 +2059,15 @@ private fun PaymentAndCheckoutModalDialog(
                         ) {
                             viewModel.posInvoiceError?.let { err ->
                                 Card(
-                                    colors = CardDefaults.cardColors(containerColor = Color(0x33EF4444)),
+                                    colors = CardDefaults.cardColors(containerColor = Color(0xFFFFEBEE)),
                                     shape = RoundedCornerShape(10.dp),
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .border(1.dp, Color(0x55EF4444), RoundedCornerShape(10.dp))
+                                        .border(1.dp, Color(0xFFEF9A9A), RoundedCornerShape(10.dp))
                                 ) {
                                     Text(
                                         text = err,
-                                        color = Color(0xFFF87171),
+                                        color = VyaparRed,
                                         fontSize = 12.sp,
                                         modifier = Modifier.padding(12.dp),
                                         textAlign = TextAlign.Center
@@ -2071,20 +2087,20 @@ private fun PaymentAndCheckoutModalDialog(
                 ) {
                     Button(
                         onClick = onBackToCart,
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0x22FFFFFF)),
-                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF1F5F9)),
+                        shape = RoundedCornerShape(10.dp),
                         modifier = Modifier
                             .weight(1f)
                             .height(50.dp)
                     ) {
-                        Text("<- Back to Cart", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                        Text("← Back to Cart", color = VyaparTextPrimary, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                     }
 
                     Button(
                         onClick = onCompleteSale,
                         enabled = viewModel.posCartItems.isNotEmpty() && !viewModel.isGeneratingPOSInvoice,
-                        colors = ButtonDefaults.buttonColors(containerColor = EmeraldGreen),
-                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = VyaparRed),
+                        shape = RoundedCornerShape(10.dp),
                         modifier = Modifier
                             .weight(1.5f)
                             .height(50.dp)
@@ -2093,9 +2109,9 @@ private fun PaymentAndCheckoutModalDialog(
                         if (viewModel.isGeneratingPOSInvoice) {
                             CircularProgressIndicator(color = Color.White, modifier = Modifier.size(20.dp))
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Processing...")
+                            Text("Processing...", color = Color.White)
                         } else {
-                            Icon(imageVector = Icons.Default.ReceiptLong, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Icon(imageVector = Icons.Default.ReceiptLong, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
                                 text = if (viewModel.isEditingBill) "Update Bill & Save" else "Complete Sale & Print",
@@ -2124,23 +2140,24 @@ private fun ProductPOSRow(
     val cardBorderColor = when {
         isExpired -> Color(0xFFEF4444)
         expiryStatus is com.example.util.ExpiryStatus.NearExpiry -> Color(0xFFF59E0B)
-        isOutOfStock -> Color(0x22EF4444)
-        else -> Color(0x11FFFFFF)
+        isOutOfStock -> Color(0xFFCBD5E1)
+        else -> VyaparBorder
     }
 
     Card(
         colors = CardDefaults.cardColors(
             containerColor = when {
-                isExpired -> Color(0x1AEF4444)
-                expiryStatus is com.example.util.ExpiryStatus.NearExpiry -> Color(0x1AF59E0B)
-                isOutOfStock -> Color(0x0C1E295D)
-                else -> Color(0x1F1E295D)
+                isExpired -> Color(0xFFFEF2F2)
+                expiryStatus is com.example.util.ExpiryStatus.NearExpiry -> Color(0xFFFFFBEB)
+                isOutOfStock -> Color(0xFFF8FAFC)
+                else -> VyaparSurface
             }
         ),
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(10.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
         modifier = Modifier
             .fillMaxWidth()
-            .border(1.dp, cardBorderColor, RoundedCornerShape(12.dp))
+            .border(1.dp, cardBorderColor, RoundedCornerShape(10.dp))
             .then(
                 if (!isDisabled) {
                     Modifier.clickable { onAddToCart() }
@@ -2150,14 +2167,14 @@ private fun ProductPOSRow(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(10.dp),
+                .padding(12.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = product.name,
-                    color = Color.White,
+                    color = VyaparTextPrimary,
                     fontWeight = FontWeight.Bold,
                     fontSize = 13.sp,
                     maxLines = 1,
@@ -2167,7 +2184,7 @@ private fun ProductPOSRow(
                 if (product.saltComposition.isNotBlank()) {
                     Text(
                         text = "Salt: ${product.saltComposition}",
-                        color = Color(0xFF94A3B8),
+                        color = VyaparTextSecondary,
                         fontSize = 10.sp,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
@@ -2180,14 +2197,14 @@ private fun ProductPOSRow(
                 ) {
                     Text(
                         text = "₹${String.format(Locale.US, "%.2f", product.salePrice)} / ${product.unit}",
-                        color = GoldYellow,
+                        color = VyaparRed,
                         fontWeight = FontWeight.Bold,
                         fontSize = 12.sp
                     )
-                    Text("·", color = Color(0xFF64748B), fontSize = 11.sp)
+                    Text("·", color = VyaparTextSecondary, fontSize = 11.sp)
                     Text(
                         text = if (isOutOfStock) "Out of stock" else "Stock: ${KiranaUnitUtils.formatQuantityWithUnit(product.stockQuantity, product.unit)}",
-                        color = if (isOutOfStock) Color(0xFFF87171) else Color(0xFF94A3B8),
+                        color = if (isOutOfStock) Color(0xFFEF4444) else VyaparTextSecondary,
                         fontSize = 11.sp
                     )
                 }
@@ -2201,7 +2218,7 @@ private fun ProductPOSRow(
                     if (product.batchNumber.isNotBlank()) {
                         Text(
                             text = "B:${product.batchNumber}",
-                            color = Color(0xFF60A5FA),
+                            color = VyaparDeepBlue,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Medium
                         )
@@ -2220,7 +2237,7 @@ private fun ProductPOSRow(
                             is com.example.util.ExpiryStatus.NearExpiry -> {
                                 Text(
                                     text = "⚡ EXPIRING SOON (${product.expiryDate})",
-                                    color = Color(0xFFF59E0B),
+                                    color = Color(0xFFD97706),
                                     fontSize = 10.sp,
                                     fontWeight = FontWeight.Bold
                                 )
@@ -2228,7 +2245,7 @@ private fun ProductPOSRow(
                             else -> {
                                 Text(
                                     text = "Exp: ${product.expiryDate}",
-                                    color = Color(0xFF34D399),
+                                    color = VyaparSuccess,
                                     fontSize = 10.sp
                                 )
                             }
@@ -2238,7 +2255,7 @@ private fun ProductPOSRow(
                     if (product.isRxRequired) {
                         Text(
                             text = "Rx Required",
-                            color = Color(0xFFF472B6),
+                            color = Color(0xFFE11D48),
                             fontSize = 9.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -2250,8 +2267,8 @@ private fun ProductPOSRow(
                 onClick = onAddToCart,
                 enabled = !isDisabled,
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = GoldYellow,
-                    disabledContainerColor = Color(0x22FFFFFF)
+                    containerColor = VyaparRed,
+                    disabledContainerColor = Color(0xFFE2E8F0)
                 ),
                 contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
                 shape = RoundedCornerShape(8.dp),
@@ -2259,7 +2276,7 @@ private fun ProductPOSRow(
                     .height(34.dp)
                     .testTag("pos_add_product_${product.name.lowercase().replace(" ", "_")}")
             ) {
-                Icon(imageVector = Icons.Default.Add, contentDescription = null, tint = if (isDisabled) Color.Gray else Color.Black, modifier = Modifier.size(14.dp))
+                Icon(imageVector = Icons.Default.Add, contentDescription = null, tint = if (isDisabled) Color.Gray else Color.White, modifier = Modifier.size(14.dp))
                 Spacer(modifier = Modifier.width(2.dp))
                 Text(
                     text = when {
@@ -2267,7 +2284,7 @@ private fun ProductPOSRow(
                         isOutOfStock -> "Empty"
                         else -> "Add"
                     },
-                    color = if (isDisabled) Color.Gray else Color.Black,
+                    color = if (isDisabled) Color.Gray else Color.White,
                     fontWeight = FontWeight.Bold,
                     fontSize = 11.sp
                 )
@@ -2288,11 +2305,12 @@ private fun CartItemRow(
     val isLoose = KiranaUnitUtils.isLooseUnit(cartItem.product.unit)
 
     Card(
-        colors = CardDefaults.cardColors(containerColor = Color(0x2A1E295D)),
-        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = VyaparSurface),
+        shape = RoundedCornerShape(10.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
         modifier = Modifier
             .fillMaxWidth()
-            .border(1.dp, Color(0x2210B981), RoundedCornerShape(12.dp))
+            .border(1.dp, VyaparBorder, RoundedCornerShape(10.dp))
     ) {
         Row(
             modifier = Modifier
@@ -2308,7 +2326,7 @@ private fun CartItemRow(
             ) {
                 Text(
                     text = cartItem.product.name,
-                    color = Color.White,
+                    color = VyaparTextPrimary,
                     fontWeight = FontWeight.Bold,
                     fontSize = 13.sp,
                     maxLines = 1,
@@ -2320,7 +2338,7 @@ private fun CartItemRow(
                             cartItem.product.batchNumber.takeIf { it.isNotBlank() }?.let { "Batch: $it" },
                             cartItem.product.expiryDate.takeIf { it.isNotBlank() }?.let { "Exp: $it" }
                         ).joinToString(" · "),
-                        color = Color(0xFF94A3B8),
+                        color = VyaparTextSecondary,
                         fontSize = 10.sp
                     )
                 }
@@ -2336,7 +2354,7 @@ private fun CartItemRow(
                     } else {
                         "₹${String.format(Locale.US, "%.2f", cartItem.customPrice)} / ${cartItem.product.unit}  =  ₹${String.format(Locale.US, "%.2f", cartItem.totalAmount)}"
                     },
-                    color = EmeraldLight,
+                    color = VyaparRed,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.SemiBold
                 )
@@ -2351,22 +2369,22 @@ private fun CartItemRow(
                     modifier = Modifier
                         .size(28.dp)
                         .clip(CircleShape)
-                        .background(Color(0x22FFFFFF))
+                        .background(Color(0xFFF1F5F9))
                         .clickable { onDecrease() },
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(Icons.Default.Remove, contentDescription = "Decrease", tint = Color.White, modifier = Modifier.size(14.dp))
+                    Icon(Icons.Default.Remove, contentDescription = "Decrease", tint = VyaparTextPrimary, modifier = Modifier.size(14.dp))
                 }
 
                 Surface(
                     onClick = onEditQuantity,
-                    color = Color(0x3310B981),
+                    color = Color(0xFFFFEBEE),
                     shape = RoundedCornerShape(6.dp),
                     modifier = Modifier.padding(horizontal = 2.dp)
                 ) {
                     Text(
                         text = KiranaUnitUtils.formatQuantityWithUnit(cartItem.quantity, cartItem.product.unit, cartItem.product),
-                        color = Color.White,
+                        color = VyaparRed,
                         fontWeight = FontWeight.Bold,
                         fontSize = 12.sp,
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
@@ -2377,7 +2395,7 @@ private fun CartItemRow(
                     modifier = Modifier
                         .size(28.dp)
                         .clip(CircleShape)
-                        .background(if (cartItem.quantity < maxStock) EmeraldGreen else Color(0x22FFFFFF))
+                        .background(if (cartItem.quantity < maxStock) VyaparRed else Color(0xFFE2E8F0))
                         .clickable(enabled = cartItem.quantity < maxStock) { onIncrease() },
                     contentAlignment = Alignment.Center
                 ) {
@@ -2395,7 +2413,7 @@ private fun CartItemRow(
                     onClick = onRemove,
                     modifier = Modifier.size(28.dp)
                 ) {
-                    Icon(Icons.Default.Delete, contentDescription = "Remove", tint = AccentPink, modifier = Modifier.size(16.dp))
+                    Icon(Icons.Default.Delete, contentDescription = "Remove", tint = Color(0xFFEF4444), modifier = Modifier.size(16.dp))
                 }
             }
         }
@@ -2408,10 +2426,10 @@ private fun SummaryLineItem(label: String, value: String, isNegative: Boolean = 
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Text(label, color = Color(0xFF94A3B8), fontSize = 12.sp)
+        Text(label, color = VyaparTextSecondary, fontSize = 12.sp)
         Text(
             value,
-            color = if (isNegative) AccentPink else Color.White,
+            color = if (isNegative) VyaparRed else VyaparTextPrimary,
             fontWeight = FontWeight.SemiBold,
             fontSize = 12.sp
         )
@@ -2446,9 +2464,10 @@ private fun POSCustomerPickerModalDialog(
         Surface(
             modifier = Modifier
                 .fillMaxWidth(0.95f)
-                .fillMaxHeight(0.85f),
-            color = Color(0xFF0F172A),
-            shape = RoundedCornerShape(20.dp),
+                .fillMaxHeight(0.85f)
+                .border(1.dp, VyaparBorder, RoundedCornerShape(16.dp)),
+            color = VyaparSurface,
+            shape = RoundedCornerShape(16.dp),
             tonalElevation = 8.dp
         ) {
             Column(
@@ -2466,20 +2485,20 @@ private fun POSCustomerPickerModalDialog(
                         Box(
                             modifier = Modifier
                                 .size(36.dp)
-                                .background(Color(0x2210B981), CircleShape),
+                                .background(Color(0xFFFFEBEE), CircleShape),
                             contentAlignment = Alignment.Center
                         ) {
-                            Icon(Icons.Default.Person, contentDescription = null, tint = EmeraldGreen, modifier = Modifier.size(20.dp))
+                            Icon(Icons.Default.Person, contentDescription = null, tint = VyaparRed, modifier = Modifier.size(20.dp))
                         }
                         Spacer(modifier = Modifier.width(10.dp))
                         Column {
-                            Text("Select Customer", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-                            Text("Search existing or register new customer", color = Color(0xFF94A3B8), fontSize = 11.sp)
+                            Text("Select Customer", color = VyaparTextPrimary, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                            Text("Search existing or register new customer", color = VyaparTextSecondary, fontSize = 11.sp)
                         }
                     }
 
                     IconButton(onClick = onDismiss, modifier = Modifier.testTag("customer_picker_close_btn")) {
-                        Icon(Icons.Default.Close, contentDescription = "Close", tint = Color.White)
+                        Icon(Icons.Default.Close, contentDescription = "Close", tint = VyaparTextSecondary)
                     }
                 }
 
@@ -2489,25 +2508,25 @@ private fun POSCustomerPickerModalDialog(
                 OutlinedTextField(
                     value = query,
                     onValueChange = { query = it },
-                    placeholder = { Text("Search by Name or Mobile No...", color = Color(0xFF64748B), fontSize = 13.sp) },
-                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search", tint = EmeraldGreen) },
+                    placeholder = { Text("Search by Name or Mobile No...", color = Color(0xFF94A3B8), fontSize = 13.sp) },
+                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search", tint = VyaparRed) },
                     trailingIcon = {
                         if (query.isNotEmpty()) {
                             IconButton(onClick = { query = "" }) {
-                                Icon(Icons.Default.Clear, contentDescription = "Clear", tint = Color.White)
+                                Icon(Icons.Default.Clear, contentDescription = "Clear", tint = VyaparTextSecondary)
                             }
                         }
                     },
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = EmeraldGreen,
-                        unfocusedBorderColor = Color(0x33FFFFFF),
-                        focusedTextColor = Color.White,
-                        unfocusedTextColor = Color.White,
-                        focusedContainerColor = Color(0x22000000),
-                        unfocusedContainerColor = Color(0x22000000)
+                        focusedBorderColor = VyaparRed,
+                        unfocusedBorderColor = VyaparBorder,
+                        focusedTextColor = VyaparTextPrimary,
+                        unfocusedTextColor = VyaparTextPrimary,
+                        focusedContainerColor = VyaparSurface,
+                        unfocusedContainerColor = VyaparSurface
                     ),
                     singleLine = true,
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(10.dp),
                     modifier = Modifier
                         .fillMaxWidth()
                         .testTag("customer_picker_search_input")
@@ -2522,29 +2541,29 @@ private fun POSCustomerPickerModalDialog(
                 ) {
                     Button(
                         onClick = onSelectWalkIn,
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0x2210B981)),
-                        shape = RoundedCornerShape(10.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEFF6FF)),
+                        shape = RoundedCornerShape(8.dp),
                         modifier = Modifier
                             .weight(1f)
-                            .border(1.dp, Color(0x4410B981), RoundedCornerShape(10.dp))
+                            .border(1.dp, Color(0xFFBFDBFE), RoundedCornerShape(8.dp))
                             .testTag("select_walk_in_customer_btn")
                     ) {
-                        Icon(Icons.Default.Person, contentDescription = null, tint = EmeraldLight, modifier = Modifier.size(16.dp))
+                        Icon(Icons.Default.Person, contentDescription = null, tint = VyaparDeepBlue, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("Walk-in Customer", color = EmeraldLight, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        Text("Walk-in Customer", color = VyaparDeepBlue, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                     }
 
                     Button(
                         onClick = onAddNewCustomerClick,
-                        colors = ButtonDefaults.buttonColors(containerColor = EmeraldGreen),
-                        shape = RoundedCornerShape(10.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = VyaparRed),
+                        shape = RoundedCornerShape(8.dp),
                         modifier = Modifier
                             .weight(1.1f)
                             .testTag("add_new_customer_modal_btn")
                     ) {
-                        Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Icon(Icons.Default.Add, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("+ Add New Customer", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        Text("+ Add New Customer", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                     }
                 }
 
@@ -2552,7 +2571,7 @@ private fun POSCustomerPickerModalDialog(
 
                 Text(
                     text = "SAVED CUSTOMERS (${filteredList.size})",
-                    color = Color(0xFF94A3B8),
+                    color = VyaparTextSecondary,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 0.5.sp
@@ -2565,15 +2584,16 @@ private fun POSCustomerPickerModalDialog(
                         modifier = Modifier
                             .fillMaxWidth()
                             .weight(1f)
-                            .background(Color(0x11FFFFFF), RoundedCornerShape(12.dp)),
+                            .background(Color(0xFFF8FAFC), RoundedCornerShape(12.dp))
+                            .border(1.dp, VyaparBorder, RoundedCornerShape(12.dp)),
                         contentAlignment = Alignment.Center
                     ) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(20.dp)) {
-                            Icon(Icons.Default.PersonOff, contentDescription = null, tint = Color(0xFF64748B), modifier = Modifier.size(40.dp))
+                            Icon(Icons.Default.PersonOff, contentDescription = null, tint = Color(0xFF94A3B8), modifier = Modifier.size(40.dp))
                             Spacer(modifier = Modifier.height(8.dp))
-                            Text("No matching customers found", color = Color.White, fontWeight = FontWeight.SemiBold)
+                            Text("No matching customers found", color = VyaparTextPrimary, fontWeight = FontWeight.SemiBold)
                             Spacer(modifier = Modifier.height(4.dp))
-                            Text("Tap '+ Add New Customer' above to save details.", color = Color(0xFF94A3B8), fontSize = 12.sp, textAlign = TextAlign.Center)
+                            Text("Tap '+ Add New Customer' above to save details.", color = VyaparTextSecondary, fontSize = 12.sp, textAlign = TextAlign.Center)
                         }
                     }
                 } else {
@@ -2584,11 +2604,12 @@ private fun POSCustomerPickerModalDialog(
                     ) {
                         items(filteredList) { cust ->
                             Card(
-                                colors = CardDefaults.cardColors(containerColor = Color(0x1F1E295D)),
-                                shape = RoundedCornerShape(12.dp),
+                                colors = CardDefaults.cardColors(containerColor = VyaparSurface),
+                                shape = RoundedCornerShape(10.dp),
+                                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .border(1.dp, Color(0x11FFFFFF), RoundedCornerShape(12.dp))
+                                    .border(1.dp, VyaparBorder, RoundedCornerShape(10.dp))
                                     .clickable { onSelectCustomer(cust) }
                                     .testTag("customer_item_${cust.id}")
                             ) {
@@ -2603,12 +2624,12 @@ private fun POSCustomerPickerModalDialog(
                                         Box(
                                             modifier = Modifier
                                                 .size(40.dp)
-                                                .background(Color(0x2210B981), CircleShape),
+                                                .background(Color(0xFFFFEBEE), CircleShape),
                                             contentAlignment = Alignment.Center
                                         ) {
                                             Text(
                                                 text = cust.name.take(1).uppercase(Locale.getDefault()),
-                                                color = EmeraldLight,
+                                                color = VyaparRed,
                                                 fontWeight = FontWeight.Bold,
                                                 fontSize = 16.sp
                                             )
@@ -2619,15 +2640,15 @@ private fun POSCustomerPickerModalDialog(
                                         Column {
                                             Text(
                                                 text = cust.name,
-                                                color = Color.White,
+                                                color = VyaparTextPrimary,
                                                 fontWeight = FontWeight.Bold,
                                                 fontSize = 14.sp
                                             )
                                             Spacer(modifier = Modifier.height(2.dp))
                                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                                Icon(Icons.Default.Phone, contentDescription = null, tint = EmeraldLight, modifier = Modifier.size(12.dp))
+                                                Icon(Icons.Default.Phone, contentDescription = null, tint = VyaparTextSecondary, modifier = Modifier.size(12.dp))
                                                 Spacer(modifier = Modifier.width(4.dp))
-                                                Text(cust.mobileNumber, color = EmeraldLight, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                                                Text(cust.mobileNumber, color = VyaparTextSecondary, fontSize = 12.sp, fontWeight = FontWeight.Medium)
                                             }
                                         }
                                     }
@@ -2636,18 +2657,18 @@ private fun POSCustomerPickerModalDialog(
                                         if (cust.totalPendingBalance > 0) {
                                             Text(
                                                 text = "Udhar: ₹${String.format(Locale.US, "%.2f", cust.totalPendingBalance)}",
-                                                color = Color(0xFFF87171),
+                                                color = VyaparRed,
                                                 fontWeight = FontWeight.Bold,
                                                 fontSize = 12.sp
                                             )
                                         } else {
                                             Surface(
-                                                color = Color(0x2210B981),
+                                                color = Color(0xFFE8F5E9),
                                                 shape = RoundedCornerShape(4.dp)
                                             ) {
                                                 Text(
                                                     text = "No Pending",
-                                                    color = EmeraldLight,
+                                                    color = VyaparSuccess,
                                                     fontSize = 10.sp,
                                                     fontWeight = FontWeight.Bold,
                                                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
@@ -2657,12 +2678,12 @@ private fun POSCustomerPickerModalDialog(
                                         Spacer(modifier = Modifier.height(4.dp))
                                         Button(
                                             onClick = { onSelectCustomer(cust) },
-                                            colors = ButtonDefaults.buttonColors(containerColor = EmeraldGreen),
+                                            colors = ButtonDefaults.buttonColors(containerColor = VyaparRed),
                                             shape = RoundedCornerShape(6.dp),
                                             contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
                                             modifier = Modifier.height(28.dp)
                                         ) {
-                                            Text("Select", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                            Text("Select", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                                         }
                                     }
                                 }
@@ -2690,13 +2711,13 @@ private fun AddNewCustomerModalDialog(
                 Box(
                     modifier = Modifier
                         .size(36.dp)
-                        .background(Color(0x2210B981), CircleShape),
+                        .background(Color(0xFFFFEBEE), CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(Icons.Default.PersonAdd, contentDescription = null, tint = EmeraldGreen, modifier = Modifier.size(20.dp))
+                    Icon(Icons.Default.PersonAdd, contentDescription = null, tint = VyaparRed, modifier = Modifier.size(20.dp))
                 }
                 Spacer(modifier = Modifier.width(10.dp))
-                Text("Register New Customer", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                Text("Register New Customer", color = VyaparTextPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
             }
         },
         text = {
@@ -2706,20 +2727,22 @@ private fun AddNewCustomerModalDialog(
             ) {
                 Text(
                     text = "Enter details to save this customer to your database and auto-select them for billing.",
-                    color = Color(0xFF94A3B8),
+                    color = VyaparTextSecondary,
                     fontSize = 12.sp
                 )
 
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = { Text("Customer Name *", color = Color(0xFF94A3B8), fontSize = 12.sp) },
-                    leadingIcon = { Icon(Icons.Default.Person, contentDescription = null, tint = EmeraldGreen) },
+                    label = { Text("Customer Name *", color = VyaparTextSecondary, fontSize = 12.sp) },
+                    leadingIcon = { Icon(Icons.Default.Person, contentDescription = null, tint = VyaparRed) },
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = EmeraldGreen,
-                        unfocusedBorderColor = Color(0x33FFFFFF),
-                        focusedTextColor = Color.White,
-                        unfocusedTextColor = Color.White
+                        focusedBorderColor = VyaparRed,
+                        unfocusedBorderColor = VyaparBorder,
+                        focusedTextColor = VyaparTextPrimary,
+                        unfocusedTextColor = VyaparTextPrimary,
+                        focusedContainerColor = VyaparSurface,
+                        unfocusedContainerColor = VyaparSurface
                     ),
                     singleLine = true,
                     modifier = Modifier
@@ -2730,14 +2753,16 @@ private fun AddNewCustomerModalDialog(
                 OutlinedTextField(
                     value = mobile,
                     onValueChange = { mobile = it },
-                    label = { Text("Mobile Number *", color = Color(0xFF94A3B8), fontSize = 12.sp) },
-                    leadingIcon = { Icon(Icons.Default.Phone, contentDescription = null, tint = EmeraldGreen) },
+                    label = { Text("Mobile Number *", color = VyaparTextSecondary, fontSize = 12.sp) },
+                    leadingIcon = { Icon(Icons.Default.Phone, contentDescription = null, tint = VyaparRed) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = EmeraldGreen,
-                        unfocusedBorderColor = Color(0x33FFFFFF),
-                        focusedTextColor = Color.White,
-                        unfocusedTextColor = Color.White
+                        focusedBorderColor = VyaparRed,
+                        unfocusedBorderColor = VyaparBorder,
+                        focusedTextColor = VyaparTextPrimary,
+                        unfocusedTextColor = VyaparTextPrimary,
+                        focusedContainerColor = VyaparSurface,
+                        unfocusedContainerColor = VyaparSurface
                     ),
                     singleLine = true,
                     modifier = Modifier
@@ -2754,20 +2779,20 @@ private fun AddNewCustomerModalDialog(
                     }
                 },
                 enabled = name.isNotBlank() && mobile.isNotBlank(),
-                colors = ButtonDefaults.buttonColors(containerColor = EmeraldGreen),
+                colors = ButtonDefaults.buttonColors(containerColor = VyaparRed),
                 shape = RoundedCornerShape(8.dp),
                 modifier = Modifier.testTag("save_new_customer_btn")
             ) {
-                Text("Save & Select", fontWeight = FontWeight.Bold)
+                Text("Save & Select", color = Color.White, fontWeight = FontWeight.Bold)
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel", color = Color(0xFF94A3B8))
+                Text("Cancel", color = VyaparTextSecondary)
             }
         },
-        containerColor = Color(0xFF0F172A),
-        shape = RoundedCornerShape(20.dp),
-        modifier = Modifier.border(1.dp, Color(0x3310B981), RoundedCornerShape(20.dp))
+        containerColor = VyaparSurface,
+        shape = RoundedCornerShape(16.dp),
+        modifier = Modifier.border(1.dp, VyaparBorder, RoundedCornerShape(16.dp))
     )
 }

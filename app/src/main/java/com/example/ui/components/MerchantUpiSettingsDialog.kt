@@ -18,7 +18,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
-import com.example.ui.theme.EmeraldGreen
+import com.example.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -37,7 +37,7 @@ fun MerchantUpiSettingsDialog(
                 .fillMaxWidth()
                 .padding(12.dp),
             shape = RoundedCornerShape(20.dp),
-            color = MaterialTheme.colorScheme.surface,
+            color = VyaparSurface,
             tonalElevation = 8.dp
         ) {
             Column(
@@ -56,13 +56,13 @@ fun MerchantUpiSettingsDialog(
                         Box(
                             modifier = Modifier
                                 .size(36.dp)
-                                .background(Color(0x2210B981), CircleShape),
+                                .background(Color(0xFFFFEBEE), CircleShape),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Settings,
                                 contentDescription = "Settings",
-                                tint = EmeraldGreen,
+                                tint = VyaparRed,
                                 modifier = Modifier.size(20.dp)
                             )
                         }
@@ -71,7 +71,7 @@ fun MerchantUpiSettingsDialog(
                             text = "Merchant UPI Settings",
                             fontSize = 17.sp,
                             fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface
+                            color = VyaparTextPrimary
                         )
                     }
 
@@ -79,7 +79,7 @@ fun MerchantUpiSettingsDialog(
                         onClick = onDismiss,
                         modifier = Modifier.testTag("merchant_upi_settings_close")
                     ) {
-                        Icon(imageVector = Icons.Default.Close, contentDescription = "Close")
+                        Icon(imageVector = Icons.Default.Close, contentDescription = "Close", tint = VyaparTextSecondary)
                     }
                 }
 
@@ -88,7 +88,7 @@ fun MerchantUpiSettingsDialog(
                 Text(
                     text = "Configure your store's UPI VPA and Merchant Name for dynamic QR payment generation.",
                     fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = VyaparTextSecondary
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -100,11 +100,19 @@ fun MerchantUpiSettingsDialog(
                     label = { Text("Merchant UPI ID / VPA") },
                     placeholder = { Text("e.g. 9876543210@paytm or shop@ybl") },
                     leadingIcon = {
-                        Icon(imageVector = Icons.Default.AccountBalanceWallet, contentDescription = null, tint = EmeraldGreen)
+                        Icon(imageVector = Icons.Default.AccountBalanceWallet, contentDescription = null, tint = VyaparRed)
                     },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                     shape = RoundedCornerShape(12.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = VyaparRed,
+                        unfocusedBorderColor = VyaparBorder,
+                        focusedTextColor = VyaparTextPrimary,
+                        unfocusedTextColor = VyaparTextPrimary,
+                        focusedLabelColor = VyaparRed,
+                        unfocusedLabelColor = VyaparTextSecondary
+                    ),
                     modifier = Modifier
                         .fillMaxWidth()
                         .testTag("merchant_upi_id_input")
@@ -119,10 +127,18 @@ fun MerchantUpiSettingsDialog(
                     label = { Text("Store / Merchant Name") },
                     placeholder = { Text("e.g. Laxmi Kirana General Store") },
                     leadingIcon = {
-                        Icon(imageVector = Icons.Default.Storefront, contentDescription = null, tint = EmeraldGreen)
+                        Icon(imageVector = Icons.Default.Storefront, contentDescription = null, tint = VyaparRed)
                     },
                     singleLine = true,
                     shape = RoundedCornerShape(12.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = VyaparRed,
+                        unfocusedBorderColor = VyaparBorder,
+                        focusedTextColor = VyaparTextPrimary,
+                        unfocusedTextColor = VyaparTextPrimary,
+                        focusedLabelColor = VyaparRed,
+                        unfocusedLabelColor = VyaparTextSecondary
+                    ),
                     modifier = Modifier
                         .fillMaxWidth()
                         .testTag("merchant_store_name_input")
@@ -135,7 +151,7 @@ fun MerchantUpiSettingsDialog(
                     horizontalArrangement = Arrangement.End
                 ) {
                     TextButton(onClick = onDismiss) {
-                        Text("Cancel")
+                        Text("Cancel", color = VyaparTextSecondary)
                     }
                     Spacer(modifier = Modifier.width(8.dp))
                     Button(
@@ -144,11 +160,11 @@ fun MerchantUpiSettingsDialog(
                                 onSave(upiId.trim(), merchantName.trim())
                             }
                         },
-                        colors = ButtonDefaults.buttonColors(containerColor = EmeraldGreen),
+                        colors = ButtonDefaults.buttonColors(containerColor = VyaparRed),
                         shape = RoundedCornerShape(10.dp),
                         modifier = Modifier.testTag("save_merchant_upi_settings_button")
                     ) {
-                        Text("Save Settings", fontWeight = FontWeight.Bold)
+                        Text("Save Settings", fontWeight = FontWeight.Bold, color = Color.White)
                     }
                 }
             }

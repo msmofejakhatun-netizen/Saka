@@ -38,9 +38,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.core.content.ContextCompat
-import com.example.ui.theme.EmeraldGreen
-import com.example.ui.theme.EmeraldLight
-import com.example.ui.theme.ElectricViolet
+import com.example.ui.theme.*
 import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.barcode.common.Barcode
@@ -98,7 +96,7 @@ fun BarcodeScannerDialog(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(16.dp),
-            color = Color(0xFF0F172A),
+            color = VyaparSurface,
             shape = RoundedCornerShape(20.dp),
             tonalElevation = 8.dp
         ) {
@@ -118,20 +116,20 @@ fun BarcodeScannerDialog(
                         Box(
                             modifier = Modifier
                                 .size(36.dp)
-                                .background(Color(0x2210B981), CircleShape),
+                                .background(Color(0xFFFFEBEE), CircleShape),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
                                 imageVector = Icons.Default.QrCodeScanner,
                                 contentDescription = "Scan",
-                                tint = EmeraldGreen,
+                                tint = VyaparRed,
                                 modifier = Modifier.size(20.dp)
                             )
                         }
                         Spacer(modifier = Modifier.width(10.dp))
                         Text(
                             text = title,
-                            color = Color.White,
+                            color = VyaparTextPrimary,
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -141,7 +139,7 @@ fun BarcodeScannerDialog(
                         onClick = onDismiss,
                         modifier = Modifier.testTag("barcode_scanner_close_button")
                     ) {
-                        Icon(imageVector = Icons.Default.Close, contentDescription = "Close", tint = Color.White)
+                        Icon(imageVector = Icons.Default.Close, contentDescription = "Close", tint = VyaparTextSecondary)
                     }
                 }
 
@@ -291,7 +289,7 @@ fun BarcodeScannerDialog(
                             Spacer(modifier = Modifier.height(12.dp))
                             Text(
                                 text = "Camera access is required to scan barcodes",
-                                color = Color.White,
+                                color = VyaparTextPrimary,
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.SemiBold,
                                 textAlign = TextAlign.Center
@@ -299,20 +297,20 @@ fun BarcodeScannerDialog(
                             Spacer(modifier = Modifier.height(6.dp))
                             Text(
                                 text = "Grant camera access to use your device camera or enter barcode manually below.",
-                                color = Color(0xFF94A3B8),
+                                color = VyaparTextSecondary,
                                 fontSize = 11.sp,
                                 textAlign = TextAlign.Center
                             )
                             Spacer(modifier = Modifier.height(16.dp))
                             Button(
                                 onClick = { permissionLauncher.launch(Manifest.permission.CAMERA) },
-                                colors = ButtonDefaults.buttonColors(containerColor = EmeraldGreen),
+                                colors = ButtonDefaults.buttonColors(containerColor = VyaparRed),
                                 shape = RoundedCornerShape(10.dp),
                                 modifier = Modifier.testTag("grant_camera_permission_button")
                             ) {
-                                Icon(Icons.Default.Camera, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Icon(Icons.Default.Camera, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
                                 Spacer(modifier = Modifier.width(6.dp))
-                                Text("Grant Camera Permission", fontWeight = FontWeight.Bold)
+                                Text("Grant Camera Permission", fontWeight = FontWeight.Bold, color = Color.White)
                             }
                             Spacer(modifier = Modifier.height(8.dp))
                             TextButton(
@@ -324,7 +322,7 @@ fun BarcodeScannerDialog(
                                 },
                                 modifier = Modifier.testTag("open_app_settings_button")
                             ) {
-                                Text("Open App Settings", color = EmeraldLight, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                                Text("Open App Settings", color = VyaparRed, fontSize = 12.sp, fontWeight = FontWeight.Medium)
                             }
                         }
                     }
@@ -335,7 +333,7 @@ fun BarcodeScannerDialog(
                 // Manual Barcode Input Fallback (Great for testing in emulators or direct numeric code entry)
                 Text(
                     text = "OR ENTER BARCODE / SKU ID MANUALLY",
-                    color = Color(0xFF94A3B8),
+                    color = VyaparTextSecondary,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 0.5.sp
@@ -350,7 +348,7 @@ fun BarcodeScannerDialog(
                     OutlinedTextField(
                         value = manualBarcode,
                         onValueChange = { manualBarcode = it },
-                        placeholder = { Text("e.g. 8901234567890", color = Color(0xFF64748B), fontSize = 13.sp) },
+                        placeholder = { Text("e.g. 8901234567890", color = VyaparTextMuted, fontSize = 13.sp) },
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(
                             keyboardType = KeyboardType.Number,
@@ -372,12 +370,12 @@ fun BarcodeScannerDialog(
                             .weight(1f)
                             .testTag("manual_barcode_input"),
                         colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = EmeraldGreen,
-                            unfocusedBorderColor = Color(0x33FFFFFF),
-                            focusedContainerColor = Color(0x220D1333),
-                            unfocusedContainerColor = Color(0x220D1333),
-                            focusedTextColor = Color.White,
-                            unfocusedTextColor = Color.White
+                            focusedBorderColor = VyaparRed,
+                            unfocusedBorderColor = VyaparBorder,
+                            focusedContainerColor = VyaparSurface,
+                            unfocusedContainerColor = VyaparSurface,
+                            focusedTextColor = VyaparTextPrimary,
+                            unfocusedTextColor = VyaparTextPrimary
                         ),
                         shape = RoundedCornerShape(12.dp)
                     )
@@ -393,13 +391,13 @@ fun BarcodeScannerDialog(
                                 onDismiss()
                             }
                         },
-                        colors = ButtonDefaults.buttonColors(containerColor = EmeraldGreen),
+                        colors = ButtonDefaults.buttonColors(containerColor = VyaparRed),
                         shape = RoundedCornerShape(12.dp),
                         modifier = Modifier
                             .height(52.dp)
                             .testTag("manual_barcode_submit_button")
                     ) {
-                        Text("Add", fontWeight = FontWeight.Bold)
+                        Text("Add", fontWeight = FontWeight.Bold, color = Color.White)
                     }
                 }
             }

@@ -168,7 +168,7 @@ fun DashboardScreen(
                                     Icon(
                                         imageVector = tab.icon,
                                         contentDescription = tab.title,
-                                        tint = if (selected) VyaparRed else VyaparTextSecondary,
+                                        tint = if (selected) Color(0xFFD32F2F) else Color(0xFF64748B),
                                         modifier = Modifier.size(22.dp)
                                     )
                                 },
@@ -177,10 +177,14 @@ fun DashboardScreen(
                                         text = tab.title,
                                         fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
                                         fontSize = 11.sp,
-                                        color = if (selected) VyaparRed else VyaparTextSecondary
+                                        color = if (selected) Color(0xFFD32F2F) else Color(0xFF64748B)
                                     )
                                 },
                                 colors = NavigationBarItemDefaults.colors(
+                                    selectedIconColor = Color(0xFFD32F2F),
+                                    unselectedIconColor = Color(0xFF64748B),
+                                    selectedTextColor = Color(0xFFD32F2F),
+                                    unselectedTextColor = Color(0xFF64748B),
                                     indicatorColor = Color(0xFFFFEBEE)
                                 ),
                                 modifier = Modifier.testTag(tab.testTag)

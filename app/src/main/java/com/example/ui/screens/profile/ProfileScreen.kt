@@ -35,8 +35,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.ui.components.GlassmorphicCard
-import com.example.ui.components.PremiumGradientBackground
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.text.TextStyle
 import com.example.ui.components.PremiumLoadingState
 import com.example.ui.theme.EmeraldGreen
 import com.example.ui.theme.EmeraldLight
@@ -72,31 +73,34 @@ fun ProfileScreen(
 
     var showCategoryMenu by remember { mutableStateOf(false) }
 
-    PremiumGradientBackground {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFFF8FAFC))
+    ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .statusBarsPadding()
                 .navigationBarsPadding()
                 .verticalScroll(scrollState)
-                .padding(24.dp),
+                .padding(horizontal = 24.dp, vertical = 28.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
             Text(
                 text = "Business Profile Settings",
-                style = MaterialTheme.typography.displaySmall.copy(
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White,
-                    letterSpacing = 0.5.sp
-                ),
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF0F172A),
+                letterSpacing = 0.5.sp,
                 modifier = Modifier.testTag("profile_screen_title")
             )
 
             Text(
                 text = "Manage your merchant details & billing identity",
-                style = MaterialTheme.typography.bodyMedium,
-                color = Color(0xFF94A3B8),
+                fontSize = 14.sp,
+                color = Color(0xFF64748B),
                 textAlign = TextAlign.Center,
                 modifier = Modifier.padding(top = 4.dp, bottom = 16.dp)
             )
@@ -114,17 +118,16 @@ fun ProfileScreen(
 
             Card(
                 colors = CardDefaults.cardColors(
-                    containerColor = if (isSubValid) Color(0x2210B981) else Color(0x22EF4444)
+                    containerColor = if (isSubValid) Color(0xFFECFDF5) else Color(0xFFFEF2F2)
                 ),
                 shape = RoundedCornerShape(14.dp),
+                border = BorderStroke(
+                    1.dp,
+                    if (isSubValid) Color(0xFFA7F3D0) else Color(0xFFFECACA)
+                ),
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = 20.dp)
-                    .border(
-                        1.dp,
-                        if (isSubValid) Color(0x4410B981) else Color(0x44EF4444),
-                        RoundedCornerShape(14.dp)
-                    )
                     .testTag("profile_subscription_status_card")
             ) {
                 Row(
@@ -139,7 +142,7 @@ fun ProfileScreen(
                             modifier = Modifier
                                 .size(40.dp)
                                 .background(
-                                    if (isSubValid) EmeraldGreen.copy(alpha = 0.2f) else Color(0x33EF4444),
+                                    if (isSubValid) Color(0xFFD1FAE5) else Color(0xFFFFE4E6),
                                     CircleShape
                                 ),
                             contentAlignment = Alignment.Center
@@ -147,7 +150,7 @@ fun ProfileScreen(
                             Icon(
                                 imageVector = if (isSubValid) Icons.Default.WorkspacePremium else Icons.Default.Cancel,
                                 contentDescription = "Plan Badge",
-                                tint = if (isSubValid) EmeraldGreen else Color(0xFFEF4444),
+                                tint = if (isSubValid) Color(0xFF16A34A) else Color(0xFFDC2626),
                                 modifier = Modifier.size(22.dp)
                             )
                         }
@@ -155,13 +158,13 @@ fun ProfileScreen(
                         Column {
                             Text(
                                 text = subBadgeTitle,
-                                color = Color.White,
+                                color = Color(0xFF0F172A),
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 14.sp
                             )
                             Text(
                                 text = if (isSubValid) subDaysText else "Plan Expired - Renew to unlock",
-                                color = if (isSubValid) EmeraldLight else Color(0xFFFCA5A5),
+                                color = if (isSubValid) Color(0xFF16A34A) else Color(0xFFDC2626),
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Medium
                             )
@@ -169,7 +172,7 @@ fun ProfileScreen(
                     }
 
                     Surface(
-                        color = if (isSubValid) EmeraldGreen else Color(0xFFEF4444),
+                        color = if (isSubValid) Color(0xFF16A34A) else Color(0xFFDC2626),
                         shape = RoundedCornerShape(8.dp)
                     ) {
                         Text(
@@ -183,7 +186,11 @@ fun ProfileScreen(
                 }
             }
 
-            GlassmorphicCard(
+            Card(
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                shape = RoundedCornerShape(20.dp),
+                border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
                 modifier = Modifier
                     .fillMaxWidth()
                     .testTag("profile_form_card")
@@ -217,23 +224,25 @@ fun ProfileScreen(
                     OutlinedTextField(
                         value = viewModel.fullName.ifBlank { uiState.fullName },
                         onValueChange = { viewModel.updateFullName(it) },
-                        label = { Text("Full Name", color = Color(0xFF94A3B8)) },
+                        label = { Text("Full Name", color = Color(0xFF334155), fontWeight = FontWeight.Bold) },
+                        textStyle = TextStyle(color = Color(0xFF0F172A), fontSize = 15.sp, fontWeight = FontWeight.Medium),
                         leadingIcon = {
                             Icon(
                                 imageVector = Icons.Default.Person,
                                 contentDescription = "User Icon",
-                                tint = EmeraldGreen
+                                tint = Color(0xFF16A34A)
                             )
                         },
                         colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = EmeraldGreen,
-                            unfocusedBorderColor = Color(0x33FFFFFF),
-                            focusedLabelColor = EmeraldGreen,
-                            unfocusedLabelColor = Color(0xFF94A3B8),
-                            focusedTextColor = Color.White,
-                            unfocusedTextColor = Color.White,
-                            focusedContainerColor = Color(0x0AFFFFFF),
-                            unfocusedContainerColor = Color(0x05FFFFFF)
+                            focusedBorderColor = Color(0xFF16A34A),
+                            unfocusedBorderColor = Color(0xFFCBD5E1),
+                            focusedLabelColor = Color(0xFF334155),
+                            unfocusedLabelColor = Color(0xFF334155),
+                            focusedTextColor = Color(0xFF0F172A),
+                            unfocusedTextColor = Color(0xFF0F172A),
+                            focusedContainerColor = Color(0xFFF8FAFC),
+                            unfocusedContainerColor = Color(0xFFF8FAFC),
+                            cursorColor = Color(0xFF16A34A)
                         ),
                         singleLine = true,
                         shape = RoundedCornerShape(12.dp),
@@ -248,23 +257,25 @@ fun ProfileScreen(
                     OutlinedTextField(
                         value = viewModel.businessName.ifBlank { uiState.businessName },
                         onValueChange = { viewModel.updateBusinessName(it) },
-                        label = { Text("Business Name", color = Color(0xFF94A3B8)) },
+                        label = { Text("Business Name", color = Color(0xFF334155), fontWeight = FontWeight.Bold) },
+                        textStyle = TextStyle(color = Color(0xFF0F172A), fontSize = 15.sp, fontWeight = FontWeight.Medium),
                         leadingIcon = {
                             Icon(
                                 imageVector = Icons.Default.Business,
                                 contentDescription = "Business Icon",
-                                tint = EmeraldGreen
+                                tint = Color(0xFF16A34A)
                             )
                         },
                         colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = EmeraldGreen,
-                            unfocusedBorderColor = Color(0x33FFFFFF),
-                            focusedLabelColor = EmeraldGreen,
-                            unfocusedLabelColor = Color(0xFF94A3B8),
-                            focusedTextColor = Color.White,
-                            unfocusedTextColor = Color.White,
-                            focusedContainerColor = Color(0x0AFFFFFF),
-                            unfocusedContainerColor = Color(0x05FFFFFF)
+                            focusedBorderColor = Color(0xFF16A34A),
+                            unfocusedBorderColor = Color(0xFFCBD5E1),
+                            focusedLabelColor = Color(0xFF334155),
+                            unfocusedLabelColor = Color(0xFF334155),
+                            focusedTextColor = Color(0xFF0F172A),
+                            unfocusedTextColor = Color(0xFF0F172A),
+                            focusedContainerColor = Color(0xFFF8FAFC),
+                            unfocusedContainerColor = Color(0xFFF8FAFC),
+                            cursorColor = Color(0xFF16A34A)
                         ),
                         singleLine = true,
                         shape = RoundedCornerShape(12.dp),
@@ -285,31 +296,33 @@ fun ProfileScreen(
                             value = viewModel.businessCategory.ifBlank { uiState.businessCategory },
                             onValueChange = {},
                             readOnly = true,
-                            label = { Text("Business Category", color = Color(0xFF94A3B8)) },
+                            label = { Text("Business Category", color = Color(0xFF334155), fontWeight = FontWeight.Bold) },
+                            textStyle = TextStyle(color = Color(0xFF0F172A), fontSize = 15.sp, fontWeight = FontWeight.Medium),
                             leadingIcon = {
                                 Icon(
                                     imageVector = Icons.Default.Category,
                                     contentDescription = "Category Icon",
-                                    tint = EmeraldGreen
+                                    tint = Color(0xFF16A34A)
                                 )
                             },
                             trailingIcon = {
                                 Icon(
                                     imageVector = Icons.Default.ArrowDropDown,
                                     contentDescription = "Arrow Drop Down",
-                                    tint = EmeraldLight,
+                                    tint = Color(0xFF16A34A),
                                     modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable)
                                 )
                             },
                             colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = EmeraldGreen,
-                                unfocusedBorderColor = Color(0x33FFFFFF),
-                                focusedLabelColor = EmeraldGreen,
-                                unfocusedLabelColor = Color(0xFF94A3B8),
-                                focusedTextColor = Color.White,
-                                unfocusedTextColor = Color.White,
-                                focusedContainerColor = Color(0x0AFFFFFF),
-                                unfocusedContainerColor = Color(0x05FFFFFF)
+                                focusedBorderColor = Color(0xFF16A34A),
+                                unfocusedBorderColor = Color(0xFFCBD5E1),
+                                focusedLabelColor = Color(0xFF334155),
+                                unfocusedLabelColor = Color(0xFF334155),
+                                focusedTextColor = Color(0xFF0F172A),
+                                unfocusedTextColor = Color(0xFF0F172A),
+                                focusedContainerColor = Color(0xFFF8FAFC),
+                                unfocusedContainerColor = Color(0xFFF8FAFC),
+                                cursorColor = Color(0xFF16A34A)
                             ),
                             singleLine = true,
                             shape = RoundedCornerShape(12.dp),
@@ -323,12 +336,12 @@ fun ProfileScreen(
                             expanded = showCategoryMenu,
                             onDismissRequest = { showCategoryMenu = false },
                             modifier = Modifier
-                                .background(Color(0xFF0F172A))
-                                .border(1.dp, Color(0x33FFFFFF), RoundedCornerShape(8.dp))
+                                .background(Color.White)
+                                .border(1.dp, Color(0xFFE2E8F0), RoundedCornerShape(8.dp))
                         ) {
                             selectableCategories.forEach { categoryName ->
                                 DropdownMenuItem(
-                                    text = { Text(categoryName, color = Color.White) },
+                                    text = { Text(categoryName, color = Color(0xFF0F172A), fontWeight = FontWeight.Medium) },
                                     onClick = {
                                         viewModel.updateBusinessCategory(categoryName)
                                         showCategoryMenu = false
@@ -345,24 +358,26 @@ fun ProfileScreen(
                     OutlinedTextField(
                         value = viewModel.upiId.ifBlank { uiState.upiId },
                         onValueChange = { viewModel.updateUpiId(it) },
-                        label = { Text("Merchant UPI ID / VPA", color = Color(0xFF94A3B8)) },
-                        placeholder = { Text("e.g. 9876543210@paytm") },
+                        label = { Text("Merchant UPI ID / VPA", color = Color(0xFF334155), fontWeight = FontWeight.Bold) },
+                        placeholder = { Text("e.g. 9876543210@paytm", color = Color(0xFF94A3B8)) },
+                        textStyle = TextStyle(color = Color(0xFF0F172A), fontSize = 15.sp, fontWeight = FontWeight.Medium),
                         leadingIcon = {
                             Icon(
                                 imageVector = Icons.Default.AccountBalanceWallet,
                                 contentDescription = "UPI Icon",
-                                tint = EmeraldGreen
+                                tint = Color(0xFF16A34A)
                             )
                         },
                         colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = EmeraldGreen,
-                            unfocusedBorderColor = Color(0x33FFFFFF),
-                            focusedLabelColor = EmeraldGreen,
-                            unfocusedLabelColor = Color(0xFF94A3B8),
-                            focusedTextColor = Color.White,
-                            unfocusedTextColor = Color.White,
-                            focusedContainerColor = Color(0x0AFFFFFF),
-                            unfocusedContainerColor = Color(0x05FFFFFF)
+                            focusedBorderColor = Color(0xFF16A34A),
+                            unfocusedBorderColor = Color(0xFFCBD5E1),
+                            focusedLabelColor = Color(0xFF334155),
+                            unfocusedLabelColor = Color(0xFF334155),
+                            focusedTextColor = Color(0xFF0F172A),
+                            unfocusedTextColor = Color(0xFF0F172A),
+                            focusedContainerColor = Color(0xFFF8FAFC),
+                            unfocusedContainerColor = Color(0xFFF8FAFC),
+                            cursorColor = Color(0xFF16A34A)
                         ),
                         singleLine = true,
                         shape = RoundedCornerShape(12.dp),
@@ -375,11 +390,10 @@ fun ProfileScreen(
 
                     // Auto-send WhatsApp Invoice Toggle Setting
                     Card(
-                        colors = CardDefaults.cardColors(containerColor = Color(0x1F1E295D)),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFFF8FAFC)),
                         shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .border(1.dp, Color(0x3310B981), RoundedCornerShape(12.dp))
+                        border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
+                        modifier = Modifier.fillMaxWidth()
                     ) {
                         Row(
                             modifier = Modifier
@@ -395,13 +409,13 @@ fun ProfileScreen(
                                 Box(
                                     modifier = Modifier
                                         .size(36.dp)
-                                        .background(Color(0x2225D366), RoundedCornerShape(8.dp)),
+                                        .background(Color(0xFFDCFCE7), RoundedCornerShape(8.dp)),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.Share,
                                         contentDescription = "WhatsApp",
-                                        tint = Color(0xFF25D366),
+                                        tint = Color(0xFF16A34A),
                                         modifier = Modifier.size(20.dp)
                                     )
                                 }
@@ -409,13 +423,13 @@ fun ProfileScreen(
                                 Column {
                                     Text(
                                         text = "Auto-send WhatsApp Bill",
-                                        color = Color.White,
+                                        color = Color(0xFF0F172A),
                                         fontSize = 13.sp,
                                         fontWeight = FontWeight.Bold
                                     )
                                     Text(
                                         text = "Automatically open WhatsApp with receipt upon completing sale",
-                                        color = Color(0xFF94A3B8),
+                                        color = Color(0xFF64748B),
                                         fontSize = 11.sp
                                     )
                                 }
@@ -427,9 +441,9 @@ fun ProfileScreen(
                                 },
                                 colors = SwitchDefaults.colors(
                                     checkedThumbColor = Color.White,
-                                    checkedTrackColor = EmeraldGreen,
+                                    checkedTrackColor = Color(0xFF16A34A),
                                     uncheckedThumbColor = Color(0xFF94A3B8),
-                                    uncheckedTrackColor = Color(0x33FFFFFF)
+                                    uncheckedTrackColor = Color(0xFFE2E8F0)
                                 ),
                                 modifier = Modifier.testTag("profile_auto_whatsapp_switch")
                             )
@@ -458,10 +472,10 @@ fun ProfileScreen(
                             modifier = Modifier
                                 .fillMaxSize()
                                 .background(
-                                    androidx.compose.ui.graphics.Brush.horizontalGradient(
+                                    Brush.horizontalGradient(
                                         colors = listOf(
                                             Color(0xFF8B5CF6), // Electric Violet
-                                            Color(0xFF10B981)  // Emerald Green
+                                            Color(0xFF16A34A)  // Emerald Green
                                         )
                                     )
                                 ),

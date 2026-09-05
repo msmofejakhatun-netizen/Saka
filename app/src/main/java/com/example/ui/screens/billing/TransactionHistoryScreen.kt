@@ -150,19 +150,19 @@ fun TransactionHistoryScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = Icons.Default.History,
-                            contentDescription = null,
-                            tint = EmeraldGreen,
-                            modifier = Modifier.size(24.dp)
-                        )
-                        Spacer(modifier = Modifier.width(10.dp))
+                    Column {
                         Text(
                             text = "Transaction History",
                             style = MaterialTheme.typography.titleMedium.copy(
                                 fontWeight = FontWeight.Bold,
                                 color = Color.White
+                            )
+                        )
+                        Text(
+                            text = "${filteredInvoices.size} Invoices Generated",
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                color = Color(0xFF10B981),
+                                fontWeight = FontWeight.SemiBold
                             )
                         )
                     }
@@ -179,8 +179,8 @@ fun TransactionHistoryScreen(
                         )
                     }
                 },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = Color(0x99090D22)
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color(0xFF0D1322)
                 ),
                 modifier = Modifier.testTag("history_top_bar")
             )
@@ -190,15 +190,7 @@ fun TransactionHistoryScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(
-                            Color(0xFF0B0F28),
-                            DarkGray,
-                            Color(0xFF090C1E)
-                        )
-                    )
-                )
+                .background(Color(0xFF0D1322))
                 .padding(innerPadding)
         ) {
             LazyColumn(
@@ -208,45 +200,51 @@ fun TransactionHistoryScreen(
                 verticalArrangement = Arrangement.spacedBy(14.dp),
                 contentPadding = PaddingValues(bottom = 40.dp)
             ) {
-                // 1. KPI Revenue Summary Section
+                // 1. KPI Revenue Summary Section (2 Cards)
                 item {
                     Spacer(modifier = Modifier.height(4.dp))
-                    Card(
-                        colors = CardDefaults.cardColors(containerColor = Color(0x1F1E295D)),
-                        shape = RoundedCornerShape(16.dp),
+                    Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .border(1.dp, Color(0x2210B981), RoundedCornerShape(16.dp))
-                            .testTag("history_kpi_card")
+                            .testTag("history_kpi_card"),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
+                        Card(
+                            colors = CardDefaults.cardColors(containerColor = Color(0xFF161F38)),
+                            shape = RoundedCornerShape(16.dp),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0x22FFFFFF)),
+                            modifier = Modifier.weight(1f)
                         ) {
-                            Column {
+                            Column(modifier = Modifier.padding(14.dp)) {
                                 Text("TOTAL REVENUE", color = Color(0xFF94A3B8), fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.5.sp)
+                                Spacer(modifier = Modifier.height(6.dp))
                                 Text(
-                                    text = "₹${String.format(Locale.US, "%.2f", totalRevenue)}",
-                                    color = EmeraldGreen,
+                                    text = "₹${String.format(Locale.US, "%,.2f", totalRevenue)}",
+                                    color = Color.White,
                                     fontWeight = FontWeight.Bold,
-                                    fontSize = 24.sp
+                                    fontSize = 19.sp
                                 )
-                                Text("${filteredInvoices.size} Invoices Billed", color = EmeraldLight, fontSize = 11.sp)
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text("${filteredInvoices.size} Invoices Billed", color = Color(0xFF94A3B8), fontSize = 11.sp)
                             }
+                        }
 
-                            Box(modifier = Modifier.width(1.dp).height(40.dp).background(Color(0x22FFFFFF)))
-
-                            Column(horizontalAlignment = Alignment.End) {
+                        Card(
+                            colors = CardDefaults.cardColors(containerColor = Color(0xFF161F38)),
+                            shape = RoundedCornerShape(16.dp),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0x3310B981)),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Column(modifier = Modifier.padding(14.dp)) {
                                 Text("AVG INVOICE", color = Color(0xFF94A3B8), fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.5.sp)
+                                Spacer(modifier = Modifier.height(6.dp))
                                 Text(
-                                    text = "₹${String.format(Locale.US, "%.2f", avgTicketValue)}",
-                                    color = GoldYellow,
+                                    text = "₹${String.format(Locale.US, "%,.2f", avgTicketValue)}",
+                                    color = Color(0xFF10B981),
                                     fontWeight = FontWeight.Bold,
-                                    fontSize = 18.sp
+                                    fontSize = 19.sp
                                 )
+                                Spacer(modifier = Modifier.height(2.dp))
                                 Text("Ticket Average", color = Color(0xFF94A3B8), fontSize = 11.sp)
                             }
                         }
@@ -256,11 +254,9 @@ fun TransactionHistoryScreen(
                 // 2. Search & Filters Bar
                 item {
                     Card(
-                        colors = CardDefaults.cardColors(containerColor = Color(0x151E295D)),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFF161F38)),
                         shape = RoundedCornerShape(16.dp),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .border(1.dp, Color(0x18FFFFFF), RoundedCornerShape(16.dp))
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0x22FFFFFF))
                     ) {
                         Column(
                             modifier = Modifier.padding(14.dp),
@@ -270,8 +266,8 @@ fun TransactionHistoryScreen(
                             OutlinedTextField(
                                 value = searchQuery,
                                 onValueChange = { searchQuery = it },
-                                placeholder = { Text("Search customer, mobile or invoice #...", color = Color(0xFF64748B), fontSize = 12.sp) },
-                                leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search", tint = EmeraldGreen, modifier = Modifier.size(20.dp)) },
+                                placeholder = { Text("Search customer, mobile or invoice #...", color = Color(0xFF94A3B8), fontSize = 12.sp) },
+                                leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search", tint = Color(0xFF10B981), modifier = Modifier.size(20.dp)) },
                                 trailingIcon = {
                                     if (searchQuery.isNotEmpty()) {
                                         IconButton(onClick = { searchQuery = "" }) {
@@ -280,11 +276,14 @@ fun TransactionHistoryScreen(
                                     }
                                 },
                                 colors = OutlinedTextFieldDefaults.colors(
-                                    focusedBorderColor = EmeraldGreen,
-                                    unfocusedBorderColor = Color(0x22FFFFFF),
+                                    focusedBorderColor = Color(0xFF10B981),
+                                    unfocusedBorderColor = Color(0x33FFFFFF),
                                     focusedTextColor = Color.White,
-                                    unfocusedTextColor = Color.White
+                                    unfocusedTextColor = Color.White,
+                                    focusedContainerColor = Color(0x1F1E295D),
+                                    unfocusedContainerColor = Color(0x1F1E295D)
                                 ),
+                                shape = RoundedCornerShape(12.dp),
                                 singleLine = true,
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -587,11 +586,11 @@ private fun HistoryInvoiceCard(
 
     Card(
         onClick = onCardClick,
-        colors = CardDefaults.cardColors(containerColor = Color(0x1F1E295D)),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF161F38)),
         shape = RoundedCornerShape(14.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0x22FFFFFF)),
         modifier = Modifier
             .fillMaxWidth()
-            .border(1.dp, Color(0x18FFFFFF), RoundedCornerShape(14.dp))
             .testTag("history_invoice_item_${invoice.firestoreId.take(6).ifBlank { invoice.id }}")
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
@@ -603,11 +602,11 @@ private fun HistoryInvoiceCard(
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
                     Box(
                         modifier = Modifier
-                            .size(36.dp)
+                            .size(38.dp)
                             .background(Color(0x2210B981), CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(Icons.Default.Receipt, contentDescription = null, tint = EmeraldGreen, modifier = Modifier.size(18.dp))
+                        Icon(Icons.Default.Receipt, contentDescription = null, tint = Color(0xFF10B981), modifier = Modifier.size(20.dp))
                     }
 
                     Spacer(modifier = Modifier.width(10.dp))
@@ -615,10 +614,10 @@ private fun HistoryInvoiceCard(
                     Column {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(
-                                text = invoice.customerName,
+                                text = invoice.customerName.ifBlank { "Walk-in Customer" },
                                 color = Color.White,
                                 fontWeight = FontWeight.Bold,
-                                fontSize = 14.sp,
+                                fontSize = 15.sp,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
@@ -641,21 +640,21 @@ private fun HistoryInvoiceCard(
                 Column(horizontalAlignment = Alignment.End) {
                     Text(
                         text = "₹${String.format(Locale.US, "%.2f", invoice.amount)}",
-                        color = EmeraldLight,
+                        color = Color(0xFF10B981),
                         fontWeight = FontWeight.Bold,
-                        fontSize = 15.sp
+                        fontSize = 16.sp
                     )
-                    Spacer(modifier = Modifier.height(2.dp))
+                    Spacer(modifier = Modifier.height(3.dp))
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(6.dp))
                             .background(Color(0x2210B981))
                             .wrapContentWidth()
-                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                            .padding(horizontal = 8.dp, vertical = 3.dp)
                     ) {
                         Text(
-                            text = invoice.paymentMode,
-                            color = EmeraldGreen,
+                            text = if (invoice.paymentMode.contains("Credit", ignoreCase = true)) "CREDIT" else "PAID",
+                            color = if (invoice.paymentMode.contains("Credit", ignoreCase = true)) GoldYellow else Color(0xFF10B981),
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold,
                             maxLines = 1,
@@ -671,8 +670,8 @@ private fun HistoryInvoiceCard(
             if (invoice.itemsSummary.isNotBlank()) {
                 Text(
                     text = "Items: ${invoice.itemsSummary}",
-                    color = Color(0xFFCBD5E1),
-                    fontSize = 11.sp,
+                    color = Color(0xFF94A3B8),
+                    fontSize = 12.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )

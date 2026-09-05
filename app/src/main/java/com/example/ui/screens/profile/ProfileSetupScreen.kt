@@ -3,6 +3,7 @@ package com.example.ui.screens.profile
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -21,15 +22,15 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.example.ui.components.GlassmorphicCard
-import com.example.ui.components.PremiumGradientBackground
 import com.example.ui.components.PremiumLoadingState
 import com.example.ui.theme.EmeraldGreen
 import com.example.ui.theme.EmeraldLight
@@ -70,36 +71,43 @@ fun ProfileSetupScreen(
 
     var showCategoryMenu by remember { mutableStateOf(false) }
 
-    PremiumGradientBackground {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFFF8FAFC))
+    ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .statusBarsPadding()
                 .navigationBarsPadding()
                 .verticalScroll(scrollState)
-                .padding(24.dp),
+                .padding(horizontal = 24.dp, vertical = 28.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
             Text(
                 text = "Complete Profile",
-                style = MaterialTheme.typography.displaySmall.copy(
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White,
-                    letterSpacing = 0.5.sp
-                ),
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF0F172A),
+                letterSpacing = 0.5.sp,
                 modifier = Modifier.testTag("profile_setup_title")
             )
 
             Text(
                 text = "Set up your business identity to start billing",
-                style = MaterialTheme.typography.bodyMedium,
-                color = Color(0xFF94A3B8),
+                fontSize = 14.sp,
+                color = Color(0xFF64748B),
                 textAlign = TextAlign.Center,
                 modifier = Modifier.padding(top = 4.dp, bottom = 24.dp)
             )
 
-            GlassmorphicCard(
+            Card(
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                shape = RoundedCornerShape(20.dp),
+                border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
                 modifier = Modifier
                     .fillMaxWidth()
                     .testTag("profile_setup_form_card")
@@ -133,23 +141,25 @@ fun ProfileSetupScreen(
                     OutlinedTextField(
                         value = viewModel.profileFullName,
                         onValueChange = { viewModel.profileFullName = it },
-                        label = { Text("Full Name", color = Color(0xFF94A3B8)) },
+                        label = { Text("Full Name", color = Color(0xFF334155), fontWeight = FontWeight.Bold) },
+                        textStyle = TextStyle(color = Color(0xFF0F172A), fontSize = 15.sp, fontWeight = FontWeight.Medium),
                         leadingIcon = {
                             Icon(
                                 imageVector = Icons.Default.Person,
                                 contentDescription = "User Icon",
-                                tint = EmeraldGreen
+                                tint = Color(0xFF16A34A)
                             )
                         },
                         colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = EmeraldGreen,
-                            unfocusedBorderColor = Color(0x33FFFFFF),
-                            focusedLabelColor = EmeraldGreen,
-                            unfocusedLabelColor = Color(0xFF94A3B8),
-                            focusedTextColor = Color.White,
-                            unfocusedTextColor = Color.White,
-                            focusedContainerColor = Color(0x0AFFFFFF),
-                            unfocusedContainerColor = Color(0x05FFFFFF)
+                            focusedBorderColor = Color(0xFF16A34A),
+                            unfocusedBorderColor = Color(0xFFCBD5E1),
+                            focusedLabelColor = Color(0xFF334155),
+                            unfocusedLabelColor = Color(0xFF334155),
+                            focusedTextColor = Color(0xFF0F172A),
+                            unfocusedTextColor = Color(0xFF0F172A),
+                            focusedContainerColor = Color(0xFFF8FAFC),
+                            unfocusedContainerColor = Color(0xFFF8FAFC),
+                            cursorColor = Color(0xFF16A34A)
                         ),
                         singleLine = true,
                         shape = RoundedCornerShape(12.dp),
@@ -164,23 +174,25 @@ fun ProfileSetupScreen(
                     OutlinedTextField(
                         value = viewModel.profileBusinessName,
                         onValueChange = { viewModel.profileBusinessName = it },
-                        label = { Text("Business Name", color = Color(0xFF94A3B8)) },
+                        label = { Text("Business Name", color = Color(0xFF334155), fontWeight = FontWeight.Bold) },
+                        textStyle = TextStyle(color = Color(0xFF0F172A), fontSize = 15.sp, fontWeight = FontWeight.Medium),
                         leadingIcon = {
                             Icon(
                                 imageVector = Icons.Default.Business,
                                 contentDescription = "Business Icon",
-                                tint = EmeraldGreen
+                                tint = Color(0xFF16A34A)
                             )
                         },
                         colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = EmeraldGreen,
-                            unfocusedBorderColor = Color(0x33FFFFFF),
-                            focusedLabelColor = EmeraldGreen,
-                            unfocusedLabelColor = Color(0xFF94A3B8),
-                            focusedTextColor = Color.White,
-                            unfocusedTextColor = Color.White,
-                            focusedContainerColor = Color(0x0AFFFFFF),
-                            unfocusedContainerColor = Color(0x05FFFFFF)
+                            focusedBorderColor = Color(0xFF16A34A),
+                            unfocusedBorderColor = Color(0xFFCBD5E1),
+                            focusedLabelColor = Color(0xFF334155),
+                            unfocusedLabelColor = Color(0xFF334155),
+                            focusedTextColor = Color(0xFF0F172A),
+                            unfocusedTextColor = Color(0xFF0F172A),
+                            focusedContainerColor = Color(0xFFF8FAFC),
+                            unfocusedContainerColor = Color(0xFFF8FAFC),
+                            cursorColor = Color(0xFF16A34A)
                         ),
                         singleLine = true,
                         shape = RoundedCornerShape(12.dp),
@@ -201,31 +213,33 @@ fun ProfileSetupScreen(
                             value = viewModel.profileCategory,
                             onValueChange = {},
                             readOnly = true,
-                            label = { Text("Business Category", color = Color(0xFF94A3B8)) },
+                            label = { Text("Business Category", color = Color(0xFF334155), fontWeight = FontWeight.Bold) },
+                            textStyle = TextStyle(color = Color(0xFF0F172A), fontSize = 15.sp, fontWeight = FontWeight.Medium),
                             leadingIcon = {
                                 Icon(
                                     imageVector = Icons.Default.Category,
                                     contentDescription = "Category Icon",
-                                    tint = EmeraldGreen
+                                    tint = Color(0xFF16A34A)
                                 )
                             },
                             trailingIcon = {
                                 Icon(
                                     imageVector = Icons.Default.ArrowDropDown,
                                     contentDescription = "Arrow Drop Down",
-                                    tint = EmeraldLight,
+                                    tint = Color(0xFF16A34A),
                                     modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable)
                                 )
                             },
                             colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = EmeraldGreen,
-                                unfocusedBorderColor = Color(0x33FFFFFF),
-                                focusedLabelColor = EmeraldGreen,
-                                unfocusedLabelColor = Color(0xFF94A3B8),
-                                focusedTextColor = Color.White,
-                                unfocusedTextColor = Color.White,
-                                focusedContainerColor = Color(0x0AFFFFFF),
-                                unfocusedContainerColor = Color(0x05FFFFFF)
+                                focusedBorderColor = Color(0xFF16A34A),
+                                unfocusedBorderColor = Color(0xFFCBD5E1),
+                                focusedLabelColor = Color(0xFF334155),
+                                unfocusedLabelColor = Color(0xFF334155),
+                                focusedTextColor = Color(0xFF0F172A),
+                                unfocusedTextColor = Color(0xFF0F172A),
+                                focusedContainerColor = Color(0xFFF8FAFC),
+                                unfocusedContainerColor = Color(0xFFF8FAFC),
+                                cursorColor = Color(0xFF16A34A)
                             ),
                             singleLine = true,
                             shape = RoundedCornerShape(12.dp),
@@ -239,12 +253,12 @@ fun ProfileSetupScreen(
                             expanded = showCategoryMenu,
                             onDismissRequest = { showCategoryMenu = false },
                             modifier = Modifier
-                                .background(Color(0xFF0F172A))
-                                .border(1.dp, Color(0x33FFFFFF), RoundedCornerShape(8.dp))
+                                .background(Color.White)
+                                .border(1.dp, Color(0xFFE2E8F0), RoundedCornerShape(8.dp))
                         ) {
                             selectableCategories.forEach { categoryName ->
                                 DropdownMenuItem(
-                                    text = { Text(categoryName, color = Color.White) },
+                                    text = { Text(categoryName, color = Color(0xFF0F172A), fontWeight = FontWeight.Medium) },
                                     onClick = {
                                         viewModel.profileCategory = categoryName
                                         showCategoryMenu = false
@@ -261,24 +275,26 @@ fun ProfileSetupScreen(
                     OutlinedTextField(
                         value = viewModel.profileUpiId,
                         onValueChange = { viewModel.profileUpiId = it },
-                        label = { Text("Merchant UPI ID / VPA", color = Color(0xFF94A3B8)) },
-                        placeholder = { Text("e.g. 9876543210@paytm") },
+                        label = { Text("Merchant UPI ID / VPA", color = Color(0xFF334155), fontWeight = FontWeight.Bold) },
+                        placeholder = { Text("e.g. 9876543210@paytm", color = Color(0xFF94A3B8)) },
+                        textStyle = TextStyle(color = Color(0xFF0F172A), fontSize = 15.sp, fontWeight = FontWeight.Medium),
                         leadingIcon = {
                             Icon(
-                                imageVector = androidx.compose.material.icons.Icons.Default.AccountBalanceWallet,
+                                imageVector = Icons.Default.AccountBalanceWallet,
                                 contentDescription = "UPI Icon",
-                                tint = EmeraldGreen
+                                tint = Color(0xFF16A34A)
                             )
                         },
                         colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = EmeraldGreen,
-                            unfocusedBorderColor = Color(0x33FFFFFF),
-                            focusedLabelColor = EmeraldGreen,
-                            unfocusedLabelColor = Color(0xFF94A3B8),
-                            focusedTextColor = Color.White,
-                            unfocusedTextColor = Color.White,
-                            focusedContainerColor = Color(0x0AFFFFFF),
-                            unfocusedContainerColor = Color(0x05FFFFFF)
+                            focusedBorderColor = Color(0xFF16A34A),
+                            unfocusedBorderColor = Color(0xFFCBD5E1),
+                            focusedLabelColor = Color(0xFF334155),
+                            unfocusedLabelColor = Color(0xFF334155),
+                            focusedTextColor = Color(0xFF0F172A),
+                            unfocusedTextColor = Color(0xFF0F172A),
+                            focusedContainerColor = Color(0xFFF8FAFC),
+                            unfocusedContainerColor = Color(0xFFF8FAFC),
+                            cursorColor = Color(0xFF16A34A)
                         ),
                         singleLine = true,
                         shape = RoundedCornerShape(12.dp),
@@ -305,10 +321,10 @@ fun ProfileSetupScreen(
                             modifier = Modifier
                                 .fillMaxSize()
                                 .background(
-                                    androidx.compose.ui.graphics.Brush.horizontalGradient(
+                                    Brush.horizontalGradient(
                                         colors = listOf(
                                             Color(0xFF8B5CF6), // Electric Violet
-                                            Color(0xFF10B981)  // Emerald Green
+                                            Color(0xFF16A34A)  // Emerald Green
                                         )
                                     )
                                 ),

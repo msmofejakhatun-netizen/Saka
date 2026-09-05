@@ -259,7 +259,11 @@ fun ProductsScreen(
         showAddEditDialog = true
     }
 
-    PremiumGradientBackground {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFFF8FAFC))
+    ) {
         Scaffold(
             topBar = {
                 CenterAlignedTopAppBar(
@@ -269,14 +273,14 @@ fun ProductsScreen(
                                 text = "Inventory & Products",
                                 style = MaterialTheme.typography.titleLarge.copy(
                                     fontWeight = FontWeight.Bold,
-                                    color = Color.White
+                                    color = Color(0xFF111827)
                                 ),
                                 modifier = Modifier.testTag("products_title")
                             )
                             Text(
                                 text = "${filteredProducts.size} Items Available",
                                 style = MaterialTheme.typography.bodySmall.copy(
-                                    color = EmeraldGreen,
+                                    color = Color(0xFF16A34A),
                                     fontWeight = FontWeight.SemiBold
                                 )
                             )
@@ -290,7 +294,7 @@ fun ProductsScreen(
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                                 contentDescription = "Back",
-                                tint = Color.White
+                                tint = Color(0xFF111827)
                             )
                         }
                     },
@@ -302,19 +306,19 @@ fun ProductsScreen(
                             Icon(
                                 imageVector = Icons.Default.Add,
                                 contentDescription = "Add Product",
-                                tint = EmeraldGreen
+                                tint = Color(0xFF16A34A)
                             )
                         }
                     },
                     colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                        containerColor = Color(0x99090D22)
+                        containerColor = Color.White
                     )
                 )
             },
             floatingActionButton = {
                 FloatingActionButton(
                     onClick = { openAddDialog() },
-                    containerColor = EmeraldGreen,
+                    containerColor = Color(0xFF16A34A),
                     contentColor = Color.White,
                     shape = CircleShape,
                     modifier = Modifier
@@ -347,7 +351,7 @@ fun ProductsScreen(
                         Icon(
                             imageVector = Icons.Default.Search,
                             contentDescription = "Search",
-                            tint = EmeraldGreen
+                            tint = Color(0xFF16A34A)
                         )
                     },
                     trailingIcon = {
@@ -365,12 +369,12 @@ fun ProductsScreen(
                         }
                     },
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = EmeraldGreen,
-                        unfocusedBorderColor = Color(0x22FFFFFF),
-                        focusedTextColor = Color.White,
-                        unfocusedTextColor = Color.White,
-                        focusedContainerColor = Color(0x0DFFFFFF),
-                        unfocusedContainerColor = Color(0x05FFFFFF)
+                        focusedBorderColor = Color(0xFF16A34A),
+                        unfocusedBorderColor = Color(0xFFCBD5E1),
+                        focusedTextColor = Color(0xFF111827),
+                        unfocusedTextColor = Color(0xFF111827),
+                        focusedContainerColor = Color.White,
+                        unfocusedContainerColor = Color.White
                     ),
                     singleLine = true,
                     shape = RoundedCornerShape(16.dp),
@@ -385,7 +389,7 @@ fun ProductsScreen(
                 ScrollableTabRow(
                     selectedTabIndex = selectedTab,
                     containerColor = Color.Transparent,
-                    contentColor = EmeraldLight,
+                    contentColor = Color(0xFF16A34A),
                     edgePadding = 0.dp,
                     divider = {},
                     indicator = {}
@@ -396,13 +400,14 @@ fun ProductsScreen(
                         modifier = Modifier.testTag("tab_all_products")
                     ) {
                         Surface(
-                            color = if (selectedTab == 0) EmeraldGreen else Color(0x1F1E295D),
+                            color = if (selectedTab == 0) Color(0xFF16A34A) else Color.White,
                             shape = RoundedCornerShape(20.dp),
+                            border = if (selectedTab == 0) null else androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFCBD5E1)),
                             modifier = Modifier.padding(end = 8.dp, bottom = 8.dp)
                         ) {
                             Text(
                                 text = "All Products (${filteredProducts.size})",
-                                color = Color.White,
+                                color = if (selectedTab == 0) Color.White else Color(0xFF475569),
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
                                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
@@ -416,13 +421,14 @@ fun ProductsScreen(
                         modifier = Modifier.testTag("tab_expiry_tracker")
                     ) {
                         Surface(
-                            color = if (selectedTab == 1) Color(0xFFEF4444) else Color(0x1F1E295D),
+                            color = if (selectedTab == 1) Color(0xFFD32F2F) else Color.White,
                             shape = RoundedCornerShape(20.dp),
+                            border = if (selectedTab == 1) null else androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFCBD5E1)),
                             modifier = Modifier.padding(end = 8.dp, bottom = 8.dp)
                         ) {
                             Text(
                                 text = "⚡ Expiry Guardian (${allExpiryRiskProducts.size})",
-                                color = Color.White,
+                                color = if (selectedTab == 1) Color.White else Color(0xFF475569),
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
                                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
@@ -436,13 +442,14 @@ fun ProductsScreen(
                         modifier = Modifier.testTag("tab_low_stock")
                     ) {
                         Surface(
-                            color = if (selectedTab == 2) GoldYellow else Color(0x1F1E295D),
+                            color = if (selectedTab == 2) Color(0xFFF59E0B) else Color.White,
                             shape = RoundedCornerShape(20.dp),
+                            border = if (selectedTab == 2) null else androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFCBD5E1)),
                             modifier = Modifier.padding(end = 8.dp, bottom = 8.dp)
                         ) {
                             Text(
                                 text = "📦 Smart Reorder List (${lowStockProducts.size})",
-                                color = if (selectedTab == 2) Color.Black else Color.White,
+                                color = if (selectedTab == 2) Color.White else Color(0xFF475569),
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
                                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
@@ -456,11 +463,11 @@ fun ProductsScreen(
                 // Summary Stats Banner for Expiry Guardian Tab
                 if (selectedTab == 1) {
                     Card(
-                        colors = CardDefaults.cardColors(containerColor = Color(0x22131B3E)),
+                        colors = CardDefaults.cardColors(containerColor = Color.White),
                         shape = RoundedCornerShape(16.dp),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .border(1.dp, Color(0x33EF4444), RoundedCornerShape(16.dp))
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFFECACA)),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                        modifier = Modifier.fillMaxWidth()
                     ) {
                         Row(
                             modifier = Modifier
@@ -470,18 +477,18 @@ fun ProductsScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text("🚨 Critical (<15 Days)", color = Color(0xFFF87171), fontSize = 11.sp, fontWeight = FontWeight.Medium)
-                                Text("${criticalExpiryProducts.size}", color = Color(0xFFEF4444), fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                                Text("🚨 Critical (<15 Days)", color = Color(0xFFD32F2F), fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                                Text("${criticalExpiryProducts.size}", color = Color(0xFFD32F2F), fontSize = 18.sp, fontWeight = FontWeight.Bold)
                             }
-                            Box(modifier = Modifier.height(28.dp).width(1.dp).background(Color(0x22FFFFFF)))
+                            Box(modifier = Modifier.height(28.dp).width(1.dp).background(Color(0xFFE2E8F0)))
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text("⚠️ Warning (15-30 Days)", color = Color(0xFFFBBF24), fontSize = 11.sp, fontWeight = FontWeight.Medium)
-                                Text("${warningExpiryProducts.size}", color = Color(0xFFF59E0B), fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                                Text("⚠️ Warning (15-30 Days)", color = Color(0xFFD97706), fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                                Text("${warningExpiryProducts.size}", color = Color(0xFFD97706), fontSize = 18.sp, fontWeight = FontWeight.Bold)
                             }
-                            Box(modifier = Modifier.height(28.dp).width(1.dp).background(Color(0x22FFFFFF)))
+                            Box(modifier = Modifier.height(28.dp).width(1.dp).background(Color(0xFFE2E8F0)))
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text("Total Risk Items", color = Color(0xFF93C5FD), fontSize = 11.sp, fontWeight = FontWeight.Medium)
-                                Text("${allExpiryRiskProducts.size}", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                                Text("Total Risk Items", color = Color(0xFF2563EB), fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                                Text("${allExpiryRiskProducts.size}", color = Color(0xFF111827), fontSize = 18.sp, fontWeight = FontWeight.Bold)
                             }
                         }
                     }
@@ -502,11 +509,11 @@ fun ProductsScreen(
                     val context = androidx.compose.ui.platform.LocalContext.current
 
                     Card(
-                        colors = CardDefaults.cardColors(containerColor = Color(0x22131B3E)),
+                        colors = CardDefaults.cardColors(containerColor = Color.White),
                         shape = RoundedCornerShape(16.dp),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .border(1.dp, Color(0x33F59E0B), RoundedCornerShape(16.dp))
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFFDE68A)),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                        modifier = Modifier.fillMaxWidth()
                     ) {
                         Column(modifier = Modifier.padding(14.dp)) {
                             Row(
@@ -515,16 +522,16 @@ fun ProductsScreen(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Column {
-                                    Text("📦 AUTOMATED PURCHASE ORDER", color = GoldYellow, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.5.sp)
-                                    Text("${lowStockProducts.size} Items Need Stock Replenishment", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                                    Text("📦 AUTOMATED PURCHASE ORDER", color = Color(0xFFD97706), fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.5.sp)
+                                    Text("${lowStockProducts.size} Items Need Stock Replenishment", color = Color(0xFF111827), fontSize = 13.sp, fontWeight = FontWeight.Bold)
                                 }
                                 Surface(
-                                    color = Color(0x22F59E0B),
+                                    color = Color(0xFFFEF3C7),
                                     shape = RoundedCornerShape(10.dp)
                                 ) {
                                     Text(
                                         text = "Est. PO: ₹${String.format(Locale.US, "%.2f", totalReorderCost)}",
-                                        color = GoldYellow,
+                                        color = Color(0xFFB45309),
                                         fontSize = 12.sp,
                                         fontWeight = FontWeight.Bold,
                                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
@@ -555,7 +562,7 @@ fun ProductsScreen(
 
                                         com.example.util.WhatsAppReminderUtils.sendWhatsAppReminder(context, "", sb.toString())
                                     },
-                                    colors = ButtonDefaults.buttonColors(containerColor = EmeraldGreen),
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF16A34A)),
                                     shape = RoundedCornerShape(10.dp),
                                     modifier = Modifier.weight(1f).testTag("reorder_share_whatsapp")
                                 ) {
@@ -579,8 +586,8 @@ fun ProductsScreen(
 
                                         com.example.util.WhatsAppReminderUtils.shareTextViaStandardChooser(context, sb.toString())
                                     },
-                                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
-                                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0x44FFFFFF)),
+                                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF334155)),
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFCBD5E1)),
                                     shape = RoundedCornerShape(10.dp),
                                     modifier = Modifier.weight(1f).testTag("reorder_export_text")
                                 ) {
@@ -606,7 +613,7 @@ fun ProductsScreen(
                             Icon(
                                 imageVector = Icons.Default.Inventory2,
                                 contentDescription = "Empty Inventory",
-                                tint = Color(0x44FFFFFF),
+                                tint = Color(0xFFCBD5E1),
                                 modifier = Modifier.size(64.dp)
                             )
                             Spacer(modifier = Modifier.height(12.dp))
@@ -616,7 +623,7 @@ fun ProductsScreen(
                                     2 -> "All products are well stocked!"
                                     else -> if (searchQuery.isEmpty()) "No products in inventory yet" else "No matching products found"
                                 },
-                                color = Color(0xFF94A3B8),
+                                color = Color(0xFF475569),
                                 fontSize = 15.sp,
                                 fontWeight = FontWeight.Medium
                             )
@@ -630,7 +637,7 @@ fun ProductsScreen(
                                 Spacer(modifier = Modifier.height(16.dp))
                                 Button(
                                     onClick = { openAddDialog() },
-                                    colors = ButtonDefaults.buttonColors(containerColor = EmeraldGreen),
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF16A34A)),
                                     shape = RoundedCornerShape(10.dp),
                                     modifier = Modifier.testTag("empty_add_first_product_button")
                                 ) {
@@ -1472,20 +1479,20 @@ fun ProductItemCard(
     val expiryStatus = com.example.util.PharmacyUtils.getExpiryStatus(product.expiryDate)
 
     Card(
-        colors = CardDefaults.cardColors(containerColor = Color(0x1F1E295D)),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
         shape = RoundedCornerShape(16.dp),
+        border = androidx.compose.foundation.BorderStroke(
+            width = 1.dp,
+            color = when {
+                expiryStatus is com.example.util.ExpiryStatus.Expired || (daysRemaining != null && daysRemaining < 15) -> Color(0xFFFECACA)
+                daysRemaining != null && daysRemaining in 15..30 -> Color(0xFFFDE68A)
+                isLowStock -> Color(0xFFFFCDD2)
+                else -> Color(0xFFE2E8F0)
+            }
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         modifier = Modifier
             .fillMaxWidth()
-            .border(
-                width = 1.dp,
-                color = when {
-                    expiryStatus is com.example.util.ExpiryStatus.Expired || (daysRemaining != null && daysRemaining < 15) -> Color(0x66EF4444)
-                    daysRemaining != null && daysRemaining in 15..30 -> Color(0x66F59E0B)
-                    isLowStock -> Color(0x66F59E0B)
-                    else -> Color(0x18FFFFFF)
-                },
-                shape = RoundedCornerShape(16.dp)
-            )
             .testTag("product_card_${product.id}")
     ) {
         Column(
@@ -1498,11 +1505,11 @@ fun ProductItemCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Name and Category Badge
+                // Name and Details
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = product.name,
-                        color = Color.White,
+                        color = Color(0xFF111827),
                         fontWeight = FontWeight.Bold,
                         fontSize = 16.sp,
                         maxLines = 1,
@@ -1512,7 +1519,7 @@ fun ProductItemCard(
                     if (product.saltComposition.isNotBlank()) {
                         Text(
                             text = "Salt: ${product.saltComposition}",
-                            color = Color(0xFF94A3B8),
+                            color = Color(0xFF475569),
                             fontSize = 11.sp,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
@@ -1522,8 +1529,8 @@ fun ProductItemCard(
                     if (product.manufacturer.isNotBlank()) {
                         Text(
                             text = "Mfg: ${product.manufacturer}",
-                            color = Color(0xFF64748B),
-                            fontSize = 10.sp,
+                            color = Color(0xFF475569),
+                            fontSize = 11.sp,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
@@ -1536,12 +1543,12 @@ fun ProductItemCard(
                     ) {
                         Box(
                             modifier = Modifier
-                                .background(Color(0x228B5CF6), RoundedCornerShape(6.dp))
+                                .background(Color(0xFFF1F5F9), RoundedCornerShape(6.dp))
                                 .padding(horizontal = 8.dp, vertical = 2.dp)
                         ) {
                             Text(
                                 text = product.category,
-                                color = ElectricVioletLight,
+                                color = Color(0xFF475569),
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.SemiBold
                             )
@@ -1550,7 +1557,7 @@ fun ProductItemCard(
                         if (product.size.isNotBlank() || product.color.isNotBlank()) {
                             Box(
                                 modifier = Modifier
-                                    .background(Color(0x3310B981), RoundedCornerShape(6.dp))
+                                    .background(Color(0xFFDCFCE7), RoundedCornerShape(6.dp))
                                     .padding(horizontal = 6.dp, vertical = 2.dp)
                             ) {
                                 val garmentTag = listOfNotNull(
@@ -1559,7 +1566,7 @@ fun ProductItemCard(
                                 ).joinToString(" • ")
                                 Text(
                                     text = garmentTag,
-                                    color = EmeraldLight,
+                                    color = Color(0xFF16A34A),
                                     fontSize = 10.sp,
                                     fontWeight = FontWeight.Bold
                                 )
@@ -1569,12 +1576,12 @@ fun ProductItemCard(
                         if (product.batchNumber.isNotBlank()) {
                             Box(
                                 modifier = Modifier
-                                    .background(Color(0x223B82F6), RoundedCornerShape(6.dp))
+                                    .background(Color(0xFFEFF6FF), RoundedCornerShape(6.dp))
                                     .padding(horizontal = 6.dp, vertical = 2.dp)
                             ) {
                                 Text(
                                     text = "Batch: ${product.batchNumber}",
-                                    color = Color(0xFF60A5FA),
+                                    color = Color(0xFF2563EB),
                                     fontSize = 10.sp,
                                     fontWeight = FontWeight.Medium
                                 )
@@ -1584,12 +1591,12 @@ fun ProductItemCard(
                         if (isLowStock) {
                             Box(
                                 modifier = Modifier
-                                    .background(Color(0x33EF4444), RoundedCornerShape(6.dp))
+                                    .background(Color(0xFFFFEBEE), RoundedCornerShape(6.dp))
                                     .padding(horizontal = 6.dp, vertical = 2.dp)
                             ) {
                                 Text(
                                     text = "LOW STOCK (<${minThreshold.toInt()})",
-                                    color = Color(0xFFF87171),
+                                    color = Color(0xFFD32F2F),
                                     fontSize = 9.sp,
                                     fontWeight = FontWeight.Bold
                                 )
@@ -1597,14 +1604,14 @@ fun ProductItemCard(
                         }
                     }
 
-                    // Expiry status indicator badge with explicit Critical (<15d) & Warning (15-30d) categorization
+                    // Expiry status indicator badge
                     if (product.expiryDate.isNotBlank()) {
                         Spacer(modifier = Modifier.height(4.dp))
                         val (bgColor, textColor, label) = when {
-                            expiryStatus is com.example.util.ExpiryStatus.Expired -> Triple(Color(0x33EF4444), Color(0xFFEF4444), "🚨 EXPIRED (${product.expiryDate})")
-                            daysRemaining != null && daysRemaining < 15 -> Triple(Color(0x33EF4444), Color(0xFFEF4444), "🚨 CRITICAL EXPIRY (${daysRemaining}d left)")
-                            daysRemaining != null && daysRemaining in 15..30 -> Triple(Color(0x33F59E0B), Color(0xFFFBBF24), "⚠️ WARNING NEAR EXPIRY (${daysRemaining}d left)")
-                            else -> Triple(Color(0x2210B981), Color(0xFF34D399), "Exp: ${product.expiryDate}")
+                            expiryStatus is com.example.util.ExpiryStatus.Expired -> Triple(Color(0xFFFFEBEE), Color(0xFFD32F2F), "🚨 EXPIRED (${product.expiryDate})")
+                            daysRemaining != null && daysRemaining < 15 -> Triple(Color(0xFFFFEBEE), Color(0xFFD32F2F), "🚨 CRITICAL EXPIRY (${daysRemaining}d left)")
+                            daysRemaining != null && daysRemaining in 15..30 -> Triple(Color(0xFFFEF3C7), Color(0xFFD97706), "⚠️ WARNING NEAR EXPIRY (${daysRemaining}d left)")
+                            else -> Triple(Color(0xFFDCFCE7), Color(0xFF16A34A), "Exp: ${product.expiryDate}")
                         }
                         Box(
                             modifier = Modifier
@@ -1632,7 +1639,7 @@ fun ProductItemCard(
                         Icon(
                             imageVector = Icons.Default.Edit,
                             contentDescription = "Edit Product",
-                            tint = EmeraldLight,
+                            tint = Color(0xFF2563EB),
                             modifier = Modifier.size(18.dp)
                         )
                     }
@@ -1646,7 +1653,7 @@ fun ProductItemCard(
                         Icon(
                             imageVector = Icons.Default.Delete,
                             contentDescription = "Delete Product",
-                            tint = Color(0xFFF87171),
+                            tint = Color(0xFFD32F2F),
                             modifier = Modifier.size(18.dp)
                         )
                     }
@@ -1654,7 +1661,7 @@ fun ProductItemCard(
             }
 
             Spacer(modifier = Modifier.height(14.dp))
-            HorizontalDivider(color = Color(0x11FFFFFF))
+            HorizontalDivider(color = Color(0xFFE2E8F0))
             Spacer(modifier = Modifier.height(12.dp))
 
             // Pricing & Stock Info Row with Quick Replenish Option
@@ -1665,10 +1672,10 @@ fun ProductItemCard(
             ) {
                 // Sale Price
                 Column {
-                    Text("Sale Price", color = Color(0xFF94A3B8), fontSize = 11.sp)
+                    Text("Sale Price", color = Color(0xFF64748B), fontSize = 11.sp)
                     Text(
                         text = "₹${String.format(Locale.US, "%.2f", product.salePrice)} / ${product.unit}",
-                        color = EmeraldLight,
+                        color = Color(0xFF16A34A),
                         fontWeight = FontWeight.Bold,
                         fontSize = 15.sp
                     )
@@ -1677,7 +1684,7 @@ fun ProductItemCard(
                         val perTabP = com.example.util.PharmacyUtils.getPerTabletUnitPrice(product)
                         Text(
                             text = "₹${String.format(Locale.US, "%.2f", perTabP)}/Tab ($packSz Tabs)",
-                            color = GoldYellow,
+                            color = Color(0xFFD97706),
                             fontSize = 10.sp,
                             fontWeight = FontWeight.SemiBold
                         )
@@ -1687,10 +1694,10 @@ fun ProductItemCard(
                 // Purchase Price (if exists)
                 if (product.purchasePrice > 0) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("Cost Price", color = Color(0xFF94A3B8), fontSize = 11.sp)
+                        Text("Cost Price", color = Color(0xFF64748B), fontSize = 11.sp)
                         Text(
                             text = "₹${String.format(Locale.US, "%.2f", product.purchasePrice)}",
-                            color = Color(0xFFCBD5E1),
+                            color = Color(0xFF334155),
                             fontWeight = FontWeight.Medium,
                             fontSize = 13.sp
                         )
@@ -1700,10 +1707,10 @@ fun ProductItemCard(
                 // Stock Quantity & Quick Replenish Button
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(horizontalAlignment = Alignment.End) {
-                        Text("In Stock (Min: ${minThreshold.toInt()})", color = Color(0xFF94A3B8), fontSize = 10.sp)
+                        Text("In Stock (Min: ${minThreshold.toInt()})", color = Color(0xFF64748B), fontSize = 10.sp)
                         Text(
                             text = com.example.util.KiranaUnitUtils.formatQuantityWithUnit(product.stockQuantity, product.unit),
-                            color = if (isLowStock) Color(0xFFF87171) else Color.White,
+                            color = if (isLowStock) Color(0xFFD32F2F) else Color(0xFF111827),
                             fontWeight = FontWeight.Bold,
                             fontSize = 15.sp
                         )
@@ -1713,14 +1720,14 @@ fun ProductItemCard(
                         Spacer(modifier = Modifier.width(8.dp))
                         Surface(
                             onClick = { onQuickReplenishStock(product, 10.0) },
-                            color = Color(0x3310B981),
+                            color = Color(0xFFDCFCE7),
                             shape = RoundedCornerShape(8.dp),
-                            border = androidx.compose.foundation.BorderStroke(1.dp, EmeraldGreen),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF16A34A)),
                             modifier = Modifier.testTag("quick_replenish_${product.id}")
                         ) {
                             Text(
                                 text = "+10 Stock",
-                                color = EmeraldLight,
+                                color = Color(0xFF16A34A),
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)

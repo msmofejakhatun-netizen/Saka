@@ -303,7 +303,22 @@ fun ProfileSetupScreen(
                             .testTag("profile_upi_id_input")
                     )
 
-                    Spacer(modifier = Modifier.height(32.dp))
+                    Spacer(modifier = Modifier.height(20.dp))
+
+                    // GST Registered Business & Verification Card
+                    com.example.ui.components.GstVerificationCard(
+                        isGstRegistered = viewModel.isGstRegistered,
+                        onGstRegisteredChange = { viewModel.updateGstRegistered(it) },
+                        gstin = viewModel.profileGstin,
+                        onGstinChange = { viewModel.updateGstin(it) },
+                        isGstVerified = viewModel.isGstVerified,
+                        legalBusinessName = viewModel.profileLegalBusinessName,
+                        isVerifying = viewModel.isVerifyingGst,
+                        verificationError = viewModel.gstVerificationError,
+                        onVerifyClick = { viewModel.verifyGst() }
+                    )
+
+                    Spacer(modifier = Modifier.height(28.dp))
 
                     // Submit Button
                     Button(

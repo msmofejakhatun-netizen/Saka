@@ -166,7 +166,11 @@ class BillingRepository(
         category: String,
         authProvider: String,
         upiId: String = "merchant@upi",
-        merchantName: String = businessName
+        merchantName: String = businessName,
+        gstin: String = "",
+        isGstVerified: Boolean = false,
+        legalBusinessName: String = "",
+        isGstRegistered: Boolean = false
     ) = withContext(Dispatchers.IO) {
         val authUser = FirebaseManager.auth?.currentUser
         val targetUid = authUser?.uid ?: uid
@@ -184,7 +188,11 @@ class BillingRepository(
             passwordHash = "",
             category = category,
             upiId = upiId.ifBlank { "merchant@upi" },
-            merchantName = merchantName.ifBlank { businessName }
+            merchantName = merchantName.ifBlank { businessName },
+            gstin = gstin.trim().uppercase(),
+            isGstVerified = isGstVerified,
+            legalBusinessName = legalBusinessName,
+            isGstRegistered = isGstRegistered
         )
 
         if (FirebaseManager.isFirebaseAvailable) {
@@ -203,6 +211,11 @@ class BillingRepository(
                     "merchantName" to merchantName.ifBlank { businessName },
                     "role" to "user",
                     "authProvider" to authProvider,
+                    "gstin" to gstin.trim().uppercase(),
+                    "isGstVerified" to isGstVerified,
+                    "legalBusinessName" to legalBusinessName,
+                    "isGstRegistered" to isGstRegistered,
+                    "gstRegistered" to isGstRegistered,
                     "updatedAt" to System.currentTimeMillis()
                 )
                 try {

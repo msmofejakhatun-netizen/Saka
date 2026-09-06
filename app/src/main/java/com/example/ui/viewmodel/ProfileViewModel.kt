@@ -23,6 +23,12 @@ data class ProfileUiState(
     val upiId: String = "merchant@upi",
     val merchantName: String = "",
     val mobileNumber: String = "",
+    val gstin: String = "",
+    val isGstVerified: Boolean = false,
+    val legalBusinessName: String = "",
+    val isGstRegistered: Boolean = false,
+    val isVerifyingGst: Boolean = false,
+    val gstVerificationError: String? = null,
     val isLoading: Boolean = false,
     val isSaving: Boolean = false,
     val errorMessage: String? = null,
@@ -42,6 +48,15 @@ class ProfileViewModel(
     var upiId by mutableStateOf("merchant@upi")
     var merchantName by mutableStateOf("")
     var autoSendWhatsAppInvoice by mutableStateOf(true)
+
+    // GST Fields & Verification State
+    var isGstRegistered by mutableStateOf(false)
+    var gstin by mutableStateOf("")
+    var isGstVerified by mutableStateOf(false)
+    var legalBusinessName by mutableStateOf("")
+    var isVerifyingGst by mutableStateOf(false)
+    var gstVerificationError by mutableStateOf<String?>(null)
+
     var errorMessage by mutableStateOf<String?>(null)
     var isSaving by mutableStateOf(false)
     var isLoading by mutableStateOf(false)
@@ -69,6 +84,10 @@ class ProfileViewModel(
                     businessCategory = profile.businessCategory
                     upiId = profile.upiId.ifBlank { "merchant@upi" }
                     merchantName = profile.merchantName.ifBlank { profile.businessName }
+                    gstin = profile.gstin
+                    isGstVerified = profile.isGstVerified
+                    legalBusinessName = profile.legalBusinessName
+                    isGstRegistered = profile.isGstRegistered || profile.gstin.isNotBlank()
 
                     _uiState.value = _uiState.value.copy(
                         fullName = profile.fullName,
@@ -77,6 +96,10 @@ class ProfileViewModel(
                         upiId = profile.upiId.ifBlank { "merchant@upi" },
                         merchantName = profile.merchantName.ifBlank { profile.businessName },
                         mobileNumber = profile.mobileNumber,
+                        gstin = profile.gstin,
+                        isGstVerified = profile.isGstVerified,
+                        legalBusinessName = profile.legalBusinessName,
+                        isGstRegistered = isGstRegistered,
                         isLoading = false
                     )
                 } else {
@@ -116,6 +139,102 @@ class ProfileViewModel(
         _uiState.value = _uiState.value.copy(merchantName = value)
     }
 
+    fun updateGstRegistered(registered: Boolean) {
+        isGstRegistered = registered
+        if (!registered) {
+            gstVerificationError = null
+        }
+        _uiState.value = _uiState.value.copy(
+            isGstRegistered = registered,
+            gstVerificationError = if (!registered) null else _uiState.value.gstVerificationError
+        )
+    }
+
+    fun updateGstin(value: String) {
+        val uppercaseVal = value.trim().uppercase()
+        gstin = uppercaseVal
+        isGstVerified = false
+        gstVerificationError = null
+        _uiState.value = _uiState.value.copy(
+            gstin = uppercaseVal,
+            isGstVerified = false,
+            gstVerificationError = null
+        )
+    }
+
+    fun verifyGst(context: Context? = null) {
+        val targetGstin = gstin.trim().uppercase()
+        if (targetGstin.isBlank()) {
+            gstVerificationError = "Please enter a 15-character GSTIN"
+            _uiState.value = _uiState.value.copy(gstVerificationError = gstVerificationError)
+            return
+        }
+
+        isVerifyingGst = true
+        gstVerificationError = null
+        _uiState.value = _uiState.value.copy(isVerifyingGst = true, gstVerificationError = null)
+
+        viewModelScope.launch {
+            try {
+                val verificationResult = com.example.util.GstVerificationService.verifyGst(
+                    rawGstin = targetGstin,
+                    merchantBusinessName = businessName
+                )
+
+                isVerifyingGst = false
+                if (verificationResult.isValid) {
+                    isGstVerified = true
+                    legalBusinessName = verificationResult.legalBusinessName
+                    gstVerificationError = null
+                    _uiState.value = _uiState.value.copy(
+                        isVerifyingGst = false,
+                        isGstVerified = true,
+                        legalBusinessName = verificationResult.legalBusinessName,
+                        gstVerificationError = null
+                    )
+
+                    // Store gstin, isGstVerified: true, and legalBusinessName directly in Firestore under users/{uid}
+                    userRepository.saveGstDetails(
+                        gstin = targetGstin,
+                        isGstVerified = true,
+                        legalBusinessName = verificationResult.legalBusinessName,
+                        isGstRegistered = true
+                    )
+
+                    if (context != null) {
+                        Toast.makeText(context, "GSTIN Verified Successfully", Toast.LENGTH_SHORT).show()
+                    }
+                } else {
+                    isGstVerified = false
+                    val error = verificationResult.errorMessage ?: "Invalid GSTIN or Business Record Not Found"
+                    gstVerificationError = error
+                    _uiState.value = _uiState.value.copy(
+                        isVerifyingGst = false,
+                        isGstVerified = false,
+                        gstVerificationError = error
+                    )
+
+                    // Record invalid status in Firestore
+                    userRepository.saveGstDetails(
+                        gstin = targetGstin,
+                        isGstVerified = false,
+                        legalBusinessName = "",
+                        isGstRegistered = isGstRegistered
+                    )
+                }
+            } catch (e: Exception) {
+                isVerifyingGst = false
+                val error = "Invalid GSTIN or Business Record Not Found"
+                gstVerificationError = error
+                _uiState.value = _uiState.value.copy(
+                    isVerifyingGst = false,
+                    isGstVerified = false,
+                    gstVerificationError = error
+                )
+            }
+        }
+    }
+
     fun updateAutoSendWhatsAppInvoice(enabled: Boolean, context: Context? = null) {
         autoSendWhatsAppInvoice = enabled
         if (context != null) {
@@ -136,6 +255,12 @@ class ProfileViewModel(
             return
         }
 
+        if (isGstRegistered && gstin.isNotBlank() && !isGstVerified) {
+            errorMessage = "Please verify your GSTIN before saving"
+            _uiState.value = _uiState.value.copy(errorMessage = errorMessage)
+            return
+        }
+
         errorMessage = null
         isSaving = true
         _uiState.value = _uiState.value.copy(isSaving = true, errorMessage = null)
@@ -146,7 +271,11 @@ class ProfileViewModel(
                 businessName = businessName.trim(),
                 businessCategory = businessCategory.trim(),
                 upiId = upiId.trim().ifBlank { "merchant@upi" },
-                merchantName = merchantName.trim().ifBlank { businessName.trim() }
+                merchantName = merchantName.trim().ifBlank { businessName.trim() },
+                gstin = if (isGstRegistered) gstin.trim().uppercase() else "",
+                isGstVerified = if (isGstRegistered) isGstVerified else false,
+                legalBusinessName = if (isGstRegistered) legalBusinessName else "",
+                isGstRegistered = isGstRegistered
             )
 
             isSaving = false

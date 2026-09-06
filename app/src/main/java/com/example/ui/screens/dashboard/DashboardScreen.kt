@@ -231,7 +231,8 @@ fun DashboardScreen(
                                 )
                                 BottomTab.POS -> com.example.ui.screens.billing.CreateBillScreen(
                                     viewModel = viewModel,
-                                    onNavigateBack = { currentTab = BottomTab.HOME }
+                                    onNavigateBack = { currentTab = BottomTab.HOME },
+                                    onNavigateToProfile = { showProfileScreenOverlay = true }
                                 )
                                 BottomTab.INVENTORY -> com.example.ui.screens.products.ProductsScreen(
                                     viewModel = viewModel,

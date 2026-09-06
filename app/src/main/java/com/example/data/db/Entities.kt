@@ -14,7 +14,10 @@ data class UserEntity(
     val upiId: String = "merchant@upi",
     val merchantName: String = "",
     val dlNumber: String = "DL-20B/10492/2024",
-    val gstin: String = "27ABCDE1234F1Z5"
+    val gstin: String = "",
+    val isGstVerified: Boolean = false,
+    val legalBusinessName: String = "",
+    val isGstRegistered: Boolean = false
 )
 
 @Entity(tableName = "categories")

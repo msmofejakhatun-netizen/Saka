@@ -388,6 +388,21 @@ fun ProfileScreen(
 
                     Spacer(modifier = Modifier.height(16.dp))
 
+                    // GST Registered Business & Verification Card
+                    com.example.ui.components.GstVerificationCard(
+                        isGstRegistered = viewModel.isGstRegistered,
+                        onGstRegisteredChange = { viewModel.updateGstRegistered(it) },
+                        gstin = viewModel.gstin,
+                        onGstinChange = { viewModel.updateGstin(it) },
+                        isGstVerified = viewModel.isGstVerified,
+                        legalBusinessName = viewModel.legalBusinessName,
+                        isVerifying = viewModel.isVerifyingGst,
+                        verificationError = viewModel.gstVerificationError,
+                        onVerifyClick = { viewModel.verifyGst(context) }
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
                     // Auto-send WhatsApp Invoice Toggle Setting
                     Card(
                         colors = CardDefaults.cardColors(containerColor = Color(0xFFF8FAFC)),

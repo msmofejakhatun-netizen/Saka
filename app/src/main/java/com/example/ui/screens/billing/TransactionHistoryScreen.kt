@@ -161,7 +161,7 @@ fun TransactionHistoryScreen(
                         Text(
                             text = "${filteredInvoices.size} Invoices Generated",
                             style = MaterialTheme.typography.bodySmall.copy(
-                                color = Color(0xFF10B981),
+                                color = Color(0xFFFFCDD2),
                                 fontWeight = FontWeight.SemiBold
                             )
                         )
@@ -180,17 +180,17 @@ fun TransactionHistoryScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color(0xFF0D1322)
+                    containerColor = Color(0xFFD32F2F)
                 ),
                 modifier = Modifier.testTag("history_top_bar")
             )
         },
-        containerColor = Color.Transparent
+        containerColor = Color(0xFFF8FAFC)
     ) { innerPadding ->
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color(0xFF0D1322))
+                .background(Color(0xFFF8FAFC))
                 .padding(innerPadding)
         ) {
             LazyColumn(
@@ -210,19 +210,20 @@ fun TransactionHistoryScreen(
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         Card(
-                            colors = CardDefaults.cardColors(containerColor = Color(0xFF161F38)),
+                            colors = CardDefaults.cardColors(containerColor = Color(0xFFFFFFFF)),
                             shape = RoundedCornerShape(16.dp),
-                            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0x22FFFFFF)),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE2E8F0)),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
                             modifier = Modifier.weight(1f)
                         ) {
                             Column(modifier = Modifier.padding(14.dp)) {
-                                Text("TOTAL REVENUE", color = Color(0xFF94A3B8), fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.5.sp)
+                                Text("TOTAL REVENUE", color = Color(0xFF64748B), fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.5.sp)
                                 Spacer(modifier = Modifier.height(6.dp))
                                 Text(
                                     text = "₹${String.format(Locale.US, "%,.2f", totalRevenue)}",
-                                    color = Color.White,
+                                    color = Color(0xFF16A34A),
                                     fontWeight = FontWeight.Bold,
-                                    fontSize = 19.sp
+                                    fontSize = 22.sp
                                 )
                                 Spacer(modifier = Modifier.height(2.dp))
                                 Text("${filteredInvoices.size} Invoices Billed", color = Color(0xFF94A3B8), fontSize = 11.sp)
@@ -230,19 +231,20 @@ fun TransactionHistoryScreen(
                         }
 
                         Card(
-                            colors = CardDefaults.cardColors(containerColor = Color(0xFF161F38)),
+                            colors = CardDefaults.cardColors(containerColor = Color(0xFFFFFFFF)),
                             shape = RoundedCornerShape(16.dp),
-                            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0x3310B981)),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE2E8F0)),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
                             modifier = Modifier.weight(1f)
                         ) {
                             Column(modifier = Modifier.padding(14.dp)) {
-                                Text("AVG INVOICE", color = Color(0xFF94A3B8), fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.5.sp)
+                                Text("AVG INVOICE", color = Color(0xFF64748B), fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.5.sp)
                                 Spacer(modifier = Modifier.height(6.dp))
                                 Text(
                                     text = "₹${String.format(Locale.US, "%,.2f", avgTicketValue)}",
-                                    color = Color(0xFF10B981),
+                                    color = Color(0xFF0F172A),
                                     fontWeight = FontWeight.Bold,
-                                    fontSize = 19.sp
+                                    fontSize = 22.sp
                                 )
                                 Spacer(modifier = Modifier.height(2.dp))
                                 Text("Ticket Average", color = Color(0xFF94A3B8), fontSize = 11.sp)
@@ -254,9 +256,10 @@ fun TransactionHistoryScreen(
                 // 2. Search & Filters Bar
                 item {
                     Card(
-                        colors = CardDefaults.cardColors(containerColor = Color(0xFF161F38)),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFFFFFFFF)),
                         shape = RoundedCornerShape(16.dp),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0x22FFFFFF))
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE2E8F0)),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                     ) {
                         Column(
                             modifier = Modifier.padding(14.dp),
@@ -267,21 +270,21 @@ fun TransactionHistoryScreen(
                                 value = searchQuery,
                                 onValueChange = { searchQuery = it },
                                 placeholder = { Text("Search customer, mobile or invoice #...", color = Color(0xFF94A3B8), fontSize = 12.sp) },
-                                leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search", tint = Color(0xFF10B981), modifier = Modifier.size(20.dp)) },
+                                leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search", tint = Color(0xFF0F172A), modifier = Modifier.size(20.dp)) },
                                 trailingIcon = {
                                     if (searchQuery.isNotEmpty()) {
                                         IconButton(onClick = { searchQuery = "" }) {
-                                            Icon(Icons.Default.Clear, contentDescription = "Clear", tint = Color.White)
+                                            Icon(Icons.Default.Clear, contentDescription = "Clear", tint = Color(0xFF64748B))
                                         }
                                     }
                                 },
                                 colors = OutlinedTextFieldDefaults.colors(
-                                    focusedBorderColor = Color(0xFF10B981),
-                                    unfocusedBorderColor = Color(0x33FFFFFF),
-                                    focusedTextColor = Color.White,
-                                    unfocusedTextColor = Color.White,
-                                    focusedContainerColor = Color(0x1F1E295D),
-                                    unfocusedContainerColor = Color(0x1F1E295D)
+                                    focusedBorderColor = Color(0xFFD32F2F),
+                                    unfocusedBorderColor = Color(0xFFCBD5E1),
+                                    focusedTextColor = Color(0xFF0F172A),
+                                    unfocusedTextColor = Color(0xFF0F172A),
+                                    focusedContainerColor = Color(0xFFFFFFFF),
+                                    unfocusedContainerColor = Color(0xFFFFFFFF)
                                 ),
                                 shape = RoundedCornerShape(12.dp),
                                 singleLine = true,
@@ -292,19 +295,24 @@ fun TransactionHistoryScreen(
 
                             // Date Range Chips
                             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                Text("Filter by Time:", color = Color(0xFF94A3B8), fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                                Text("Filter by Time:", color = Color(0xFF334155), fontSize = 13.sp, fontWeight = FontWeight.Bold)
                                 LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                     items(listOf("All Time", "Today", "This Week", "This Month")) { period ->
                                         val isSelected = selectedDateRange == period
                                         FilterChip(
                                             selected = isSelected,
                                             onClick = { selectedDateRange = period },
-                                            label = { Text(period, fontSize = 11.sp) },
+                                            label = { Text(period, fontSize = 11.sp, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal) },
                                             colors = FilterChipDefaults.filterChipColors(
-                                                selectedContainerColor = EmeraldGreen,
+                                                selectedContainerColor = Color(0xFFD32F2F),
                                                 selectedLabelColor = Color.White,
-                                                containerColor = Color(0x22FFFFFF),
-                                                labelColor = Color.White
+                                                containerColor = Color(0xFFFFFFFF),
+                                                labelColor = Color(0xFF475569)
+                                            ),
+                                            border = if (isSelected) null else FilterChipDefaults.filterChipBorder(
+                                                enabled = true,
+                                                selected = false,
+                                                borderColor = Color(0xFFE2E8F0)
                                             ),
                                             shape = RoundedCornerShape(20.dp)
                                         )
@@ -314,19 +322,24 @@ fun TransactionHistoryScreen(
 
                             // Payment Mode Chips
                             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                Text("Filter by Payment:", color = Color(0xFF94A3B8), fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                                Text("Filter by Payment:", color = Color(0xFF334155), fontSize = 13.sp, fontWeight = FontWeight.Bold)
                                 LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                     items(listOf("All", "Cash", "UPI / QR", "Online", "Credit (Udhar)")) { mode ->
                                         val isSelected = selectedPaymentMode == mode
                                         FilterChip(
                                             selected = isSelected,
                                             onClick = { selectedPaymentMode = mode },
-                                            label = { Text(mode, fontSize = 11.sp) },
+                                            label = { Text(mode, fontSize = 11.sp, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal) },
                                             colors = FilterChipDefaults.filterChipColors(
-                                                selectedContainerColor = ElectricVioletLight,
+                                                selectedContainerColor = Color(0xFFD32F2F),
                                                 selectedLabelColor = Color.White,
-                                                containerColor = Color(0x22FFFFFF),
-                                                labelColor = Color.White
+                                                containerColor = Color(0xFFFFFFFF),
+                                                labelColor = Color(0xFF475569)
+                                            ),
+                                            border = if (isSelected) null else FilterChipDefaults.filterChipBorder(
+                                                enabled = true,
+                                                selected = false,
+                                                borderColor = Color(0xFFE2E8F0)
                                             ),
                                             shape = RoundedCornerShape(20.dp)
                                         )
@@ -350,11 +363,11 @@ fun TransactionHistoryScreen(
                                 Icon(
                                     imageVector = Icons.Default.Receipt,
                                     contentDescription = null,
-                                    tint = Color(0x44FFFFFF),
+                                    tint = Color(0xFFCBD5E1),
                                     modifier = Modifier.size(54.dp)
                                 )
                                 Spacer(modifier = Modifier.height(10.dp))
-                                Text("No transactions match your search filter", color = Color(0xFF94A3B8), fontSize = 13.sp)
+                                Text("No transactions match your search filter", color = Color(0xFF64748B), fontSize = 13.sp)
                             }
                         }
                     }
@@ -407,11 +420,11 @@ fun TransactionHistoryScreen(
             onDismissRequest = { selectedInvoiceForDetail = null },
             title = {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.Receipt, contentDescription = "Invoice", tint = EmeraldGreen, modifier = Modifier.size(24.dp))
+                    Icon(Icons.Default.Receipt, contentDescription = "Invoice", tint = Color(0xFFD32F2F), modifier = Modifier.size(24.dp))
                     Spacer(modifier = Modifier.width(10.dp))
                     Column {
-                        Text("Invoice Details", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                        Text("ID: #${invoice.firestoreId.take(8).ifBlank { invoice.id }}", color = Color(0xFF94A3B8), fontSize = 11.sp)
+                        Text("Invoice Details", color = Color(0xFF111827), fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                        Text("ID: #${invoice.firestoreId.take(8).ifBlank { invoice.id }}", color = Color(0xFF64748B), fontSize = 11.sp)
                     }
                 }
             },
@@ -422,26 +435,27 @@ fun TransactionHistoryScreen(
                 ) {
                     // Merchant & Customer Box
                     Card(
-                        colors = CardDefaults.cardColors(containerColor = Color(0x2210B981)),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFFF8FAFC)),
                         shape = RoundedCornerShape(10.dp),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE2E8F0)),
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Column(modifier = Modifier.padding(10.dp)) {
-                            Text(currentUser?.businessName ?: "Billing Store", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                            Text("Customer: ${invoice.customerName} ${if (invoice.customerMobile.isNotBlank()) "(${invoice.customerMobile})" else ""}", color = Color(0xFF94A3B8), fontSize = 11.sp)
-                            Text("Date: $formattedDate", color = Color(0xFF94A3B8), fontSize = 11.sp)
-                            Text("Payment Mode: ${invoice.paymentMode}", color = EmeraldLight, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                            Text(currentUser?.businessName ?: "Billing Store", color = Color(0xFF111827), fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                            Text("Customer: ${invoice.customerName} ${if (invoice.customerMobile.isNotBlank()) "(${invoice.customerMobile})" else ""}", color = Color(0xFF475569), fontSize = 11.sp)
+                            Text("Date: $formattedDate", color = Color(0xFF64748B), fontSize = 11.sp)
+                            Text("Payment Mode: ${invoice.paymentMode}", color = Color(0xFF16A34A), fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
                         }
                     }
 
                     // Items Summary
-                    Text("Purchased Items:", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    Text("Purchased Items:", color = Color(0xFF111827), fontWeight = FontWeight.Bold, fontSize = 12.sp)
                     Text(
                         text = invoice.itemsSummary.ifBlank { "${invoice.itemsCount} items billed" },
-                        color = Color(0xFFE2E8F0),
+                        color = Color(0xFF334155),
                         fontSize = 12.sp,
                         modifier = Modifier
-                            .background(Color(0x11FFFFFF), RoundedCornerShape(8.dp))
+                            .background(Color(0xFFF1F5F9), RoundedCornerShape(8.dp))
                             .padding(10.dp)
                             .fillMaxWidth()
                     )
@@ -449,27 +463,27 @@ fun TransactionHistoryScreen(
                     // Financial Summary
                     Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            Text("Subtotal", color = Color(0xFF94A3B8), fontSize = 12.sp)
-                            Text("₹${String.format(Locale.US, "%.2f", invoice.subtotal)}", color = Color.White, fontSize = 12.sp)
+                            Text("Subtotal", color = Color(0xFF64748B), fontSize = 12.sp)
+                            Text("₹${String.format(Locale.US, "%.2f", invoice.subtotal)}", color = Color(0xFF111827), fontSize = 12.sp)
                         }
                         if (invoice.discountAmount > 0) {
                             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                Text("Discount", color = Color(0xFF94A3B8), fontSize = 12.sp)
-                                Text("-₹${String.format(Locale.US, "%.2f", invoice.discountAmount)}", color = Color(0xFFF87171), fontSize = 12.sp)
+                                Text("Discount", color = Color(0xFF64748B), fontSize = 12.sp)
+                                Text("-₹${String.format(Locale.US, "%.2f", invoice.discountAmount)}", color = Color(0xFFD32F2F), fontSize = 12.sp)
                             }
                         }
                         if (invoice.taxAmount > 0) {
                             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                Text("Tax", color = Color(0xFF94A3B8), fontSize = 12.sp)
-                                Text("+₹${String.format(Locale.US, "%.2f", invoice.taxAmount)}", color = GoldYellow, fontSize = 12.sp)
+                                Text("Tax", color = Color(0xFF64748B), fontSize = 12.sp)
+                                Text("+₹${String.format(Locale.US, "%.2f", invoice.taxAmount)}", color = Color(0xFFD97706), fontSize = 12.sp)
                             }
                         }
                         Row(
                             modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Text("Grand Total", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                            Text("₹${String.format(Locale.US, "%.2f", invoice.amount)}", color = EmeraldGreen, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                            Text("Grand Total", color = Color(0xFF111827), fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                            Text("₹${String.format(Locale.US, "%.2f", invoice.amount)}", color = Color(0xFF16A34A), fontWeight = FontWeight.Bold, fontSize = 16.sp)
                         }
                     }
 
@@ -483,16 +497,16 @@ fun TransactionHistoryScreen(
                                 viewModel.loadInvoiceForEditing(invoice)
                                 onNavigateToPOS()
                             },
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0x33F59E0B)),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFEF3C7)),
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(42.dp)
-                                .border(1.dp, Color(0xFFF59E0B), RoundedCornerShape(10.dp))
+                                .border(1.dp, Color(0xFFD97706), RoundedCornerShape(10.dp))
                                 .testTag("modal_edit_bill_button")
                         ) {
-                            Icon(Icons.Default.Edit, contentDescription = null, tint = GoldYellow, modifier = Modifier.size(18.dp))
+                            Icon(Icons.Default.Edit, contentDescription = null, tint = Color(0xFFB45309), modifier = Modifier.size(18.dp))
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("✏️ Edit Bill Items & Quantities", color = GoldYellow, fontWeight = FontWeight.Bold)
+                            Text("✏️ Edit Bill Items & Quantities", color = Color(0xFFB45309), fontWeight = FontWeight.Bold)
                         }
 
                         Button(
@@ -505,12 +519,12 @@ fun TransactionHistoryScreen(
                                 )
                                 InvoicePdfHelper.printInvoicePdf(context, pdf)
                             },
-                            colors = ButtonDefaults.buttonColors(containerColor = EmeraldGreen),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD32F2F)),
                             modifier = Modifier.fillMaxWidth().height(42.dp).testTag("modal_print_pdf_button")
                         ) {
-                            Icon(Icons.Default.Print, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Icon(Icons.Default.Print, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Print Invoice PDF", fontWeight = FontWeight.Bold)
+                            Text("Print Invoice PDF", color = Color.White, fontWeight = FontWeight.Bold)
                         }
 
                         Button(
@@ -528,12 +542,12 @@ fun TransactionHistoryScreen(
                                     businessName = currentUser?.businessName
                                 )
                             },
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF25D366)), // WhatsApp Green
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF25D366)),
                             modifier = Modifier.fillMaxWidth().height(42.dp).testTag("modal_share_whatsapp_button")
                         ) {
-                            Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Icon(Icons.Default.Share, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Share via WhatsApp", fontWeight = FontWeight.Bold)
+                            Text("Share via WhatsApp", color = Color.White, fontWeight = FontWeight.Bold)
                         }
 
                         OutlinedButton(
@@ -551,23 +565,25 @@ fun TransactionHistoryScreen(
                                     businessName = currentUser?.businessName
                                 )
                             },
+                            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFCBD5E1)),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF334155)),
                             modifier = Modifier.fillMaxWidth().height(42.dp).testTag("modal_share_general_pdf_button")
                         ) {
-                            Icon(Icons.Default.PictureAsPdf, contentDescription = null, tint = ElectricVioletLight, modifier = Modifier.size(18.dp))
+                            Icon(Icons.Default.PictureAsPdf, contentDescription = null, tint = Color(0xFF334155), modifier = Modifier.size(18.dp))
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Share PDF File", color = ElectricVioletLight, fontWeight = FontWeight.Bold)
+                            Text("Share PDF File", color = Color(0xFF334155), fontWeight = FontWeight.Bold)
                         }
                     }
                 }
             },
             confirmButton = {
                 TextButton(onClick = { selectedInvoiceForDetail = null }) {
-                    Text("Close", color = Color.White)
+                    Text("Close", color = Color(0xFF475569), fontWeight = FontWeight.Bold)
                 }
             },
-            containerColor = Color(0xFF0F172A),
+            containerColor = Color.White,
             shape = RoundedCornerShape(20.dp),
-            modifier = Modifier.border(1.dp, Color(0x3310B981), RoundedCornerShape(20.dp))
+            modifier = Modifier.border(1.dp, Color(0xFFE2E8F0), RoundedCornerShape(20.dp))
         )
     }
 }
@@ -584,11 +600,14 @@ private fun HistoryInvoiceCard(
         SimpleDateFormat("dd MMM yyyy · hh:mm a", Locale.getDefault()).format(Date(invoice.timestamp))
     }
 
+    val isCredit = invoice.paymentMode.contains("Credit", ignoreCase = true) || invoice.paymentMode.contains("Udhar", ignoreCase = true)
+
     Card(
         onClick = onCardClick,
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF161F38)),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFFFFFFFF)),
         shape = RoundedCornerShape(14.dp),
-        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0x22FFFFFF)),
+        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE2E8F0)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         modifier = Modifier
             .fillMaxWidth()
             .testTag("history_invoice_item_${invoice.firestoreId.take(6).ifBlank { invoice.id }}")
@@ -603,10 +622,10 @@ private fun HistoryInvoiceCard(
                     Box(
                         modifier = Modifier
                             .size(38.dp)
-                            .background(Color(0x2210B981), CircleShape),
+                            .background(Color(0xFFF1F5F9), CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(Icons.Default.Receipt, contentDescription = null, tint = Color(0xFF10B981), modifier = Modifier.size(20.dp))
+                        Icon(Icons.Default.Receipt, contentDescription = null, tint = Color(0xFFD32F2F), modifier = Modifier.size(20.dp))
                     }
 
                     Spacer(modifier = Modifier.width(10.dp))
@@ -615,9 +634,9 @@ private fun HistoryInvoiceCard(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(
                                 text = invoice.customerName.ifBlank { "Walk-in Customer" },
-                                color = Color.White,
+                                color = Color(0xFF111827),
                                 fontWeight = FontWeight.Bold,
-                                fontSize = 15.sp,
+                                fontSize = 16.sp,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
@@ -626,35 +645,36 @@ private fun HistoryInvoiceCard(
                                 Box(
                                     modifier = Modifier
                                         .clip(RoundedCornerShape(4.dp))
-                                        .background(Color(0x33F59E0B))
-                                        .padding(horizontal = 4.dp, vertical = 2.dp)
+                                        .background(Color(0xFFFEF3C7))
+                                        .padding(horizontal = 5.dp, vertical = 2.dp)
                                 ) {
-                                    Text("(Edited)", color = GoldYellow, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                                    Text("(Edited)", color = Color(0xFFB45309), fontSize = 9.sp, fontWeight = FontWeight.Bold)
                                 }
                             }
                         }
-                        Text(dateString, color = Color(0xFF94A3B8), fontSize = 11.sp)
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(dateString, color = Color(0xFF64748B), fontSize = 12.sp)
                     }
                 }
 
                 Column(horizontalAlignment = Alignment.End) {
                     Text(
                         text = "₹${String.format(Locale.US, "%.2f", invoice.amount)}",
-                        color = Color(0xFF10B981),
+                        color = Color(0xFF16A34A),
                         fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp
+                        fontSize = 18.sp
                     )
                     Spacer(modifier = Modifier.height(3.dp))
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(6.dp))
-                            .background(Color(0x2210B981))
+                            .background(if (isCredit) Color(0xFFFEE2E2) else Color(0xFFDCFCE7))
                             .wrapContentWidth()
                             .padding(horizontal = 8.dp, vertical = 3.dp)
                     ) {
                         Text(
-                            text = if (invoice.paymentMode.contains("Credit", ignoreCase = true)) "CREDIT" else "PAID",
-                            color = if (invoice.paymentMode.contains("Credit", ignoreCase = true)) GoldYellow else Color(0xFF10B981),
+                            text = if (isCredit) "CREDIT / UDHAR" else "PAID",
+                            color = if (isCredit) Color(0xFFB91C1C) else Color(0xFF15803D),
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold,
                             maxLines = 1,
@@ -670,8 +690,8 @@ private fun HistoryInvoiceCard(
             if (invoice.itemsSummary.isNotBlank()) {
                 Text(
                     text = "Items: ${invoice.itemsSummary}",
-                    color = Color(0xFF94A3B8),
-                    fontSize = 12.sp,
+                    color = Color(0xFF475569),
+                    fontSize = 13.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -687,31 +707,34 @@ private fun HistoryInvoiceCard(
                 OutlinedButton(
                     onClick = onEditClick,
                     shape = RoundedCornerShape(8.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = GoldYellow),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0x66F59E0B)),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        containerColor = Color.White,
+                        contentColor = Color(0xFFD97706)
+                    ),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFD97706)),
                     contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
                     modifier = Modifier.height(32.dp).testTag("item_edit_button_${invoice.id}")
                 ) {
-                    Icon(Icons.Default.Edit, contentDescription = "Edit Bill", tint = GoldYellow, modifier = Modifier.size(14.dp))
+                    Icon(Icons.Default.Edit, contentDescription = "Edit Bill", tint = Color(0xFFD97706), modifier = Modifier.size(14.dp))
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("✏️ Edit Bill", color = GoldYellow, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    Text("✏️ Edit Bill", color = Color(0xFFD97706), fontSize = 11.sp, fontWeight = FontWeight.Bold)
                 }
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     IconButton(
                         onClick = onPrintClick,
-                        modifier = Modifier.size(32.dp).testTag("item_print_button")
+                        modifier = Modifier.size(36.dp).testTag("item_print_button")
                     ) {
-                        Icon(Icons.Default.Print, contentDescription = "Print PDF", tint = Color.White, modifier = Modifier.size(18.dp))
+                        Icon(Icons.Default.Print, contentDescription = "Print PDF", tint = Color(0xFF334155), modifier = Modifier.size(20.dp))
                     }
 
-                    Spacer(modifier = Modifier.width(8.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
 
                     IconButton(
                         onClick = onWhatsAppClick,
-                        modifier = Modifier.size(32.dp).testTag("item_whatsapp_button")
+                        modifier = Modifier.size(36.dp).testTag("item_whatsapp_button")
                     ) {
-                        Icon(Icons.Default.Share, contentDescription = "Share WhatsApp", tint = Color(0xFF25D366), modifier = Modifier.size(18.dp))
+                        Icon(Icons.Default.Share, contentDescription = "Share WhatsApp", tint = Color(0xFF334155), modifier = Modifier.size(20.dp))
                     }
                 }
             }

@@ -75,6 +75,88 @@ class BillingViewModel(val repository: BillingRepository) : ViewModel() {
     var profileError by mutableStateOf<String?>(null)
     var isSavingProfile by mutableStateOf(false)
 
+    // GST Profile & Verification State
+    var isGstRegistered by mutableStateOf(false)
+    var profileGstin by mutableStateOf("")
+    var isGstVerified by mutableStateOf(false)
+    var profileLegalBusinessName by mutableStateOf("")
+    var isVerifyingGst by mutableStateOf(false)
+    var gstVerificationError by mutableStateOf<String?>(null)
+
+    fun updateGstRegistered(registered: Boolean) {
+        isGstRegistered = registered
+        if (!registered) {
+            gstVerificationError = null
+        }
+    }
+
+    fun updateGstin(value: String) {
+        val uppercase = value.trim().uppercase()
+        profileGstin = uppercase
+        isGstVerified = false
+        gstVerificationError = null
+    }
+
+    fun verifyGst() {
+        val targetGstin = profileGstin.trim().uppercase()
+        if (targetGstin.isBlank()) {
+            gstVerificationError = "Please enter a 15-character GSTIN"
+            return
+        }
+
+        isVerifyingGst = true
+        gstVerificationError = null
+
+        viewModelScope.launch {
+            try {
+                val result = com.example.util.GstVerificationService.verifyGst(
+                    rawGstin = targetGstin,
+                    merchantBusinessName = profileBusinessName
+                )
+                isVerifyingGst = false
+                if (result.isValid) {
+                    isGstVerified = true
+                    profileLegalBusinessName = result.legalBusinessName
+                    gstVerificationError = null
+
+                    val targetUid = tempUid.ifBlank {
+                        com.example.data.firebase.FirebaseManager.auth?.currentUser?.uid ?: ""
+                    }
+                    if (targetUid.isNotBlank()) {
+                        val gstData = hashMapOf<String, Any>(
+                            "gstin" to targetGstin,
+                            "isGstVerified" to true,
+                            "legalBusinessName" to result.legalBusinessName,
+                            "isGstRegistered" to true,
+                            "gstRegistered" to true,
+                            "updatedAt" to System.currentTimeMillis()
+                        )
+                        com.example.data.firebase.FirebaseManager.firestore?.collection("users")
+                            ?.document(targetUid)
+                            ?.set(gstData, com.google.firebase.firestore.SetOptions.merge())
+                    }
+
+                    _currentUser.value?.let { curr ->
+                        val updated = curr.copy(
+                            gstin = targetGstin,
+                            isGstVerified = true,
+                            legalBusinessName = result.legalBusinessName,
+                            isGstRegistered = true
+                        )
+                        _currentUser.value = updated
+                        repository.insertUser(updated)
+                    }
+                } else {
+                    isGstVerified = false
+                    gstVerificationError = result.errorMessage ?: "Invalid GSTIN or Business Record Not Found"
+                }
+            } catch (e: Exception) {
+                isVerifyingGst = false
+                gstVerificationError = "Invalid GSTIN or Business Record Not Found"
+            }
+        }
+    }
+
     // Keep legacy parameters to prevent any compilation errors in other places
     var loginMobile by mutableStateOf("")
     var loginPassword by mutableStateOf("")
@@ -727,6 +809,10 @@ class BillingViewModel(val repository: BillingRepository) : ViewModel() {
                         val upiId = doc.getString("upiId") ?: doc.getString("merchantUpi") ?: doc.getString("vpa") ?: ""
                         val merchantName = doc.getString("merchantName") ?: businessName
                         val mobile = doc.getString("mobileNumber") ?: doc.getString("phoneNumber") ?: doc.getString("mobile") ?: ""
+                        val gstin = doc.getString("gstin") ?: ""
+                        val isVerified = doc.getBoolean("isGstVerified") ?: false
+                        val legalName = doc.getString("legalBusinessName") ?: ""
+                        val isRegistered = doc.getBoolean("isGstRegistered") ?: doc.getBoolean("gstRegistered") ?: (gstin.isNotBlank() && isVerified)
 
                         if (fullName.isNotBlank()) profileFullName = fullName
                         if (businessName.isNotBlank()) profileBusinessName = businessName
@@ -734,6 +820,13 @@ class BillingViewModel(val repository: BillingRepository) : ViewModel() {
                         if (upiId.isNotBlank()) profileUpiId = upiId
                         if (merchantName.isNotBlank()) profileMerchantName = merchantName
                         if (mobile.isNotBlank()) tempMobileOrEmail = mobile
+                        if (gstin.isNotBlank()) profileGstin = gstin
+                        isGstVerified = isVerified
+                        if (legalName.isNotBlank()) profileLegalBusinessName = legalName
+                        isGstRegistered = isRegistered
+                        if (!isVerified) {
+                            isGstInvoiceMode = false
+                        }
 
                         val updatedEntity = UserEntity(
                             id = targetUid.hashCode(),
@@ -743,7 +836,11 @@ class BillingViewModel(val repository: BillingRepository) : ViewModel() {
                             passwordHash = "",
                             category = profileCategory,
                             upiId = profileUpiId.ifBlank { "merchant@upi" },
-                            merchantName = profileMerchantName.ifBlank { profileBusinessName }
+                            merchantName = profileMerchantName.ifBlank { profileBusinessName },
+                            gstin = profileGstin,
+                            isGstVerified = isGstVerified,
+                            legalBusinessName = profileLegalBusinessName,
+                            isGstRegistered = isGstRegistered
                         )
                         _currentUser.value = updatedEntity
                         repository.insertUser(updatedEntity)
@@ -759,6 +856,13 @@ class BillingViewModel(val repository: BillingRepository) : ViewModel() {
                         profileCategory = local.category
                         profileUpiId = local.upiId.ifBlank { "merchant@upi" }
                         profileMerchantName = local.merchantName.ifBlank { local.businessName }
+                        profileGstin = local.gstin
+                        isGstVerified = local.isGstVerified
+                        profileLegalBusinessName = local.legalBusinessName
+                        isGstRegistered = local.isGstRegistered
+                        if (!local.isGstVerified) {
+                            isGstInvoiceMode = false
+                        }
                         _currentUser.value = local
                     }
                 }
@@ -771,6 +875,10 @@ class BillingViewModel(val repository: BillingRepository) : ViewModel() {
     fun completeProfileSetup(onNavigateToDashboard: () -> Unit) {
         if (profileFullName.isBlank() || profileBusinessName.isBlank() || profileCategory.isBlank()) {
             profileError = "Please fill all required fields and select a business category"
+            return
+        }
+        if (isGstRegistered && profileGstin.isNotBlank() && !isGstVerified) {
+            profileError = "Please verify your GSTIN before continuing"
             return
         }
         profileError = null
@@ -790,7 +898,11 @@ class BillingViewModel(val repository: BillingRepository) : ViewModel() {
                     category = profileCategory.trim(),
                     authProvider = tempAuthProvider.ifBlank { "phone" },
                     upiId = profileUpiId.trim().ifBlank { "merchant@upi" },
-                    merchantName = profileMerchantName.trim().ifBlank { profileBusinessName.trim() }
+                    merchantName = profileMerchantName.trim().ifBlank { profileBusinessName.trim() },
+                    gstin = if (isGstRegistered) profileGstin.trim().uppercase() else "",
+                    isGstVerified = if (isGstRegistered) isGstVerified else false,
+                    legalBusinessName = if (isGstRegistered) profileLegalBusinessName else "",
+                    isGstRegistered = isGstRegistered
                 )
 
                 val loggedUser = UserEntity(
@@ -801,7 +913,11 @@ class BillingViewModel(val repository: BillingRepository) : ViewModel() {
                     passwordHash = "",
                     category = profileCategory.trim(),
                     upiId = profileUpiId.trim().ifBlank { "merchant@upi" },
-                    merchantName = profileMerchantName.trim().ifBlank { profileBusinessName.trim() }
+                    merchantName = profileMerchantName.trim().ifBlank { profileBusinessName.trim() },
+                    gstin = if (isGstRegistered) profileGstin.trim().uppercase() else "",
+                    isGstVerified = if (isGstRegistered) isGstVerified else false,
+                    legalBusinessName = if (isGstRegistered) profileLegalBusinessName else "",
+                    isGstRegistered = isGstRegistered
                 )
                 repository.insertUser(loggedUser)
                 _currentUser.value = loggedUser
@@ -821,7 +937,11 @@ class BillingViewModel(val repository: BillingRepository) : ViewModel() {
                     passwordHash = "",
                     category = profileCategory.trim(),
                     upiId = profileUpiId.trim().ifBlank { "merchant@upi" },
-                    merchantName = profileMerchantName.trim().ifBlank { profileBusinessName.trim() }
+                    merchantName = profileMerchantName.trim().ifBlank { profileBusinessName.trim() },
+                    gstin = if (isGstRegistered) profileGstin.trim().uppercase() else "",
+                    isGstVerified = if (isGstRegistered) isGstVerified else false,
+                    legalBusinessName = if (isGstRegistered) profileLegalBusinessName else "",
+                    isGstRegistered = isGstRegistered
                 )
                 repository.insertUser(loggedUser)
                 _currentUser.value = loggedUser
@@ -952,8 +1072,23 @@ class BillingViewModel(val repository: BillingRepository) : ViewModel() {
     var posDiscountType by mutableStateOf("Fixed") // Fixed or Percentage
     var posDiscountInput by mutableStateOf("")
     var posTaxPercentageInput by mutableStateOf("0")
-    var isGstInvoiceMode by mutableStateOf(true) // GST Invoice vs Simple Estimate
+    var isGstInvoiceMode by mutableStateOf(false) // Default gated until GSTIN is verified
     var autoSendWhatsAppInvoice by mutableStateOf(true)
+
+    fun toggleGstInvoiceMode(enable: Boolean): Boolean {
+        if (enable) {
+            val verified = _currentUser.value?.isGstVerified == true || (isGstVerified && profileGstin.isNotBlank())
+            if (!verified) {
+                isGstInvoiceMode = false
+                return false // Gated: GSTIN is not verified
+            }
+            isGstInvoiceMode = true
+            return true
+        } else {
+            isGstInvoiceMode = false
+            return true
+        }
+    }
     val posCartItems = mutableStateListOf<POSCartItem>()
     var isGeneratingPOSInvoice by mutableStateOf(false)
     var posInvoiceError by mutableStateOf<String?>(null)
@@ -1385,7 +1520,11 @@ class BillingViewModel(val repository: BillingRepository) : ViewModel() {
         val doctor = posDoctorName.trim()
         val patient = posPatientInfo.trim()
         val userDl = _currentUser.value?.dlNumber?.ifBlank { "DL-20B/10492/2024" } ?: "DL-20B/10492/2024"
-        val userGstin = _currentUser.value?.gstin?.ifBlank { "27ABCDE1234F1Z5" } ?: "27ABCDE1234F1Z5"
+        val userGstin = if (isGstInvoiceMode) {
+            _currentUser.value?.gstin?.ifBlank { profileGstin.ifBlank { "27ABCDE1234F1Z5" } } ?: "27ABCDE1234F1Z5"
+        } else {
+            ""
+        }
 
         val finalAmount = posFinalTotal
         val totalItemsCount = posCartItems.size
@@ -1575,7 +1714,11 @@ class BillingViewModel(val repository: BillingRepository) : ViewModel() {
         val doctor = posDoctorName.trim()
         val patient = posPatientInfo.trim()
         val userDl = _currentUser.value?.dlNumber?.ifBlank { "DL-20B/10492/2024" } ?: "DL-20B/10492/2024"
-        val userGstin = _currentUser.value?.gstin?.ifBlank { "27ABCDE1234F1Z5" } ?: "27ABCDE1234F1Z5"
+        val userGstin = if (isGstInvoiceMode) {
+            _currentUser.value?.gstin?.ifBlank { profileGstin.ifBlank { "27ABCDE1234F1Z5" } } ?: "27ABCDE1234F1Z5"
+        } else {
+            ""
+        }
 
         val finalAmount = posFinalTotal
         val totalItemsCount = posCartItems.size

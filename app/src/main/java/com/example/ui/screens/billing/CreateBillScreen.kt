@@ -36,6 +36,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Discount
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Inventory2
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.PointOfSale
@@ -113,7 +114,8 @@ import java.util.Locale
 @Composable
 fun CreateBillScreen(
     viewModel: BillingViewModel,
-    onNavigateBack: () -> Unit
+    onNavigateBack: () -> Unit,
+    onNavigateToProfile: (() -> Unit)? = null
 ) {
     val products by viewModel.products.collectAsState()
     val customers by viewModel.customers.collectAsState()
@@ -1239,7 +1241,8 @@ fun CreateBillScreen(
                 showCustomerPickerModal = true
             },
             onDismiss = { showCartReviewModal = false },
-            onEditQuantity = { cartItem -> editingCartItemQuantity = cartItem }
+            onEditQuantity = { cartItem -> editingCartItemQuantity = cartItem },
+            onNavigateToProfile = onNavigateToProfile
         )
     }
 
@@ -1297,8 +1300,13 @@ private fun CartReviewModalDialog(
     onProceedToPayment: () -> Unit,
     onChangeCustomerClick: () -> Unit,
     onDismiss: () -> Unit,
-    onEditQuantity: (POSCartItem) -> Unit
+    onEditQuantity: (POSCartItem) -> Unit,
+    onNavigateToProfile: (() -> Unit)? = null
 ) {
+    val currentUser by viewModel.currentUser.collectAsState()
+    val isGstVerified = currentUser?.isGstVerified == true
+    var showGstGateDialog by remember { mutableStateOf(false) }
+
     androidx.compose.ui.window.Dialog(
         onDismissRequest = onDismiss,
         properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)
@@ -1540,31 +1548,90 @@ private fun CartReviewModalDialog(
                                             horizontalArrangement = Arrangement.SpaceBetween,
                                             verticalAlignment = Alignment.CenterVertically
                                         ) {
-                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                modifier = Modifier.weight(1f)
+                                            ) {
                                                 Icon(Icons.Default.ReceiptLong, contentDescription = null, tint = VyaparDeepBlue, modifier = Modifier.size(18.dp))
                                                 Spacer(modifier = Modifier.width(6.dp))
-                                                Text(
-                                                    text = if (viewModel.isGstInvoiceMode) "GST Invoice Mode" else "Simple Estimate (Non-GST)",
-                                                    color = VyaparTextPrimary,
-                                                    fontWeight = FontWeight.Bold,
-                                                    fontSize = 12.sp
-                                                )
+                                                Column {
+                                                    Text(
+                                                        text = if (viewModel.isGstInvoiceMode && isGstVerified) "GST Invoice Mode" else "Simple Estimate (Non-GST)",
+                                                        color = VyaparTextPrimary,
+                                                        fontWeight = FontWeight.Bold,
+                                                        fontSize = 12.sp
+                                                    )
+                                                    if (!isGstVerified) {
+                                                        Text(
+                                                            text = "GSTIN Verification Required",
+                                                            color = Color(0xFFDC2626),
+                                                            fontSize = 10.sp,
+                                                            fontWeight = FontWeight.SemiBold
+                                                        )
+                                                    }
+                                                }
                                             }
                                             androidx.compose.material3.Switch(
-                                                checked = viewModel.isGstInvoiceMode,
-                                                onCheckedChange = {
-                                                    viewModel.isGstInvoiceMode = it
-                                                    if (!it) viewModel.posTaxPercentageInput = "0"
+                                                checked = viewModel.isGstInvoiceMode && isGstVerified,
+                                                onCheckedChange = { checked ->
+                                                    if (checked && !isGstVerified) {
+                                                        showGstGateDialog = true
+                                                    } else {
+                                                        viewModel.isGstInvoiceMode = checked
+                                                        if (!checked) viewModel.posTaxPercentageInput = "0"
+                                                    }
                                                 },
+                                                enabled = isGstVerified,
                                                 colors = androidx.compose.material3.SwitchDefaults.colors(
                                                     checkedThumbColor = Color.White,
-                                                    checkedTrackColor = VyaparRed
+                                                    checkedTrackColor = VyaparRed,
+                                                    disabledCheckedTrackColor = Color(0xFFE2E8F0),
+                                                    disabledUncheckedTrackColor = Color(0xFFE2E8F0),
+                                                    disabledUncheckedThumbColor = Color(0xFF94A3B8)
                                                 ),
                                                 modifier = Modifier.testTag("pos_gst_toggle_switch")
                                             )
                                         }
 
-                                        if (viewModel.isGstInvoiceMode) {
+                                        if (!isGstVerified) {
+                                            Surface(
+                                                color = Color(0xFFFEF2F2),
+                                                shape = RoundedCornerShape(8.dp),
+                                                border = BorderStroke(1.dp, Color(0xFFFECACA)),
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .clickable { showGstGateDialog = true }
+                                                    .testTag("pos_gst_unverified_banner")
+                                            ) {
+                                                Row(
+                                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
+                                                    verticalAlignment = Alignment.CenterVertically
+                                                ) {
+                                                    Icon(
+                                                        imageVector = Icons.Default.Lock,
+                                                        contentDescription = null,
+                                                        tint = Color(0xFFDC2626),
+                                                        modifier = Modifier.size(15.dp)
+                                                    )
+                                                    Spacer(modifier = Modifier.width(8.dp))
+                                                    Text(
+                                                        text = "GSTIN not verified. Tap to verify in Profile to unlock GST Mode.",
+                                                        color = Color(0xFF991B1B),
+                                                        fontSize = 11.sp,
+                                                        fontWeight = FontWeight.Medium,
+                                                        modifier = Modifier.weight(1f)
+                                                    )
+                                                    Text(
+                                                        text = "VERIFY",
+                                                        color = Color(0xFFDC2626),
+                                                        fontSize = 10.sp,
+                                                        fontWeight = FontWeight.ExtraBold
+                                                    )
+                                                }
+                                            }
+                                        }
+
+                                        if (viewModel.isGstInvoiceMode && isGstVerified) {
                                             Row(
                                                 modifier = Modifier.fillMaxWidth(),
                                                 verticalAlignment = Alignment.CenterVertically,
@@ -1691,6 +1758,69 @@ private fun CartReviewModalDialog(
                     }
                 }
             }
+        }
+
+        if (showGstGateDialog) {
+            AlertDialog(
+                onDismissRequest = { showGstGateDialog = false },
+                icon = {
+                    Box(
+                        modifier = Modifier
+                            .size(44.dp)
+                            .background(Color(0xFFFEF2F2), CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.ReceiptLong,
+                            contentDescription = null,
+                            tint = Color(0xFFDC2626),
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                },
+                title = {
+                    Text(
+                        text = "GST Verification Required",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp,
+                        color = Color(0xFF0F172A),
+                        textAlign = TextAlign.Center
+                    )
+                },
+                text = {
+                    Text(
+                        text = "To issue legal GST tax invoices with CGST/SGST breakdowns, you must verify your 15-character GSTIN in Business Profile.",
+                        fontSize = 13.sp,
+                        color = Color(0xFF475569),
+                        textAlign = TextAlign.Center
+                    )
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            showGstGateDialog = false
+                            onDismiss()
+                            onNavigateToProfile?.invoke()
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = VyaparRed),
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.testTag("dialog_go_to_profile_button")
+                    ) {
+                        Text("Go to Profile", fontWeight = FontWeight.Bold, color = Color.White)
+                    }
+                },
+                dismissButton = {
+                    TextButton(
+                        onClick = { showGstGateDialog = false },
+                        modifier = Modifier.testTag("dialog_dismiss_gst_gate")
+                    ) {
+                        Text("Cancel", color = Color(0xFF64748B))
+                    }
+                },
+                containerColor = Color.White,
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier.testTag("gst_verification_required_dialog")
+            )
         }
     }
 }

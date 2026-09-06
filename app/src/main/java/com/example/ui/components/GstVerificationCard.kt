@@ -266,8 +266,11 @@ fun GstVerificationCard(
                                 )
                                 Spacer(modifier = Modifier.width(10.dp))
                                 Column {
+                                    val cleanDisplayName = legalBusinessName
+                                        .replace(Regex("^(Verified:\\s*)+", RegexOption.IGNORE_CASE), "")
+                                        .trim()
                                     Text(
-                                        text = if (legalBusinessName.isNotBlank()) "Verified: $legalBusinessName" else "Verified Business Record",
+                                        text = if (cleanDisplayName.isNotBlank()) "Verified: $cleanDisplayName" else "Verified Business Record",
                                         color = Color(0xFF065F46),
                                         fontSize = 13.sp,
                                         fontWeight = FontWeight.Bold

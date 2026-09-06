@@ -18,6 +18,7 @@ import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Business
 import androidx.compose.material.icons.filled.Cancel
 import androidx.compose.material.icons.filled.Category
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.WorkspacePremium
@@ -283,6 +284,31 @@ fun ProfileScreen(
                             .fillMaxWidth()
                             .testTag("profile_business_name_input")
                     )
+
+                    if (viewModel.isGstVerified && viewModel.legalBusinessName.isNotBlank() && viewModel.businessName != viewModel.legalBusinessName) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { viewModel.updateBusinessName(viewModel.legalBusinessName) }
+                                .padding(horizontal = 4.dp, vertical = 2.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.CheckCircle,
+                                contentDescription = null,
+                                tint = Color(0xFF16A34A),
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "Use official registered name: ${viewModel.legalBusinessName}",
+                                color = Color(0xFF16A34A),
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    }
 
                     Spacer(modifier = Modifier.height(16.dp))
 

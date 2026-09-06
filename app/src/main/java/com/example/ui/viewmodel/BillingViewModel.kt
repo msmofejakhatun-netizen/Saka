@@ -110,13 +110,19 @@ class BillingViewModel(val repository: BillingRepository) : ViewModel() {
         viewModelScope.launch {
             try {
                 val result = com.example.util.GstVerificationService.verifyGst(
-                    rawGstin = targetGstin,
-                    merchantBusinessName = profileBusinessName
+                    rawGstin = targetGstin
                 )
                 isVerifyingGst = false
                 if (result.isValid) {
+                    val cleanName = result.legalBusinessName
+                        .replace(Regex("^(Verified:\\s*)+", RegexOption.IGNORE_CASE), "")
+                        .trim()
+
                     isGstVerified = true
-                    profileLegalBusinessName = result.legalBusinessName
+                    profileLegalBusinessName = cleanName
+                    if (cleanName.isNotBlank()) {
+                        profileBusinessName = cleanName
+                    }
                     gstVerificationError = null
 
                     val targetUid = tempUid.ifBlank {
@@ -126,7 +132,8 @@ class BillingViewModel(val repository: BillingRepository) : ViewModel() {
                         val gstData = hashMapOf<String, Any>(
                             "gstin" to targetGstin,
                             "isGstVerified" to true,
-                            "legalBusinessName" to result.legalBusinessName,
+                            "legalBusinessName" to cleanName,
+                            "businessName" to cleanName,
                             "isGstRegistered" to true,
                             "gstRegistered" to true,
                             "updatedAt" to System.currentTimeMillis()
@@ -138,9 +145,10 @@ class BillingViewModel(val repository: BillingRepository) : ViewModel() {
 
                     _currentUser.value?.let { curr ->
                         val updated = curr.copy(
+                            businessName = if (cleanName.isNotBlank()) cleanName else curr.businessName,
                             gstin = targetGstin,
                             isGstVerified = true,
-                            legalBusinessName = result.legalBusinessName,
+                            legalBusinessName = cleanName,
                             isGstRegistered = true
                         )
                         _currentUser.value = updated
@@ -822,7 +830,11 @@ class BillingViewModel(val repository: BillingRepository) : ViewModel() {
                         if (mobile.isNotBlank()) tempMobileOrEmail = mobile
                         if (gstin.isNotBlank()) profileGstin = gstin
                         isGstVerified = isVerified
-                        if (legalName.isNotBlank()) profileLegalBusinessName = legalName
+                        if (legalName.isNotBlank()) {
+                            profileLegalBusinessName = legalName
+                                .replace(Regex("^(Verified:\\s*)+", RegexOption.IGNORE_CASE), "")
+                                .trim()
+                        }
                         isGstRegistered = isRegistered
                         if (!isVerified) {
                             isGstInvoiceMode = false
@@ -859,6 +871,8 @@ class BillingViewModel(val repository: BillingRepository) : ViewModel() {
                         profileGstin = local.gstin
                         isGstVerified = local.isGstVerified
                         profileLegalBusinessName = local.legalBusinessName
+                            .replace(Regex("^(Verified:\\s*)+", RegexOption.IGNORE_CASE), "")
+                            .trim()
                         isGstRegistered = local.isGstRegistered
                         if (!local.isGstVerified) {
                             isGstInvoiceMode = false

@@ -138,6 +138,9 @@ class UserRepository(
             "gstRegistered" to isGstRegistered,
             "updatedAt" to System.currentTimeMillis()
         )
+        if (isGstVerified && legalBusinessName.isNotBlank()) {
+            gstData["businessName"] = legalBusinessName
+        }
 
         try {
             if (FirebaseManager.isFirebaseAvailable && firestore != null) {
@@ -152,6 +155,7 @@ class UserRepository(
                 if (existing != null) {
                     userDao.updateUser(
                         existing.copy(
+                            businessName = if (isGstVerified && legalBusinessName.isNotBlank()) legalBusinessName else existing.businessName,
                             gstin = gstin.trim().uppercase(),
                             isGstVerified = isGstVerified,
                             legalBusinessName = legalBusinessName,
@@ -163,6 +167,29 @@ class UserRepository(
             Result.success(Unit)
         } catch (e: Exception) {
             Log.e(TAG, "Error saving GST details: ${e.localizedMessage}")
+            Result.failure(e)
+        }
+    }
+
+    suspend fun updateBusinessName(businessName: String, userId: String? = null): Result<Unit> = withContext(Dispatchers.IO) {
+        val targetUid = userId ?: auth?.currentUser?.uid ?: ""
+        if (targetUid.isEmpty()) {
+            return@withContext Result.failure(IllegalStateException("User is not authenticated."))
+        }
+        try {
+            if (FirebaseManager.isFirebaseAvailable && firestore != null) {
+                firestore!!.collection("users").document(targetUid)
+                    .set(mapOf("businessName" to businessName), SetOptions.merge())
+                    .await()
+            }
+            if (userDao != null) {
+                val existing = userDao.getUserById(targetUid.hashCode())
+                if (existing != null) {
+                    userDao.updateUser(existing.copy(businessName = businessName))
+                }
+            }
+            Result.success(Unit)
+        } catch (e: Exception) {
             Result.failure(e)
         }
     }

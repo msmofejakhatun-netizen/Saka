@@ -86,7 +86,10 @@ class ProfileViewModel(
                     merchantName = profile.merchantName.ifBlank { profile.businessName }
                     gstin = profile.gstin
                     isGstVerified = profile.isGstVerified
-                    legalBusinessName = profile.legalBusinessName
+                    val cleanLoadedLegalName = profile.legalBusinessName
+                        .replace(Regex("^(Verified:\\s*)+", RegexOption.IGNORE_CASE), "")
+                        .trim()
+                    legalBusinessName = cleanLoadedLegalName
                     isGstRegistered = profile.isGstRegistered || profile.gstin.isNotBlank()
 
                     _uiState.value = _uiState.value.copy(
@@ -98,7 +101,7 @@ class ProfileViewModel(
                         mobileNumber = profile.mobileNumber,
                         gstin = profile.gstin,
                         isGstVerified = profile.isGstVerified,
-                        legalBusinessName = profile.legalBusinessName,
+                        legalBusinessName = cleanLoadedLegalName,
                         isGstRegistered = isGstRegistered,
                         isLoading = false
                     )
@@ -177,32 +180,45 @@ class ProfileViewModel(
         viewModelScope.launch {
             try {
                 val verificationResult = com.example.util.GstVerificationService.verifyGst(
-                    rawGstin = targetGstin,
-                    merchantBusinessName = businessName
+                    rawGstin = targetGstin
                 )
 
                 isVerifyingGst = false
                 if (verificationResult.isValid) {
+                    val cleanName = verificationResult.legalBusinessName
+                        .replace(Regex("^(Verified:\\s*)+", RegexOption.IGNORE_CASE), "")
+                        .trim()
+
                     isGstVerified = true
-                    legalBusinessName = verificationResult.legalBusinessName
+                    legalBusinessName = cleanName
                     gstVerificationError = null
+
+                    // Auto-fill Business Name to match official registered name
+                    if (cleanName.isNotBlank()) {
+                        businessName = cleanName
+                    }
+
                     _uiState.value = _uiState.value.copy(
                         isVerifyingGst = false,
                         isGstVerified = true,
-                        legalBusinessName = verificationResult.legalBusinessName,
+                        businessName = if (cleanName.isNotBlank()) cleanName else businessName,
+                        legalBusinessName = cleanName,
                         gstVerificationError = null
                     )
 
-                    // Store gstin, isGstVerified: true, and legalBusinessName directly in Firestore under users/{uid}
+                    // Store gstin, isGstVerified: true, and clean legalBusinessName directly in Firestore under users/{uid}
                     userRepository.saveGstDetails(
                         gstin = targetGstin,
                         isGstVerified = true,
-                        legalBusinessName = verificationResult.legalBusinessName,
+                        legalBusinessName = cleanName,
                         isGstRegistered = true
                     )
+                    if (cleanName.isNotBlank()) {
+                        userRepository.updateBusinessName(cleanName)
+                    }
 
                     if (context != null) {
-                        Toast.makeText(context, "GSTIN Verified Successfully", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, "Verified: $cleanName", Toast.LENGTH_SHORT).show()
                     }
                 } else {
                     isGstVerified = false

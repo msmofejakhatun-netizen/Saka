@@ -20,6 +20,8 @@ import com.example.data.db.InvoiceEntity
 import com.example.data.db.ProductEntity
 import com.example.data.db.UserEntity
 import com.example.data.repository.BillingRepository
+import com.example.util.WhatsAppInvoiceHelper
+import com.example.util.WhatsAppInvoiceItem
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -1235,11 +1237,46 @@ class BillingViewModel(val repository: BillingRepository) : ViewModel() {
             Pair(0.0, 0.0)
         }
 
+        val effectiveStoreName = storeName.ifBlank { currentUser.value?.businessName ?: "SmartPOS Store" }
+        val passbookLink = "https://passbook.yaddetechnologies.in/?phone=$cleanPhone"
+
+        val messageText = if (isCreditPayment) {
+            WhatsAppInvoiceHelper.generateUdharWhatsAppBillText(
+                customerName = customerName,
+                storeName = effectiveStoreName,
+                billAmount = totalAmount,
+                totalDue = calcTotalOutstanding,
+                customerPhone = cleanPhone
+            )
+        } else {
+            val invoiceItems = items.map {
+                WhatsAppInvoiceItem(
+                    name = it.name,
+                    quantity = it.quantity,
+                    unit = it.unit,
+                    price = it.unitPrice,
+                    totalAmount = it.totalPrice
+                )
+            }
+            WhatsAppInvoiceHelper.generateWhatsAppInvoiceTextFromItems(
+                items = invoiceItems,
+                invoiceNumber = invoiceNumber,
+                storeName = effectiveStoreName,
+                subtotal = subtotal,
+                discountAmount = discountAmount,
+                taxAmount = taxAmount,
+                totalAmount = totalAmount,
+                paymentMode = paymentMode,
+                dateStr = date,
+                passbookUrl = passbookLink
+            )
+        }
+
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 val payload = InvoiceRequestPayload(
                     customerPhone = cleanPhone,
-                    storeName = storeName.ifBlank { currentUser.value?.businessName ?: "SmartPOS Store" },
+                    storeName = effectiveStoreName,
                     storePhone = effectiveStorePhone,
                     invoiceNumber = invoiceNumber,
                     totalAmount = totalAmount,
@@ -1251,7 +1288,11 @@ class BillingViewModel(val repository: BillingRepository) : ViewModel() {
                     customerName = customerName,
                     subtotal = subtotal,
                     discountAmount = discountAmount,
-                    taxAmount = taxAmount
+                    taxAmount = taxAmount,
+                    billAmount = totalAmount,
+                    totalDue = if (isCreditPayment) calcTotalOutstanding else totalAmount,
+                    passbookUrl = passbookLink,
+                    message = messageText
                 )
 
                 // Call WhatsAppApiService.getInstance().sendInvoice(...)

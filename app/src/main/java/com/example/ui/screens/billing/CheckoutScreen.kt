@@ -255,6 +255,14 @@ fun CheckoutScreen(
                                     Text("New Total Outstanding", color = Color(0xFFF59E0B), fontWeight = FontWeight.Bold, fontSize = 13.sp)
                                     Text("₹${String.format(Locale.US, "%.2f", totalOutstanding)}", color = Color(0xFFF59E0B), fontWeight = FontWeight.Bold, fontSize = 14.sp)
                                 }
+                                if (cleanCustomerPhone.length == 10) {
+                                    HorizontalDivider(color = Color(0x33FFFFFF))
+                                    Text(
+                                        "Passbook: https://passbook.yaddetechnologies.in/?phone=$cleanCustomerPhone",
+                                        color = Color(0xFF6EE7B7),
+                                        fontSize = 11.sp
+                                    )
+                                }
                             }
                         }
                     }

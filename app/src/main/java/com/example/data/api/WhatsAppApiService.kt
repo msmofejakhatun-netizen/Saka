@@ -36,7 +36,11 @@ data class InvoiceRequestPayload(
     @Json(name = "customerName") val customerName: String = "",
     @Json(name = "subtotal") val subtotal: Double = totalAmount,
     @Json(name = "discountAmount") val discountAmount: Double = 0.0,
-    @Json(name = "taxAmount") val taxAmount: Double = 0.0
+    @Json(name = "taxAmount") val taxAmount: Double = 0.0,
+    @Json(name = "billAmount") val billAmount: Double = totalAmount,
+    @Json(name = "totalDue") val totalDue: Double = totalOutstanding,
+    @Json(name = "passbookUrl") val passbookUrl: String = "",
+    @Json(name = "message") val message: String = ""
 )
 
 /**
@@ -52,7 +56,8 @@ data class UdharReminderRequestPayload(
     @Json(name = "pendingBalance") val pendingBalance: Double,
     @Json(name = "lastTxnDate") val lastTxnDate: String = "",
     @Json(name = "message") val message: String = "",
-    @Json(name = "upiLink") val upiLink: String = ""
+    @Json(name = "upiLink") val upiLink: String = "",
+    @Json(name = "passbookUrl") val passbookUrl: String = ""
 )
 
 /**

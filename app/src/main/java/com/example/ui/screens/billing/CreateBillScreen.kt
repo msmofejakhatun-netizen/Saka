@@ -982,6 +982,27 @@ fun CreateBillScreen(
                         }
                     }
 
+                    val cleanReceiptMobile = invoice.customerMobile.replace("[^0-9]".toRegex(), "").takeLast(10)
+                    if (cleanReceiptMobile.length == 10) {
+                        Surface(
+                            color = Color(0xFFF0FDF4),
+                            shape = RoundedCornerShape(8.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp)
+                                .border(1.dp, Color(0xFFBBF7D0), RoundedCornerShape(8.dp))
+                        ) {
+                            Column(modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)) {
+                                Text("Customer Passbook:", color = Color(0xFF15803D), fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                Text(
+                                    "https://passbook.yaddetechnologies.in/?phone=$cleanReceiptMobile",
+                                    color = Color(0xFF166534),
+                                    fontSize = 10.sp
+                                )
+                            }
+                        }
+                    }
+
                     Spacer(modifier = Modifier.height(8.dp))
 
                     // PDF & Thermal Printer Action Engine
@@ -1020,12 +1041,24 @@ fun CreateBillScreen(
                         Button(
                             onClick = {
                                 val custPhone = invoice.customerMobile.ifBlank { "" }
+                                val cleanPhone = custPhone.replace("[^0-9]".toRegex(), "").takeLast(10)
+                                val isCredit = invoice.paymentMode.contains("Credit", ignoreCase = true) ||
+                                        invoice.paymentMode.contains("Udhar", ignoreCase = true)
+                                val matchingCust = viewModel.customers.value.find {
+                                    it.mobileNumber.replace("[^0-9]".toRegex(), "").takeLast(10) == cleanPhone
+                                }
+                                val totalDue = if (isCredit) {
+                                    val prev = matchingCust?.totalPendingBalance ?: 0.0
+                                    prev.coerceAtLeast(invoice.amount)
+                                } else invoice.amount
+
                                 if (custPhone.isNotBlank()) {
                                     val sent = com.example.util.WhatsAppInvoiceHelper.sendWhatsAppInvoice(
                                         context = localContext,
                                         customerPhone = custPhone,
                                         invoice = invoice,
-                                        businessName = currentUser?.businessName ?: "SmartPOS Store"
+                                        businessName = currentUser?.businessName ?: "SmartPOS Store",
+                                        totalDue = totalDue
                                     )
                                     if (!sent) {
                                         val pdf = com.example.util.InvoicePdfHelper.generateInvoicePdf(
@@ -1038,7 +1071,8 @@ fun CreateBillScreen(
                                             context = localContext,
                                             pdfFile = pdf,
                                             invoice = invoice,
-                                            businessName = currentUser?.businessName
+                                            businessName = currentUser?.businessName,
+                                            totalDue = totalDue
                                         )
                                     }
                                 } else {
@@ -1052,7 +1086,8 @@ fun CreateBillScreen(
                                         context = localContext,
                                         pdfFile = pdf,
                                         invoice = invoice,
-                                        businessName = currentUser?.businessName
+                                        businessName = currentUser?.businessName,
+                                        totalDue = totalDue
                                     )
                                 }
                             },
@@ -2113,6 +2148,24 @@ private fun PaymentAndCheckoutModalDialog(
                                                         Text("Total Outstanding: ₹${String.format(Locale.US, "%.2f", totalOutstanding)}", color = VyaparTextPrimary, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                                                     }
                                                     Text("Udhar Khata", color = VyaparTextSecondary, fontSize = 10.sp)
+                                                }
+                                            }
+                                        }
+
+                                        if (cleanUdharPhone.length == 10) {
+                                            Spacer(modifier = Modifier.height(4.dp))
+                                            Surface(
+                                                color = Color(0xFFF0FDF4),
+                                                shape = RoundedCornerShape(8.dp),
+                                                modifier = Modifier.fillMaxWidth().border(1.dp, Color(0xFFBBF7D0), RoundedCornerShape(8.dp))
+                                            ) {
+                                                Column(modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)) {
+                                                    Text("Customer Passbook Link:", color = Color(0xFF15803D), fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                                    Text(
+                                                        "https://passbook.yaddetechnologies.in/?phone=$cleanUdharPhone",
+                                                        color = Color(0xFF166534),
+                                                        fontSize = 10.sp
+                                                    )
                                                 }
                                             }
                                         }

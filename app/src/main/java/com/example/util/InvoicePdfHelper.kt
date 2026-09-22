@@ -417,7 +417,8 @@ object InvoicePdfHelper {
         context: Context,
         pdfFile: File,
         invoice: InvoiceEntity,
-        businessName: String? = "Billing Store"
+        businessName: String? = "Billing Store",
+        totalDue: Double? = null
     ) {
         val uri: Uri = try {
             FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", pdfFile)
@@ -427,7 +428,7 @@ object InvoicePdfHelper {
             return
         }
 
-        val message = WhatsAppInvoiceHelper.formatInvoiceText(invoice, businessName ?: "SmartPOS Store")
+        val message = WhatsAppInvoiceHelper.formatInvoiceText(invoice, businessName ?: "SmartPOS Store", totalDue)
 
         val whatsappIntent = Intent(Intent.ACTION_SEND).apply {
             type = "application/pdf"

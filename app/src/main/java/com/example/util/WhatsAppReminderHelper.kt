@@ -41,17 +41,24 @@ object WhatsAppReminderHelper {
         merchantName: String,
         amount: Double,
         customerName: String = "",
-        note: String = ""
+        note: String = "",
+        customerPhone: String = ""
     ): String {
         val upiUrl = buildUpiPaymentUrl(upiId, merchantName, amount, customerName, note)
         val cleanUpi = if (upiId.isNotBlank()) upiId.trim() else "merchant@upi"
+        val cleanPhone = customerPhone.replace("[^0-9]".toRegex(), "").takeLast(10)
+        val passbookLink = if (cleanPhone.isNotEmpty()) {
+            "https://passbook.yaddetechnologies.in/?phone=$cleanPhone"
+        } else {
+            "https://passbook.yaddetechnologies.in/"
+        }
 
         val paymentBlock = "\n\n" +
             "📲 *Click to Pay Instantly:*\n" +
             "$upiUrl\n\n" +
             "• Merchant UPI ID: $cleanUpi\n\n" +
             "⚡ _Powered by SmartPOS_\n" +
-            "🔗 https://smartpos-ashen.vercel.app/"
+            "🔗 $passbookLink"
 
         return originalMessage.trim() + paymentBlock
     }

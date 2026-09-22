@@ -32,6 +32,60 @@ object WhatsAppInvoiceHelper {
     private const val TAG = "WhatsAppInvoiceHelper"
     private const val PREFS_NAME = "smartpos_settings_prefs"
     private const val KEY_AUTO_SEND_WHATSAPP = "key_auto_send_whatsapp_invoice"
+    const val PASSBOOK_BASE_URL = "https://passbook.yaddetechnologies.in/"
+
+    /**
+     * Generates customer passbook link based on customer's phone number.
+     * Example: https://passbook.yaddetechnologies.in/?phone=9876543210
+     */
+    fun getPassbookUrl(customerPhone: String): String {
+        val cleanPhone = customerPhone.replace("[^0-9]".toRegex(), "").takeLast(10)
+        return if (cleanPhone.isNotBlank()) {
+            "https://passbook.yaddetechnologies.in/?phone=$cleanPhone"
+        } else {
+            "https://passbook.yaddetechnologies.in/?phone=${customerPhone.trim()}"
+        }
+    }
+
+    /**
+     * Formats WhatsApp message for Udhar / Credit bills according to required template:
+     *
+     * Namaste ${customerName},
+     * Aapka ${storeName} se bill generate ho gaya hai.
+     * Bill Amount: ₹${billAmount}
+     * Kul Udhar Baaki: ₹${totalDue}
+     *
+     * Apna pura hisab aur purane bills check karne ke liye link par click karein:
+     * https://passbook.yaddetechnologies.in/?phone=${customerPhone}
+     *
+     * Dhanyawad!
+     */
+    fun generateUdharWhatsAppBillText(
+        customerName: String,
+        storeName: String,
+        billAmount: Double,
+        totalDue: Double,
+        customerPhone: String
+    ): String {
+        val cleanPhone = customerPhone.replace("[^0-9]".toRegex(), "").takeLast(10).ifBlank { customerPhone.trim() }
+        val name = if (customerName.isNotBlank() && customerName != "Walk-in Customer") customerName.trim() else "Customer"
+        val store = if (storeName.isNotBlank()) storeName.trim() else "SmartPOS Store"
+        val formattedBillAmount = if (billAmount % 1.0 == 0.0) billAmount.toInt().toString() else String.format(Locale.US, "%.2f", billAmount)
+        val formattedTotalDue = if (totalDue % 1.0 == 0.0) totalDue.toInt().toString() else String.format(Locale.US, "%.2f", totalDue)
+        val passbookLink = getPassbookUrl(cleanPhone)
+
+        return """
+Namaste $name,
+Aapka $store se bill generate ho gaya hai.
+Bill Amount: ₹$formattedBillAmount
+Kul Udhar Baaki: ₹$formattedTotalDue
+
+Apna pura hisab aur purane bills check karne ke liye link par click karein:
+$passbookLink
+
+Dhanyawad!
+        """.trimIndent()
+    }
 
     /**
      * Checks if auto-send WhatsApp bill is enabled by merchant.
@@ -124,7 +178,30 @@ object WhatsAppInvoiceHelper {
     /**
      * Formats itemized invoice text for WhatsApp sharing.
      */
-    fun formatInvoiceText(invoice: InvoiceEntity, businessName: String): String {
+    /**
+     * Formats itemized invoice text for WhatsApp sharing.
+     * For Udhar / Credit invoices, dispatches the designated Hindi credit bill format.
+     */
+    fun formatInvoiceText(
+        invoice: InvoiceEntity,
+        businessName: String,
+        totalDue: Double? = null,
+        passbookUrl: String? = null
+    ): String {
+        val isCredit = invoice.paymentMode.contains("Credit", ignoreCase = true) ||
+                invoice.paymentMode.contains("Udhar", ignoreCase = true)
+
+        if (isCredit) {
+            val due = totalDue ?: invoice.amount
+            return generateUdharWhatsAppBillText(
+                customerName = invoice.customerName,
+                storeName = businessName,
+                billAmount = invoice.amount,
+                totalDue = due,
+                customerPhone = invoice.customerMobile
+            )
+        }
+
         val invoiceNumber = if (invoice.firestoreId.isNotBlank()) {
             invoice.firestoreId.take(8).uppercase()
         } else {
@@ -170,6 +247,11 @@ object WhatsAppInvoiceHelper {
 
         val formattedAmount = String.format(Locale.US, "%.2f", invoice.amount)
         val mode = if (invoice.paymentMode.isNotBlank()) invoice.paymentMode else "Cash"
+        val cleanPhone = invoice.customerMobile.replace("[^0-9]".toRegex(), "").takeLast(10)
+        val effectivePassbook = passbookUrl ?: if (cleanPhone.length >= 10) getPassbookUrl(cleanPhone) else ""
+        val passbookSection = if (effectivePassbook.isNotBlank()) {
+            "\n\nApna pura hisab aur purane bills check karne ke liye link par click karein:\n$effectivePassbook"
+        } else ""
 
         return """
         🧾 *INVOICE: #$invoiceNumber*
@@ -180,7 +262,7 @@ object WhatsAppInvoiceHelper {
         $itemsText
         --------------------------------$breakdownSection
         💰 *Total Amount:* *₹$formattedAmount*
-        💳 *Payment Mode:* $mode
+        💳 *Payment Mode:* $mode$passbookSection
 
         🙏 _Thank you for shopping with us!_
         """.trimIndent()
@@ -189,8 +271,12 @@ object WhatsAppInvoiceHelper {
     /**
      * Alias matching standard template signature: generateWhatsAppInvoiceText(invoice, storeName)
      */
-    fun generateWhatsAppInvoiceText(invoice: InvoiceEntity, storeName: String): String {
-        return formatInvoiceText(invoice, storeName)
+    fun generateWhatsAppInvoiceText(
+        invoice: InvoiceEntity,
+        storeName: String,
+        totalDue: Double? = null
+    ): String {
+        return formatInvoiceText(invoice, storeName, totalDue)
     }
 
     /**
@@ -205,7 +291,8 @@ object WhatsAppInvoiceHelper {
         taxAmount: Double,
         totalAmount: Double,
         paymentMode: String,
-        dateStr: String = SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault()).format(Date())
+        dateStr: String = SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault()).format(Date()),
+        passbookUrl: String = ""
     ): String {
         val itemsText = if (items.isNotEmpty()) {
             items.joinToString("\n") { item ->
@@ -237,6 +324,9 @@ object WhatsAppInvoiceHelper {
         val effectiveStore = if (storeName.isNotBlank()) storeName.trim() else "SmartPOS Retail Store"
         val formattedAmount = String.format(Locale.US, "%.2f", totalAmount)
         val mode = if (paymentMode.isNotBlank()) paymentMode else "Cash"
+        val passbookSection = if (passbookUrl.isNotBlank()) {
+            "\n\nApna pura hisab aur purane bills check karne ke liye link par click karein:\n$passbookUrl"
+        } else ""
 
         return """
         🧾 *INVOICE: #$invoiceNumber*
@@ -247,7 +337,7 @@ object WhatsAppInvoiceHelper {
         $itemsText
         --------------------------------$breakdownSection
         💰 *Total Amount:* *₹$formattedAmount*
-        💳 *Payment Mode:* $mode
+        💳 *Payment Mode:* $mode$passbookSection
 
         🙏 _Thank you for shopping with us!_
         """.trimIndent()
@@ -261,9 +351,10 @@ object WhatsAppInvoiceHelper {
         context: Context,
         customerPhone: String,
         invoice: InvoiceEntity,
-        businessName: String
+        businessName: String,
+        totalDue: Double? = null
     ): Boolean {
-        val invoiceText = formatInvoiceText(invoice, businessName)
+        val invoiceText = formatInvoiceText(invoice, businessName, totalDue)
         return sendWhatsAppText(context, customerPhone, invoiceText)
     }
 

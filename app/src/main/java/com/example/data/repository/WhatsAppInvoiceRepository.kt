@@ -40,7 +40,11 @@ class WhatsAppInvoiceRepository(
         taxAmount: Double = 0.0,
         storePhone: String = "",
         previousUdhar: Double = 0.0,
-        totalOutstanding: Double = 0.0
+        totalOutstanding: Double = 0.0,
+        billAmount: Double = totalAmount,
+        totalDue: Double = totalOutstanding,
+        passbookUrl: String = "",
+        message: String = ""
     ): Result<ApiResponse> = withContext(Dispatchers.IO) {
         try {
             val cleanPhone = customerPhone.replace("[^0-9]".toRegex(), "").takeLast(10)
@@ -48,6 +52,10 @@ class WhatsAppInvoiceRepository(
                 val err = "Customer mobile must be 10 digits: $customerPhone"
                 Log.w(TAG, err)
                 return@withContext Result.failure(IllegalArgumentException(err))
+            }
+
+            val effectivePassbook = passbookUrl.ifBlank {
+                "https://passbook.yaddetechnologies.in/?phone=$cleanPhone"
             }
 
             val payload = InvoiceRequestPayload(
@@ -64,7 +72,11 @@ class WhatsAppInvoiceRepository(
                 customerName = customerName,
                 subtotal = subtotal,
                 discountAmount = discountAmount,
-                taxAmount = taxAmount
+                taxAmount = taxAmount,
+                billAmount = billAmount,
+                totalDue = totalDue,
+                passbookUrl = effectivePassbook,
+                message = message
             )
 
             Log.d(TAG, "Sending central WhatsApp invoice to $cleanPhone for bill $invoiceNumber")
@@ -122,7 +134,11 @@ class WhatsAppInvoiceRepository(
             customerName = invoice.customerName,
             subtotal = if (invoice.subtotal > 0) invoice.subtotal else invoice.amount,
             discountAmount = invoice.discountAmount,
-            taxAmount = invoice.taxAmount
+            taxAmount = invoice.taxAmount,
+            billAmount = invoice.amount,
+            totalDue = invoice.amount,
+            passbookUrl = WhatsAppInvoiceHelper.getPassbookUrl(invoice.customerMobile),
+            message = WhatsAppInvoiceHelper.formatInvoiceText(invoice, storeName)
         )
     }
 }

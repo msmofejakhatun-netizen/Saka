@@ -27,7 +27,8 @@ object WhatsAppReminderUtils {
         reminderType: ReminderType = ReminderType.URGENT,
         transactions: List<CustomerTransactionEntity> = emptyList(),
         upiId: String = "merchant@upi",
-        merchantPhone: String = ""
+        merchantPhone: String = "",
+        customerPhone: String = ""
     ): String {
         val dateFormat = SimpleDateFormat("dd MMM, yyyy", Locale.getDefault())
         val dateStr = if (lastTransactionTimestamp > 0) dateFormat.format(Date(lastTransactionTimestamp)) else "Recent"
@@ -35,6 +36,12 @@ object WhatsAppReminderUtils {
         val bizName = if (businessName.isNotBlank()) businessName.trim() else "SmartPOS Store"
         val cleanUpi = if (upiId.isNotBlank()) upiId.trim() else "merchant@upi"
         val phoneContact = if (merchantPhone.isNotBlank()) merchantPhone.trim() else ""
+        val cleanCustPhone = customerPhone.replace("[^0-9]".toRegex(), "").takeLast(10)
+        val passbookLink = if (cleanCustPhone.isNotEmpty()) {
+            "https://passbook.yaddetechnologies.in/?phone=$cleanCustPhone"
+        } else {
+            "https://passbook.yaddetechnologies.in/"
+        }
 
         val upiPaymentLink = WhatsAppReminderHelper.buildUpiPaymentUrl(
             upiId = cleanUpi,
@@ -57,7 +64,7 @@ object WhatsAppReminderUtils {
                 sb.append("📲 *Click to Pay Instantly:*\n")
                 sb.append("$upiPaymentLink\n\n")
                 sb.append("⚡ _Powered by SmartPOS_\n")
-                sb.append("🔗 https://smartpos-ashen.vercel.app/")
+                sb.append("🔗 $passbookLink")
                 sb.toString()
             }
 
@@ -74,7 +81,7 @@ object WhatsAppReminderUtils {
                 sb.append("📲 *Click to Pay Instantly:*\n")
                 sb.append("$upiPaymentLink\n\n")
                 sb.append("⚡ _Powered by SmartPOS_\n")
-                sb.append("🔗 https://smartpos-ashen.vercel.app/")
+                sb.append("🔗 $passbookLink")
                 sb.toString()
             }
 
@@ -103,7 +110,7 @@ object WhatsAppReminderUtils {
                 sb.append("📲 *Click to Pay Instantly:*\n")
                 sb.append("$upiPaymentLink\n\n")
                 sb.append("⚡ _Powered by SmartPOS_\n")
-                sb.append("🔗 https://smartpos-ashen.vercel.app/")
+                sb.append("🔗 $passbookLink")
                 sb.toString()
             }
         }

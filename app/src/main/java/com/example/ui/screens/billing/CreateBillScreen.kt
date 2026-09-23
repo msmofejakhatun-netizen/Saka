@@ -345,8 +345,7 @@ fun CreateBillScreen(
                 // 1. Customer Details Section
                 item {
                     val showCustomerFormFields = isCustomerFieldsExpanded ||
-                            viewModel.posPaymentMode.contains("Credit", ignoreCase = true) ||
-                            viewModel.posPaymentMode.contains("Udhar", ignoreCase = true) ||
+                            com.example.util.WhatsAppInvoiceHelper.isCreditPaymentMode(viewModel.posPaymentMode) ||
                             (viewModel.posCustomerName.isNotBlank() && viewModel.posCustomerName != "Walk-in Customer") ||
                             viewModel.posCustomerMobile.isNotBlank()
 
@@ -401,7 +400,7 @@ fun CreateBillScreen(
                                 }
 
                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                    if (showCustomerFormFields && viewModel.posPaymentMode != "Credit (Udhar)") {
+                                    if (showCustomerFormFields && !com.example.util.WhatsAppInvoiceHelper.isCreditPaymentMode(viewModel.posPaymentMode)) {
                                         TextButton(
                                             onClick = {
                                                 viewModel.posCustomerName = "Walk-in Customer"
@@ -1042,8 +1041,7 @@ fun CreateBillScreen(
                             onClick = {
                                 val custPhone = invoice.customerMobile.ifBlank { "" }
                                 val cleanPhone = custPhone.replace("[^0-9]".toRegex(), "").takeLast(10)
-                                val isCredit = invoice.paymentMode.contains("Credit", ignoreCase = true) ||
-                                        invoice.paymentMode.contains("Udhar", ignoreCase = true)
+                                val isCredit = com.example.util.WhatsAppInvoiceHelper.isCreditPaymentMode(invoice.paymentMode)
                                 val matchingCust = viewModel.customers.value.find {
                                     it.mobileNumber.replace("[^0-9]".toRegex(), "").takeLast(10) == cleanPhone
                                 }
@@ -1606,26 +1604,34 @@ private fun CartReviewModalDialog(
                                                     }
                                                 }
                                             }
-                                            androidx.compose.material3.Switch(
-                                                checked = viewModel.isGstInvoiceMode && isGstVerified,
-                                                onCheckedChange = { checked ->
-                                                    if (checked && !isGstVerified) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .testTag("pos_gst_toggle_container")
+                                                    .clickable(!isGstVerified) {
                                                         showGstGateDialog = true
-                                                    } else {
-                                                        viewModel.isGstInvoiceMode = checked
-                                                        if (!checked) viewModel.posTaxPercentageInput = "0"
                                                     }
-                                                },
-                                                enabled = isGstVerified,
-                                                colors = androidx.compose.material3.SwitchDefaults.colors(
-                                                    checkedThumbColor = Color.White,
-                                                    checkedTrackColor = VyaparRed,
-                                                    disabledCheckedTrackColor = Color(0xFFE2E8F0),
-                                                    disabledUncheckedTrackColor = Color(0xFFE2E8F0),
-                                                    disabledUncheckedThumbColor = Color(0xFF94A3B8)
-                                                ),
-                                                modifier = Modifier.testTag("pos_gst_toggle_switch")
-                                            )
+                                            ) {
+                                                androidx.compose.material3.Switch(
+                                                    checked = viewModel.isGstInvoiceMode && isGstVerified,
+                                                    onCheckedChange = { checked ->
+                                                        if (checked && !isGstVerified) {
+                                                            showGstGateDialog = true
+                                                        } else {
+                                                            viewModel.isGstInvoiceMode = checked
+                                                            if (!checked) viewModel.posTaxPercentageInput = "0"
+                                                        }
+                                                    },
+                                                    enabled = isGstVerified,
+                                                    colors = androidx.compose.material3.SwitchDefaults.colors(
+                                                        checkedThumbColor = Color.White,
+                                                        checkedTrackColor = VyaparRed,
+                                                        disabledCheckedTrackColor = Color(0xFFE2E8F0),
+                                                        disabledUncheckedTrackColor = Color(0xFFE2E8F0),
+                                                        disabledUncheckedThumbColor = Color(0xFF94A3B8)
+                                                    ),
+                                                    modifier = Modifier.testTag("pos_gst_toggle_switch")
+                                                )
+                                            }
                                         }
 
                                         if (!isGstVerified) {
@@ -1824,7 +1830,7 @@ private fun CartReviewModalDialog(
                 },
                 text = {
                     Text(
-                        text = "To issue legal GST tax invoices with CGST/SGST breakdowns, you must verify your 15-character GSTIN in Business Profile.",
+                        text = "GST Invoice Mode requires a verified GSTIN. Please update your Business Profile first.",
                         fontSize = 13.sp,
                         color = Color(0xFF475569),
                         textAlign = TextAlign.Center
@@ -1996,7 +2002,11 @@ private fun PaymentAndCheckoutModalDialog(
                                     modifier = Modifier.fillMaxWidth()
                                 ) {
                                     listOf("Cash", "UPI / QR", "Card", "Credit (Udhar)").forEach { mode ->
-                                        val isSelected = viewModel.posPaymentMode == mode
+                                        val isSelected = if (mode == "Credit (Udhar)") {
+                                            com.example.util.WhatsAppInvoiceHelper.isCreditPaymentMode(viewModel.posPaymentMode)
+                                        } else {
+                                            viewModel.posPaymentMode.equals(mode, ignoreCase = true)
+                                        }
                                         Card(
                                             onClick = { viewModel.posPaymentMode = mode },
                                             colors = CardDefaults.cardColors(
@@ -2068,7 +2078,7 @@ private fun PaymentAndCheckoutModalDialog(
                                     }
                                 }
 
-                                if (viewModel.posPaymentMode.contains("Credit", ignoreCase = true) || viewModel.posPaymentMode.contains("Udhar", ignoreCase = true)) {
+                                if (com.example.util.WhatsAppInvoiceHelper.isCreditPaymentMode(viewModel.posPaymentMode)) {
                                     Spacer(modifier = Modifier.height(4.dp))
                                     Column(
                                         modifier = Modifier

@@ -9,8 +9,8 @@ import android.widget.Toast
 object WebUtils {
     private const val TAG = "WebUtils"
 
-    const val TERMS_URL = "https://smartpos-ashen.vercel.app/terms"
-    const val PRIVACY_URL = "https://smartpos-ashen.vercel.app/privacy"
+    const val TERMS_URL = "https://passbook.yaddetechnologies.in/terms"
+    const val PRIVACY_URL = "https://passbook.yaddetechnologies.in/privacy"
 
     /**
      * Opens a web URL safely in the user's default browser or custom tabs.

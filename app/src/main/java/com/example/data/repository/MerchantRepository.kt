@@ -120,6 +120,60 @@ class MerchantRepository(
     }
 
     /**
+     * Direct query to check if the current merchant has isGstVerified == true in their Firestore profile.
+     */
+    suspend fun isMerchantGstVerified(userId: String? = null): Boolean = withContext(Dispatchers.IO) {
+        val targetUid = userId ?: auth?.currentUser?.uid ?: ""
+        if (targetUid.isBlank()) return@withContext false
+
+        try {
+            if (FirebaseManager.isFirebaseAvailable && firestore != null) {
+                val doc = firestore!!.collection("users").document(targetUid).get().await()
+                if (doc != null && doc.exists()) {
+                    val verified = doc.getBoolean("isGstVerified") ?: false
+                    return@withContext verified
+                }
+            }
+            if (userDao != null) {
+                val local = userDao.getUserById(targetUid.hashCode()) ?: userDao.getAllUsers().firstOrNull()
+                return@withContext local?.isGstVerified == true
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error checking merchant GST verification: ${e.localizedMessage}")
+        }
+        false
+    }
+
+    /**
+     * Retrieves GST details (isGstVerified, gstin, legalBusinessName) for the merchant.
+     */
+    suspend fun getMerchantGstDetails(userId: String? = null): Triple<Boolean, String, String> = withContext(Dispatchers.IO) {
+        val targetUid = userId ?: auth?.currentUser?.uid ?: ""
+        if (targetUid.isBlank()) return@withContext Triple(false, "", "")
+
+        try {
+            if (FirebaseManager.isFirebaseAvailable && firestore != null) {
+                val doc = firestore!!.collection("users").document(targetUid).get().await()
+                if (doc != null && doc.exists()) {
+                    val isVerified = doc.getBoolean("isGstVerified") ?: false
+                    val gstin = doc.getString("gstin") ?: ""
+                    val legalName = doc.getString("legalBusinessName") ?: ""
+                    return@withContext Triple(isVerified, gstin, legalName)
+                }
+            }
+            if (userDao != null) {
+                val local = userDao.getUserById(targetUid.hashCode()) ?: userDao.getAllUsers().firstOrNull()
+                if (local != null) {
+                    return@withContext Triple(local.isGstVerified, local.gstin, local.legalBusinessName)
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error fetching GST details: ${e.localizedMessage}")
+        }
+        Triple(false, "", "")
+    }
+
+    /**
      * Stores GST details directly into Firestore under users/{uid} and updates local database.
      */
     suspend fun saveGstDetails(

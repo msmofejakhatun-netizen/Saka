@@ -48,6 +48,19 @@ object WhatsAppInvoiceHelper {
     }
 
     /**
+     * Checks if a given payment mode string represents a Credit / Udhar transaction.
+     */
+    fun isCreditPaymentMode(paymentMode: String?): Boolean {
+        if (paymentMode.isNullOrBlank()) return false
+        val trimmed = paymentMode.trim()
+        return trimmed.equals("Credit (Udhar)", ignoreCase = true) ||
+                trimmed.equals("CREDIT", ignoreCase = true) ||
+                trimmed.equals("Udhar", ignoreCase = true) ||
+                trimmed.contains("Credit", ignoreCase = true) ||
+                trimmed.contains("Udhar", ignoreCase = true)
+    }
+
+    /**
      * Formats WhatsApp message for Udhar / Credit bills according to required template:
      *
      * Namaste ${customerName},
@@ -72,7 +85,11 @@ object WhatsAppInvoiceHelper {
         val store = if (storeName.isNotBlank()) storeName.trim() else "SmartPOS Store"
         val formattedBillAmount = if (billAmount % 1.0 == 0.0) billAmount.toInt().toString() else String.format(Locale.US, "%.2f", billAmount)
         val formattedTotalDue = if (totalDue % 1.0 == 0.0) totalDue.toInt().toString() else String.format(Locale.US, "%.2f", totalDue)
-        val passbookLink = getPassbookUrl(cleanPhone)
+        val passbookLink = if (cleanPhone.isNotBlank()) {
+            "https://passbook.yaddetechnologies.in/?phone=$cleanPhone"
+        } else {
+            "https://passbook.yaddetechnologies.in/"
+        }
 
         return """
 Namaste $name,
@@ -188,7 +205,10 @@ Dhanyawad!
         totalDue: Double? = null,
         passbookUrl: String? = null
     ): String {
-        val isCredit = invoice.paymentMode.contains("Credit", ignoreCase = true) ||
+        val isCredit = invoice.paymentMode.equals("Credit (Udhar)", ignoreCase = true) ||
+                invoice.paymentMode.equals("CREDIT", ignoreCase = true) ||
+                invoice.paymentMode.equals("Udhar", ignoreCase = true) ||
+                invoice.paymentMode.contains("Credit", ignoreCase = true) ||
                 invoice.paymentMode.contains("Udhar", ignoreCase = true)
 
         if (isCredit) {
@@ -246,16 +266,17 @@ Dhanyawad!
         } else ""
 
         val formattedAmount = String.format(Locale.US, "%.2f", invoice.amount)
-        val mode = if (invoice.paymentMode.isNotBlank()) invoice.paymentMode else "Cash"
+        val mode = if (isCredit) "Credit (Udhar)" else if (invoice.paymentMode.isNotBlank()) invoice.paymentMode else "Cash"
         val cleanPhone = invoice.customerMobile.replace("[^0-9]".toRegex(), "").takeLast(10)
         val effectivePassbook = passbookUrl ?: if (cleanPhone.length >= 10) getPassbookUrl(cleanPhone) else ""
         val passbookSection = if (effectivePassbook.isNotBlank()) {
             "\n\nApna pura hisab aur purane bills check karne ke liye link par click karein:\n$effectivePassbook"
         } else ""
+        val gstinLine = if (invoice.gstin.isNotBlank()) "\n🏛️ *GSTIN:* ${invoice.gstin}" else ""
 
         return """
         🧾 *INVOICE: #$invoiceNumber*
-        🏬 *Store:* $storeName
+        🏬 *Store:* $storeName$gstinLine
         📅 *Date:* $dateStr
         --------------------------------
         *ITEMS PURCHASED:*
@@ -292,8 +313,33 @@ Dhanyawad!
         totalAmount: Double,
         paymentMode: String,
         dateStr: String = SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault()).format(Date()),
-        passbookUrl: String = ""
+        passbookUrl: String = "",
+        customerName: String = "",
+        totalDue: Double? = null,
+        customerPhone: String = ""
     ): String {
+        val isCredit = paymentMode.equals("Credit (Udhar)", ignoreCase = true) ||
+                paymentMode.equals("CREDIT", ignoreCase = true) ||
+                paymentMode.equals("Udhar", ignoreCase = true) ||
+                paymentMode.contains("Credit", ignoreCase = true) ||
+                paymentMode.contains("Udhar", ignoreCase = true)
+
+        if (isCredit) {
+            val phone = if (customerPhone.isNotBlank()) {
+                customerPhone
+            } else {
+                passbookUrl.substringAfter("phone=", "")
+            }
+            val due = totalDue ?: totalAmount
+            return generateUdharWhatsAppBillText(
+                customerName = customerName,
+                storeName = storeName,
+                billAmount = totalAmount,
+                totalDue = due,
+                customerPhone = phone
+            )
+        }
+
         val itemsText = if (items.isNotEmpty()) {
             items.joinToString("\n") { item ->
                 val qtyStr = if (item.quantity % 1.0 == 0.0) item.quantity.toInt().toString() else String.format(Locale.US, "%.2f", item.quantity)
@@ -323,7 +369,7 @@ Dhanyawad!
 
         val effectiveStore = if (storeName.isNotBlank()) storeName.trim() else "SmartPOS Retail Store"
         val formattedAmount = String.format(Locale.US, "%.2f", totalAmount)
-        val mode = if (paymentMode.isNotBlank()) paymentMode else "Cash"
+        val mode = if (isCredit) "Credit (Udhar)" else if (paymentMode.isNotBlank()) paymentMode else "Cash"
         val passbookSection = if (passbookUrl.isNotBlank()) {
             "\n\nApna pura hisab aur purane bills check karne ke liye link par click karein:\n$passbookUrl"
         } else ""

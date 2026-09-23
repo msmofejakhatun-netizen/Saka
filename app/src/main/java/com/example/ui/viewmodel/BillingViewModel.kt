@@ -788,6 +788,10 @@ class BillingViewModel(val repository: BillingRepository) : ViewModel() {
         }
     }
 
+    fun loadCurrentUser(userId: String? = null) {
+        loadUserProfile(userId)
+    }
+
     fun loadUserProfile(userId: String? = null) {
         val targetUid = userId
             ?: tempUid.takeIf { it.isNotBlank() }
@@ -1152,6 +1156,14 @@ class BillingViewModel(val repository: BillingRepository) : ViewModel() {
             )
         }
 
+        val isCredit = WhatsAppInvoiceHelper.isCreditPaymentMode(posPaymentMode)
+        val cleanPhone = posCustomerMobile.replace("[^0-9]".toRegex(), "").takeLast(10)
+        val matchingCust = customers.value.find {
+            it.mobileNumber.replace("[^0-9]".toRegex(), "").takeLast(10) == cleanPhone
+        }
+        val prevUdhar = if (isCredit) matchingCust?.totalPendingBalance ?: 0.0 else 0.0
+        val totalDue = if (isCredit) prevUdhar + posFinalTotal else posFinalTotal
+
         return com.example.util.WhatsAppInvoiceHelper.generateWhatsAppInvoiceTextFromItems(
             items = cartItemList,
             invoiceNumber = invoiceNumber,
@@ -1160,7 +1172,10 @@ class BillingViewModel(val repository: BillingRepository) : ViewModel() {
             discountAmount = posDiscountAmount,
             taxAmount = posTaxAmount,
             totalAmount = posFinalTotal,
-            paymentMode = posPaymentMode
+            paymentMode = if (isCredit) "Credit (Udhar)" else posPaymentMode,
+            customerName = posCustomerName,
+            totalDue = totalDue,
+            customerPhone = cleanPhone
         )
     }
 
@@ -1171,7 +1186,8 @@ class BillingViewModel(val repository: BillingRepository) : ViewModel() {
         context: Context,
         customerMobile: String,
         invoice: InvoiceEntity,
-        storeName: String? = null
+        storeName: String? = null,
+        totalDue: Double? = null
     ): Boolean {
         val effectiveStore = storeName?.ifBlank { currentUser.value?.businessName }
             ?: currentUser.value?.businessName
@@ -1180,7 +1196,8 @@ class BillingViewModel(val repository: BillingRepository) : ViewModel() {
             context = context,
             customerPhone = customerMobile,
             invoice = invoice,
-            businessName = effectiveStore
+            businessName = effectiveStore,
+            totalDue = totalDue
         )
     }
 
@@ -1220,8 +1237,8 @@ class BillingViewModel(val repository: BillingRepository) : ViewModel() {
                 ?: com.example.data.firebase.FirebaseManager.auth?.currentUser?.phoneNumber.orEmpty()
         }
 
-        val isCreditPayment = paymentMode.contains("Credit", ignoreCase = true) ||
-                paymentMode.contains("Udhar", ignoreCase = true)
+        val isCreditPayment = WhatsAppInvoiceHelper.isCreditPaymentMode(paymentMode)
+        val effectivePaymentMode = if (isCreditPayment) "Credit (Udhar)" else paymentMode
 
         val (calcPreviousUdhar, calcTotalOutstanding) = if (isCreditPayment) {
             if (previousUdhar != null && totalOutstanding != null) {
@@ -1266,9 +1283,12 @@ class BillingViewModel(val repository: BillingRepository) : ViewModel() {
                 discountAmount = discountAmount,
                 taxAmount = taxAmount,
                 totalAmount = totalAmount,
-                paymentMode = paymentMode,
+                paymentMode = effectivePaymentMode,
                 dateStr = date,
-                passbookUrl = passbookLink
+                passbookUrl = passbookLink,
+                customerName = customerName,
+                totalDue = calcTotalOutstanding,
+                customerPhone = cleanPhone
             )
         }
 
@@ -1280,7 +1300,7 @@ class BillingViewModel(val repository: BillingRepository) : ViewModel() {
                     storePhone = effectiveStorePhone,
                     invoiceNumber = invoiceNumber,
                     totalAmount = totalAmount,
-                    paymentMode = paymentMode,
+                    paymentMode = effectivePaymentMode,
                     previousUdhar = calcPreviousUdhar,
                     totalOutstanding = calcTotalOutstanding,
                     date = date,
@@ -1565,7 +1585,7 @@ class BillingViewModel(val repository: BillingRepository) : ViewModel() {
         val name = if (posCustomerName.isBlank()) "Walk-in Customer" else posCustomerName.trim()
         val mobile = posCustomerMobile.trim()
 
-        if (posPaymentMode.contains("Credit", ignoreCase = true) || posPaymentMode.contains("Udhar", ignoreCase = true)) {
+        if (WhatsAppInvoiceHelper.isCreditPaymentMode(posPaymentMode)) {
             if (name == "Walk-in Customer" || name.isBlank()) {
                 posInvoiceError = "Customer Name is required for Credit (Udhar) transactions."
                 return
@@ -1630,6 +1650,9 @@ class BillingViewModel(val repository: BillingRepository) : ViewModel() {
                 val userUid = com.example.data.firebase.FirebaseManager.auth?.currentUser?.uid
                     ?: currentUser.value?.id?.toString() ?: ""
 
+                val isCredit = WhatsAppInvoiceHelper.isCreditPaymentMode(posPaymentMode)
+                val chosenPaymentMode = if (isCredit) "Credit (Udhar)" else posPaymentMode.ifBlank { "Cash" }
+
                 val updatedInvoice = currentEdit.copy(
                     customerName = name,
                     customerMobile = mobile,
@@ -1638,7 +1661,7 @@ class BillingViewModel(val repository: BillingRepository) : ViewModel() {
                     subtotal = posSubtotal,
                     discountAmount = posDiscountAmount,
                     taxAmount = posTaxAmount,
-                    paymentMode = posPaymentMode,
+                    paymentMode = chosenPaymentMode,
                     itemsSummary = itemsSummaryStr,
                     itemsJson = itemsJsonStr,
                     isEdited = true,
@@ -1658,14 +1681,14 @@ class BillingViewModel(val repository: BillingRepository) : ViewModel() {
 
                 val targetInvoiceId = updatedInvoice.firestoreId.ifBlank { updatedInvoice.id.toString() }
 
-                if (posPaymentMode == "Credit / Udhar" || posPaymentMode.contains("Credit") || posPaymentMode.contains("Udhar")) {
+                if (isCredit) {
                     repository.recordUdharOrJamaTransaction(
                         userUid = userUid,
                         customerName = name,
                         customerMobile = mobile.ifBlank { "9999999999" },
                         type = "DEBIT",
                         amount = finalAmount,
-                        paymentMode = "Credit / Udhar",
+                        paymentMode = "Credit (Udhar)",
                         note = "Updated POS Bill #${currentEdit.id} ($totalItemsCount items)",
                         invoiceId = targetInvoiceId,
                         itemsJson = itemsJsonStr
@@ -1678,12 +1701,6 @@ class BillingViewModel(val repository: BillingRepository) : ViewModel() {
                         invoiceId = targetInvoiceId
                     )
                 }
-
-                lastGeneratedInvoice = updatedInvoice
-                isGeneratingPOSInvoice = false
-                _toastMessage.emit("Bill #${currentEdit.id} updated successfully! Stock adjusted.")
-                cancelEditingBill()
-                onSuccess(updatedInvoice)
 
                 // Dispatch central WhatsApp invoice in background if customer phone number is present
                 val editCleanPhone = mobile.replace("[^0-9]".toRegex(), "").takeLast(10)
@@ -1700,7 +1717,6 @@ class BillingViewModel(val repository: BillingRepository) : ViewModel() {
                     val currentStorePhone = currentUser.value?.mobileNumber?.takeIf { it.isNotBlank() }
                         ?: com.example.data.firebase.FirebaseManager.auth?.currentUser?.phoneNumber.orEmpty()
 
-                    val isCredit = posPaymentMode.contains("Credit", ignoreCase = true) || posPaymentMode.contains("Udhar", ignoreCase = true)
                     val existingCustomer = customers.value.find { cust ->
                         cust.mobileNumber.replace("[^0-9]".toRegex(), "").takeLast(10) == editCleanPhone
                     }
@@ -1725,7 +1741,7 @@ class BillingViewModel(val repository: BillingRepository) : ViewModel() {
                         totalAmount = finalAmount,
                         date = dateFormatted,
                         items = payloadItems,
-                        paymentMode = posPaymentMode,
+                        paymentMode = chosenPaymentMode,
                         previousUdhar = previousUdhar,
                         totalOutstanding = totalOutstanding,
                         customerName = name,
@@ -1734,6 +1750,12 @@ class BillingViewModel(val repository: BillingRepository) : ViewModel() {
                         taxAmount = posTaxAmount
                     )
                 }
+
+                lastGeneratedInvoice = updatedInvoice
+                isGeneratingPOSInvoice = false
+                _toastMessage.emit("Bill #${currentEdit.id} updated successfully! Stock adjusted.")
+                cancelEditingBill()
+                onSuccess(updatedInvoice)
             } catch (e: Exception) {
                 isGeneratingPOSInvoice = false
                 Log.e("BillingVM", "Update POS invoice error: ${e.localizedMessage}")
@@ -1760,7 +1782,7 @@ class BillingViewModel(val repository: BillingRepository) : ViewModel() {
         val name = if (posCustomerName.isBlank()) "Walk-in Customer" else posCustomerName.trim()
         val mobile = posCustomerMobile.trim()
 
-        if (posPaymentMode.contains("Credit", ignoreCase = true) || posPaymentMode.contains("Udhar", ignoreCase = true)) {
+        if (WhatsAppInvoiceHelper.isCreditPaymentMode(posPaymentMode)) {
             if (name == "Walk-in Customer" || name.isBlank()) {
                 posInvoiceError = "Customer Name is required for Credit (Udhar) transactions."
                 return
@@ -1823,6 +1845,9 @@ class BillingViewModel(val repository: BillingRepository) : ViewModel() {
                 val userUid = com.example.data.firebase.FirebaseManager.auth?.currentUser?.uid
                     ?: currentUser.value?.id?.toString() ?: ""
 
+                val isCredit = WhatsAppInvoiceHelper.isCreditPaymentMode(posPaymentMode)
+                val chosenPaymentMode = if (isCredit) "Credit (Udhar)" else posPaymentMode.ifBlank { "Cash" }
+
                 val invoice = InvoiceEntity(
                     customerName = name,
                     customerMobile = mobile,
@@ -1831,7 +1856,7 @@ class BillingViewModel(val repository: BillingRepository) : ViewModel() {
                     subtotal = posSubtotal,
                     discountAmount = posDiscountAmount,
                     taxAmount = posTaxAmount,
-                    paymentMode = posPaymentMode,
+                    paymentMode = chosenPaymentMode,
                     itemsSummary = itemsSummaryStr,
                     itemsJson = itemsJsonStr,
                     timestamp = System.currentTimeMillis(),
@@ -1848,7 +1873,14 @@ class BillingViewModel(val repository: BillingRepository) : ViewModel() {
 
                 val savedInvoice = repository.saveInvoiceAndDeductStock(userUid, invoice, purchasedList)
 
-                if (posPaymentMode == "Credit / Udhar" || posPaymentMode.contains("Credit") || posPaymentMode.contains("Udhar")) {
+                val newCleanPhone = mobile.replace("[^0-9]".toRegex(), "").takeLast(10)
+                val existingCustomer = customers.value.find { cust ->
+                    cust.mobileNumber.replace("[^0-9]".toRegex(), "").takeLast(10) == newCleanPhone
+                }
+                val previousUdhar = if (isCredit) existingCustomer?.totalPendingBalance ?: 0.0 else 0.0
+                val totalOutstanding = if (isCredit) previousUdhar + finalAmount else 0.0
+
+                if (isCredit) {
                     val targetInvoiceId = savedInvoice.firestoreId.ifBlank { savedInvoice.id.toString() }
                     repository.recordUdharOrJamaTransaction(
                         userUid = userUid,
@@ -1856,21 +1888,14 @@ class BillingViewModel(val repository: BillingRepository) : ViewModel() {
                         customerMobile = mobile.ifBlank { "9999999999" },
                         type = "DEBIT",
                         amount = finalAmount,
-                        paymentMode = "Credit / Udhar",
+                        paymentMode = "Credit (Udhar)",
                         note = "POS Bill #${savedInvoice.id} ($totalItemsCount items)",
                         invoiceId = targetInvoiceId,
                         itemsJson = itemsJsonStr
                     )
                 }
 
-                lastGeneratedInvoice = savedInvoice
-                isGeneratingPOSInvoice = false
-                _toastMessage.emit("Invoice generated successfully! Stock auto-deducted.")
-                clearPOSCart()
-                onSuccess(savedInvoice)
-
                 // Dispatch central WhatsApp invoice in background if customer phone number is present
-                val newCleanPhone = mobile.replace("[^0-9]".toRegex(), "").takeLast(10)
                 if (newCleanPhone.length == 10) {
                     val invoiceNum = if (savedInvoice.firestoreId.isNotBlank()) {
                         "#${savedInvoice.firestoreId.take(8).uppercase()}"
@@ -1883,13 +1908,6 @@ class BillingViewModel(val repository: BillingRepository) : ViewModel() {
                     val currentStoreName = currentUser.value?.businessName ?: "SmartPOS Store"
                     val currentStorePhone = currentUser.value?.mobileNumber?.takeIf { it.isNotBlank() }
                         ?: com.example.data.firebase.FirebaseManager.auth?.currentUser?.phoneNumber.orEmpty()
-
-                    val isCredit = posPaymentMode.contains("Credit", ignoreCase = true) || posPaymentMode.contains("Udhar", ignoreCase = true)
-                    val existingCustomer = customers.value.find { cust ->
-                        cust.mobileNumber.replace("[^0-9]".toRegex(), "").takeLast(10) == newCleanPhone
-                    }
-                    val previousUdhar = if (isCredit) existingCustomer?.totalPendingBalance ?: 0.0 else 0.0
-                    val totalOutstanding = if (isCredit) previousUdhar + finalAmount else 0.0
 
                     val payloadItems = purchasedList.map { pair ->
                         ItemPayload(
@@ -1909,7 +1927,7 @@ class BillingViewModel(val repository: BillingRepository) : ViewModel() {
                         totalAmount = finalAmount,
                         date = dateFormatted,
                         items = payloadItems,
-                        paymentMode = posPaymentMode,
+                        paymentMode = chosenPaymentMode,
                         previousUdhar = previousUdhar,
                         totalOutstanding = totalOutstanding,
                         customerName = name,
@@ -1918,6 +1936,12 @@ class BillingViewModel(val repository: BillingRepository) : ViewModel() {
                         taxAmount = posTaxAmount
                     )
                 }
+
+                lastGeneratedInvoice = savedInvoice
+                isGeneratingPOSInvoice = false
+                _toastMessage.emit("Invoice generated successfully! Stock auto-deducted.")
+                clearPOSCart()
+                onSuccess(savedInvoice)
             } catch (e: Exception) {
                 isGeneratingPOSInvoice = false
                 Log.e("BillingVM", "Generate POS invoice error: ${e.localizedMessage}")

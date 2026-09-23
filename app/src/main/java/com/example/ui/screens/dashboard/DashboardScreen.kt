@@ -207,7 +207,14 @@ fun DashboardScreen(
                     } else if (showProfileScreenOverlay) {
                         com.example.ui.screens.profile.ProfileSetupScreen(
                             viewModel = viewModel,
-                            onSetupSuccess = { showProfileScreenOverlay = false }
+                            onSetupSuccess = {
+                                viewModel.loadCurrentUser()
+                                showProfileScreenOverlay = false
+                            },
+                            onNavigateBack = {
+                                viewModel.loadCurrentUser()
+                                showProfileScreenOverlay = false
+                            }
                         )
                     } else if (showPrinterSettingsOverlay) {
                         com.example.ui.screens.settings.PrinterSettingsScreen(

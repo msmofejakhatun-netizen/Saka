@@ -95,8 +95,7 @@ fun CheckoutScreen(
         cleanCustomerPhone.isNotEmpty() && it.mobileNumber.replace("[^0-9]".toRegex(), "").takeLast(10) == cleanCustomerPhone
     }
 
-    val isCredit = viewModel.posPaymentMode.contains("Credit", ignoreCase = true) ||
-            viewModel.posPaymentMode.contains("Udhar", ignoreCase = true)
+    val isCredit = com.example.util.WhatsAppInvoiceHelper.isCreditPaymentMode(viewModel.posPaymentMode)
     val previousUdhar = if (isCredit) matchedCustomer?.totalPendingBalance ?: 0.0 else 0.0
     val totalOutstanding = if (isCredit) previousUdhar + viewModel.posFinalTotal else 0.0
 
@@ -190,8 +189,11 @@ fun CheckoutScreen(
 
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         modes.forEach { (mode, icon, tint) ->
-                            val isSelected = viewModel.posPaymentMode.equals(mode, ignoreCase = true) ||
-                                    (mode == "Credit (Udhar)" && viewModel.posPaymentMode.contains("Credit", ignoreCase = true))
+                            val isSelected = if (mode == "Credit (Udhar)") {
+                                isCredit
+                            } else {
+                                viewModel.posPaymentMode.equals(mode, ignoreCase = true)
+                            }
                             PaymentModeOptionRow(
                                 name = mode,
                                 icon = icon,

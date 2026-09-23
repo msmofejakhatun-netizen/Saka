@@ -12,6 +12,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AccountBalanceWallet
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Business
@@ -40,7 +41,8 @@ import com.example.ui.viewmodel.BillingViewModel
 @Composable
 fun ProfileSetupScreen(
     viewModel: BillingViewModel,
-    onSetupSuccess: () -> Unit
+    onSetupSuccess: () -> Unit,
+    onNavigateBack: (() -> Unit)? = null
 ) {
     val scrollState = rememberScrollState()
 
@@ -86,6 +88,32 @@ fun ProfileSetupScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
+            if (onNavigateBack != null) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(
+                        onClick = onNavigateBack,
+                        modifier = Modifier.testTag("profile_setup_back_button")
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back",
+                            tint = Color(0xFF0F172A)
+                        )
+                    }
+                    Text(
+                        text = "Back to Billing",
+                        color = Color(0xFF64748B),
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+            }
+
             Text(
                 text = "Complete Profile",
                 fontSize = 24.sp,
